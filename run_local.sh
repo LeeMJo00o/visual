@@ -1,3 +1,3 @@
 
-dotenv -f envs/.env_dev run bash run.sh
+dotenv -f envs/env_demo run bash run.sh
 
