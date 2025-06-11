@@ -1,0 +1,13 @@
+venv
+*.idea
+*.log
+*.debug
+*__pycache__*
+*.venv
+*.tar*
+*.zip
+*.bz*
+.env_test
+myNoteBook.py
+.coverage
+map/*

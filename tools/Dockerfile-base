@@ -1,0 +1,19 @@
+FROM uhub.service.ucloud.cn/westwell_devops/python:3.13.0-slim
+
+RUN sed -i s/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends tzdata iputils-ping net-tools vim less curl netbase procps \
+    && echo "set number\nset backspace=indent,eol,start\nset mouse=\nset hlsearch\nsyntax on" > /root/.vimrc
+
+COPY ./requirements.txt /tmp/requirements.txt
+COPY ./requirements_dev.txt /tmp/requirements_dev.txt
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt -i https://repo.westwell.cc/repository/pip/simple \
+    && pip3 install --no-cache-dir -r /tmp/requirements_dev.txt -i https://repo.westwell.cc/repository/pip/simple
+
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && rm -rf /tmp/* /var/cache/* /var/log/*
+
+COPY . /opt/app/
+WORKDIR /opt/app/

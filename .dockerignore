@@ -1,0 +1,15 @@
+
+# notice, please keep .git in docker
+# not add .git in here
+# so we can get version info in docker container
+
+venv
+*.idea
+*.log
+*.debug
+*__pycache__*
+*.venv
+*.tar*
+*.zip
+*.bz*
+log/*

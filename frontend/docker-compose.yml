@@ -1,0 +1,26 @@
+
+services:
+  frontend:
+    image: uhub.service.ucloud.cn/westwell_devops/pp4.1/debug_web_tools:2025-06-09-17-26-42
+    network_mode: host
+    restart: no
+    env_file:
+      - .env
+
+  routing_4:
+    image: uhub.service.ucloud.cn/westwell_devops/pp4.1/routing:2025-06-09-17-09-05
+    network_mode: host
+    restart: no
+    volumes:
+      - ./map:/opt/app/map
+    env_file:
+      - .env
+
+  pp-interface:
+    image: uhub.service.ucloud.cn/westwell_devops/pp4.1/pp-interface:2025-06-09-17-16-11
+    network_mode: host
+    restart: no
+    volumes:
+      - ./map:/opt/app/map
+    env_file:
+      - .env

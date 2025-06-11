@@ -1,0 +1,20 @@
+// -*- coding: utf-8 -*-
+syntax = "proto3";
+
+package com.westwell.test.hello;
+
+
+service BridgeService {
+  rpc sendRequest (HelloRequest) returns (HelloResponse);
+}
+
+
+message HelloRequest {
+  uint32 seq = 1;
+  string message = 2;
+}
+
+message HelloResponse {
+  bool success = 1;
+  string message = 2;
+}
