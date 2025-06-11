@@ -10,6 +10,7 @@ from src.core.config import ENABLE_DOCS, TITLE, VERSION, SWAGGER_UI_PARAMETERS, 
 from src.core.config import pp_visual_RUN_HOST, pp_visual_RUN_PORT, pp_visual_RUN_WORKERS
 from src.core.lifespan import lifespan
 from fastapi.middleware.gzip import GZipMiddleware
+from src.core.log import logger
 import os
 
 
@@ -49,18 +50,8 @@ def get_application() -> FastAPI:
     frontend_dist_path = "frontend_dist"
     if os.path.exists(frontend_dist_path):
         application.mount("/", StaticFiles(directory=frontend_dist_path, html=True), name="frontend")
-    
-    
-    @application.get("/{full_path:path}", include_in_schema=False)  # 从 API 文档中排除
-    async def serve_spa(full_path: str, request: Request):
-        # 如果路径以 api 开头，返回 None 让 FastAPI 处理
-        if full_path.startswith("api/"):
-            return None
-        # 如果文件存在，返回 None 让 StaticFiles 处理
-        if os.path.exists(os.path.join(frontend_dist_path, full_path)):
-            return None
-        # 其他情况返回 index.html
-        return FileResponse(os.path.join(frontend_dist_path, "index.html"))
+    else:
+        logger.info(f"frontend dist: {frontend_dist_path} no exists, may you env is dev")
     
     return application
 
