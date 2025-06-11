@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-project=pp-interface
+project=pp-visual
 
 # 默认情况下推送镜像
 push=1

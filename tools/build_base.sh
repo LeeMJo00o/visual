@@ -2,7 +2,7 @@
 
 set -e
 
-project=pp-interface-base
+project=pp-visual-base
 
 # 默认情况下推送镜像
 push=1

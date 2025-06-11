@@ -21,6 +21,4 @@ chain-websocket==0.2.3
 chain-grpc==0.0.8
 chain_http==0.0.6
 
-
-
 lanelet2 @ http://10.3.8.35/py/lanelet2-1.2.2-cp313-cp313-manylinux_2_31_x86_64.whl
