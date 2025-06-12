@@ -26,7 +26,7 @@ pp_visual_DB_URL: str = config(
 )
 
 pp_visual_REDIS_MODE: str = config(
-    "pp_visual_REDIS_MODE", default="redis://127.0.0.1:6379/0"
+    "pp_visual_REDIS_MODE", default="single"
 )
 # if redis mode id single, use this config
 pp_visual_REDIS_URL: str = config(
