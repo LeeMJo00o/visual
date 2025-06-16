@@ -23,7 +23,7 @@ async def start():
         logger.warning(f"create db in start error: {type(ex), ex}")
 
     mq_route.set_message_callback(RouteWsServer.on_mq_message)
-    # ref_tasks << PoseWsServer.publish_pose()
+    ref_tasks << PoseWsServer.publish_pose()
     # ref_tasks << demo_task_convert_path()
     # await mq_route.start_recv()
     # grpc_tasks << grpc_manager.run()

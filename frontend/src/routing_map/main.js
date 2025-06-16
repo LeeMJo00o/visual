@@ -43,7 +43,8 @@ class Agent {
       },
     })
     this.color = stringToUniqueColor(vehicle_id)
-    this.color_head = '#2570e8'
+    // this.color_head = '#2570e8'
+    this.color_head = '#00d60b'
 
     this.graph_short_path = new Graphics()
     this.graph_long_path = new Graphics()
@@ -127,10 +128,13 @@ class Agent {
     this.graphics.rect(x_t, y_t, this.w, this.h)
     this.graphics.stroke({ color: this.color, width: 1 })
 
-    this.graphics.moveTo(this.w * (1 - mid_v), -this.h / 2)
-    this.graphics.lineTo(this.w * (1 - mid_v), this.h / 2)
+    this.graphics.moveTo(0, -this.h / 2)
+    this.graphics.lineTo(0, this.h / 2)
 
-    this.graphics.stroke({ color: this.color_head, width: 2 })
+    // this.graphics.moveTo(this.w * (1 - mid_v), -this.h / 2)
+    // this.graphics.lineTo(this.w * (1 - mid_v), this.h / 2)
+
+    this.graphics.stroke({ color: this.color_head, width: 1 })
     this.graphics.rotation = -this.position.theta
 
     this.graphics.pivot.set(0, 0)
@@ -477,6 +481,11 @@ export default class ApplicationManager extends GraphicTools {
 
         this.long_path_width = 3
         this.short_path_width = 4
+
+        const ws_pose = new WebSocketClient('ws://10.6.64.49:2030/api/ws/demo/pose_info', {
+          onMessage: (data) => { this.pose_update(data) }
+        });
+        ws_pose.connect();
 
       } else {
         // 自己测试用
