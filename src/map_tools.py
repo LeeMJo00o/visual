@@ -1279,22 +1279,36 @@ def export_osm_svg(osm_file: str):
     # delet json file
     os.remove(to_json)
 
-    points = {}
-    for llt in routing.map.laneletLayer:
-        points[llt.id] = []
+    map_info = {}
+    llts = lanelet_filter(routing.map.laneletLayer)
+    for llt in llts:
+        road_info = {
+            "attrs": {},
+            "points": [],
+        }
+        road_info["attrs"] = {k: v for k, v in llt.attributes.items()}
         for p in llt.centerline:
-            points[llt.id].append([round(p.x, 3), round(p.y, 3)])
-    
-    with open(to_raw_path, "w") as f:   
-        json.dump(points, f)
+            road_info["points"].append([round(p.x, 3), round(p.y, 3)])
+        map_info[llt.id] = road_info
 
+    with open(to_raw_path, "w") as f:   
+        json.dump(map_info, f, separators=(',', ':'))
+
+def lanelet_filter(llt_s):
+    t = []
+    for llt in llt_s:
+        if "drivable" not in llt.attributes or ("drivable" in llt.attributes and llt.attributes["drivable"].lower() != "true"):
+                continue
+        t.append(llt)
+    return t
 
 if __name__ == "__main__":
-    routing = Routing(f"map/Abuzhabi_QP_VPB_250509_V3.7.3.osm", gen_graph=False)
-    to_file = "map/map.json"
-    save_to_json(osm_to_json(routing), to_file)
-    svg, _errorCurvatureInfoList = getSvgString(
-        to_file,
-    )
-    with open("map/map.svg", "w") as f:
-        f.write(svg)
+    # routing = Routing(f"map/Abuzhabi_QP_VPB_250509_V3.7.3.osm", gen_graph=False)
+    # to_file = "map/map.json"
+    # save_to_json(osm_to_json(routing), to_file)
+    # svg, _errorCurvatureInfoList = getSvgString(
+    #     to_file,
+    # )
+    # with open("map/map.svg", "w") as f:
+    #     f.write(svg)
+    export_osm_svg("map/fangzhen0610V1.5.osm")

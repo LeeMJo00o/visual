@@ -532,6 +532,10 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
+  async initMapByRaw() {
+    
+  }
+
   async initMap() {
     const tooltip = document.createElement('div')
     tooltip.style.cssText = `
