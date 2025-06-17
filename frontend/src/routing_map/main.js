@@ -59,7 +59,10 @@ class Agent {
 
   // 新方法：在每一帧更新位置
   update() {
-    if (!this.isAnimating) return;
+    // 如果动画被禁用，直接返回
+    if (!this.manager.smoothMovementConfig.enabled || !this.isAnimating) {
+      return;
+    }
 
     // 计算当前位置到目标位置的差距
     const dx = this.targetPosition.x - this.position.x;
@@ -91,15 +94,24 @@ class Agent {
   }
 
   setPosition(x, y, theta) {
-    // 设置目标位置，而不是直接更新
-    this.targetPosition = {
+    const newPosition = {
       x: roundTo(x, 4),
       y: roundTo(y, 4),
       theta: roundTo(theta, 4)
+    };
+
+    // 如果动画被禁用，直接设置位置并更新图形
+    if (!this.manager.smoothMovementConfig.enabled) {
+      this.position = newPosition;
+      this.targetPosition = newPosition;
+      this.isAnimating = false;
+      this._updateGraphics();
+      return;
     }
 
-    // 标记动画开始
-    this.isAnimating = true
+    // 动画启用时的原有逻辑
+    this.targetPosition = newPosition;
+    this.isAnimating = true;
 
     // 如果是首次设置位置，直接更新到目标位置（无需动画）
     if (this.position.x === 0 && this.position.y === 0 && this.position.theta === 0) {
@@ -674,6 +686,11 @@ export default class ApplicationManager extends GraphicTools {
 
   // 更新所有车辆的位置
   updateAgents() {
+    // 如果动画被禁用，直接返回，不执行任何操作
+    if (!this.smoothMovementConfig.enabled) {
+      return;
+    }
+
     // 遍历所有车辆，调用更新方法
     for (const agent of Object.values(this.agents)) {
       agent.update();
