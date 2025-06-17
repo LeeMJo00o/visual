@@ -11,6 +11,7 @@ from src.core.config import DEMO_REDIS_URL
 router = APIRouter()
 _manager = ConnectionManager()
 _manager_demo_path = ConnectionManager()
+_manager_demo_short_path = ConnectionManager()
 _manager_pose = ConnectionManager()
 
 
@@ -84,9 +85,9 @@ class PoseWsServer(MulLinkServerEndpoint):
             await asyncio.sleep(0.3)
 
 
-@router.websocket_route("/demo_path", name="websocket for pushlish demo path")
-class DemoPathWsServer(MulLinkServerEndpoint):
-    ws_manager = _manager_demo_path
+class BasePathWs(MulLinkServerEndpoint):
+    ws_manager = None
+    path_kv_key = None
 
     async def on_receive_json(self, mess: dict):
         print(f"I receive mess: {mess}")
@@ -109,7 +110,7 @@ class DemoPathWsServer(MulLinkServerEndpoint):
         }
         try:
             redis_t = get_single(DEMO_REDIS_URL, ext_config=ext_config)
-            traj = await redis_t.hgetall("gzn:wellrouting:vehicle:info")
+            traj = await redis_t.hgetall(cls.path_kv_key)
             return str_to_json(traj)
         finally:
             await redis_t.aclose()
@@ -119,7 +120,7 @@ class DemoPathWsServer(MulLinkServerEndpoint):
         rs_t = {}
         from src.routing import g_routing
         all_long_path = await cls.get_traj_demo_from_redis_raw()
-        print(f"long path count: {len(all_long_path)}")
+        print(f"path count: {len(all_long_path)}")
         # all_long_path = dict(list(all_long_path.items())[:200])
         for k, v in all_long_path.items():
             try:
@@ -140,8 +141,11 @@ class DemoPathWsServer(MulLinkServerEndpoint):
                 all_v_pose_t = await cls.get_traj_demo()
                 all_v_pose_t = dict(list(all_v_pose_t.items())[:just_use])
                 all_number = len(all_v_pose_t)
+                if all_number <= 0:
+                    await asyncio.sleep(0.5)
+                    continue
                 batch_number = math.ceil(all_number / (cycle_time / sleep_time))
-                print(f"batch number: {batch_number}")
+                print(f"all path number: {batch_number} / {all_number}")
                 vehicle_ids = list(all_v_pose_t.keys())
                 # random.shuffle(vehicle_ids)  # 打乱车辆顺序
                 for i in range(0, len(vehicle_ids), batch_number):
@@ -155,3 +159,15 @@ class DemoPathWsServer(MulLinkServerEndpoint):
             except Exception as e:
                 print(f"publish path error: {e}")
             await asyncio.sleep(0.1)
+
+
+@router.websocket_route("/demo_path", name="websocket for pushlish demo path")
+class DemoPathWsServer(BasePathWs):
+    path_kv_key = "pp4:path:long"
+    ws_manager = _manager_demo_path
+
+
+@router.websocket_route("/demo_short_path", name="websocket for pushlish demo path (short)")
+class DemoPathWsServerShort(BasePathWs):
+    path_kv_key = "pp4:path:short"
+    ws_manager = _manager_demo_short_path

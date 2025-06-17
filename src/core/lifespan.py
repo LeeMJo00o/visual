@@ -10,7 +10,7 @@ from src.core.config import pp_visual_DB_URL
 from src.services.grpc.start import manager as grpc_manager
 from src.services.grpc.start import grpc_tasks
 from src.middlewares.mq import mq, mq_route
-from src.api.routes.websocket.route import RouteWsServer, PoseWsServer, DemoPathWsServer
+from src.api.routes.websocket.route import RouteWsServer, PoseWsServer, DemoPathWsServer, DemoPathWsServerShort
 from chain_utils.asyncio_utils import RefTasks
 
 ref_tasks = RefTasks(logger_done=logger)
@@ -29,6 +29,7 @@ async def start():
     # grpc_tasks << grpc_manager.run()
 
     ref_tasks << DemoPathWsServer.publish_demo_path()
+    ref_tasks << DemoPathWsServerShort.publish_demo_path()
     pass
 
 # trigger when the program exits

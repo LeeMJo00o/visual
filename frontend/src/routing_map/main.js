@@ -487,16 +487,24 @@ export default class ApplicationManager extends GraphicTools {
         //   demo_get_traj(this.demo_update_path.bind(this), '/api/demo/get_traj')
         // }, 1000)
 
-        const ws = new WebSocketClient(`ws://${window.location.hostname}:${window.location.port}/api/ws/demo/demo_path`, {
-          onMessage: (data) => { this.demo_update_path_ws(data) }
-        }); ws.connect();
+        let ws_prefix = `ws://${window.location.hostname}:${window.location.port}`
+        // const ws_long = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_path`, {
+        //   onMessage: (data) => { this.demo_update_path_ws(data) }
+        // });
+        // ws_long.connect();
 
-        this.long_path_width = 3
-        this.short_path_width = 4
+        const ws_short = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_short_path`, {
+          onMessage: (data) => { this.demo_update_path_short_ws(data) }
+        });
+        ws_short.connect();
 
-        const ws_pose = new WebSocketClient('ws://10.6.64.49:2030/api/ws/demo/pose_info', {
+        this.long_path_width = 1
+        this.short_path_width = 3
+
+        const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
           onMessage: (data) => { this.pose_update(data) }
         });
+
         ws_pose.connect();
 
       } else {
@@ -730,10 +738,10 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  demo_update_path(data) {
+  demo_update_path(data, width) {
     // console.log('demo_update_path: ', data)
     for (const [vehicleId, v] of Object.entries(data.data)) {
-      console.log('path: ', v)
+      // console.log('path: ', v)
       let path_t = []
       let start_index = v.start_pose.index
       if (v.start_pose["is_ahead"]) {
@@ -778,7 +786,103 @@ export default class ApplicationManager extends GraphicTools {
         path_t,
         false,
         this.agents[vehicleId].color,
-        this.long_path_width,
+        width,
+        1,
+      )
+
+    }
+  }
+
+
+    demo_update_path_short(data, width) {
+    // console.log('demo_update_path: ', data)
+    for (const [vehicleId, v] of Object.entries(data.data)) {
+      console.log('path: ', v)
+      let path_t = []
+      let start_llt_id = v["path"][0]
+      if(v.path.length == 1) {
+        let start_index = v.start_pose.index
+        if (v.start_pose["is_ahead"]) {
+          start_index = start_index
+        } else {
+          start_index += 1
+        }
+
+        let end_index = v.end_pose.index
+
+        if (v.end_pose["is_ahead"]) {
+          end_index = end_index - 1
+        } else {
+          end_index = end_index
+        }
+
+        path_t.push([v.start_pose["x"], v.start_pose["y"]])
+        if (start_index < end_index){
+          let path_one = this.map_path_info[start_llt_id]
+          path_t.push(...path_one.slice(start_index, end_index))
+        }
+        path_t.push([v.end_pose["x"], v.end_pose["y"]])
+        console.log("index", start_index, end_index)
+        console.log("rs::::", start_index, end_index, path_t)
+        if (!this.agents.hasOwnProperty(vehicleId)) {
+          this.add_agent(vehicleId, 9999, 9999, 0)
+        }
+        this.agents[vehicleId].graph_short_path.clear()
+        this.drawPath(
+          this.agents[vehicleId].graph_short_path,
+          vehicleId,
+          path_t,
+          false,
+          this.agents[vehicleId].color,
+          width,
+          1,
+        )
+        return
+      }
+      let start_index = v.start_pose.index
+      if (v.start_pose["is_ahead"]) {
+        start_index = start_index
+      } else {
+        start_index += 1
+      }
+      path_t.push([v.start_pose["x"], v.start_pose["y"]])
+
+      let path_start = this.map_path_info[start_llt_id]
+      path_t.push(...path_start.slice(start_index))
+
+      for (let i = start_index; i < v["path"].length - 1; i++) {
+        let llt_id = v["path"][i]
+        let one_path = this.map_path_info[llt_id]
+        path_t.push(...one_path)
+      }
+
+      let end_index = v.end_pose.index
+
+      if (v.end_pose["is_ahead"]) {
+        end_index = end_index - 1
+      } else {
+        end_index = end_index
+      }
+
+      let end_llt_id = v["path"][v["path"].length - 1]
+      let path_end = this.map_path_info[end_llt_id]
+      path_t.push(...path_end.slice(0, end_index))
+
+      path_t.push([v.end_pose["x"], v.end_pose["y"]])
+
+      console.log("get path rs", path_t, end_index)
+
+      if (!this.agents.hasOwnProperty(vehicleId)) {
+        this.add_agent(vehicleId, 9999, 9999, 0)
+      }
+      this.agents[vehicleId].graph_short_path.clear()
+      this.drawPath(
+        this.agents[vehicleId].graph_short_path,
+        vehicleId,
+        path_t,
+        false,
+        this.agents[vehicleId].color,
+        width,
         1,
       )
 
@@ -786,8 +890,13 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   demo_update_path_ws(data) {
-    console.log('demo_update_path_ws: ', data)
-    this.demo_update_path(data)
+    // console.log('demo_update_path_ws: ', data)
+    this.demo_update_path(data, this.long_path_width)
+  }
+
+  demo_update_path_short_ws(data) {
+    // console.log('demo_update_short_path_ws: ', data)
+    this.demo_update_path_short(data, this.short_path_width)
   }
 
   demo_update_path_bak(data) {
@@ -851,7 +960,7 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   pose_update(data) {
-    console.log("get pose data2:", data.data);
+    // console.log("get pose data ws:", data.data);
     // data.data 是一个列表，刷新所有车zuobiao
     for (const [id, v] of Object.entries(data.data)) {
       // 如果禁用了平滑移动，则为每个Agent重置设置

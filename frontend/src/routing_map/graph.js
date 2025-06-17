@@ -7,7 +7,7 @@ import CryptoJS from 'crypto-js';
 
 export function stringToUniqueColor(str) {
   // 使用 MD5 哈希算法计算字符串的哈希值
-  let hash = CryptoJS.MD5(str).toString(CryptoJS.enc.Hex);
+  let hash = CryptoJS.MD5(str + "salt_1").toString(CryptoJS.enc.Hex);
 
   // 从哈希值中提取 RGB 色值
   let r = parseInt(hash.substring(0, 2), 16);  // 提取红色部分
