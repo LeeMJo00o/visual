@@ -148,7 +148,7 @@ export default class ApplicationManager extends GraphicTools {
       this.cleanupTasks[key] = []
     })
 
-    mapCache.close()
+    // mapCache.close()
 
     console.log('资源清理完成')
   }
@@ -457,7 +457,7 @@ export default class ApplicationManager extends GraphicTools {
 
       // console.log("path", path);
 
-      newSVG.appendChild(path)
+      newSVG.appendChild(path);
 
       const serializer = new XMLSerializer()
       const svg = serializer.serializeToString(newSVG)

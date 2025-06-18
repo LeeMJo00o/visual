@@ -131,11 +131,22 @@ export class EventManager {
     const smooth_toggle = document.getElementById('smooth_toggle');
     const smooth_speed = document.getElementById('smooth_speed');
 
-    if (map_hide) {
-      map_hide.addEventListener('click', () => {
+    // 使用事件委托处理 map_hide 按钮点击
+    // 将事件监听器绑定到 document 上，这样即使按钮被重新创建也能工作
+    const handleMapHideClick = (e) => {
+      if (e.target && e.target.id === 'map_hide') {
         this.manager.map_container.visible = !this.manager.map_container.visible;
-      });
-    }
+      }
+    };
+
+    document.addEventListener('click', handleMapHideClick);
+
+    // 记录清理任务
+    this.manager.addCleanupTask('eventListeners', {
+      target: document,
+      type: 'click',
+      listener: handleMapHideClick
+    });
 
     // 平滑移动控制
     if (smooth_toggle) {
