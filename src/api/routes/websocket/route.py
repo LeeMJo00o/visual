@@ -134,7 +134,7 @@ class BasePathWs(MulLinkServerEndpoint):
     @classmethod
     async def publish_demo_path(cls):
         # cycle_time = (all_number / batch_number) * sleep_time
-        cycle_time, sleep_time = 4, 0.1
+        cycle_time, sleep_time = 1, 0.1
         just_use = 100000
         while True:
             try:

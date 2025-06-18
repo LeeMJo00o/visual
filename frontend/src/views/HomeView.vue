@@ -88,8 +88,6 @@ const handleSliderChange = async (value: number) => {
             <div class="top-section">
               <div v-if="currentMenu === '1'">
 
-
-
                 <!-- <p>The func one</p> -->
                 <div class="slider-container">
                   <button id="map_hide" style="font-size: 16px; display: inline">map show / hide</button>
@@ -104,10 +102,10 @@ const handleSliderChange = async (value: number) => {
               </div>
 
               <div v-else-if="currentMenu === '2'">
-                <p id="click-pos" style="font-size: 16px; display: inline">POS_CLICK</p>
+                <p id="click-pos" style="font-size: 16px; display: inline">click:</p>
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
               <!-- <button id="lock_hide" style="font-size: 16px; display: inline">lock_hide</button> -->
-              <p id="realtime-pos" style="font-size: 16px">POS_REALTIME</p>
+              <p id="realtime-pos" style="font-size: 16px">pointer:</p>
               </div>
               <div v-else-if="currentMenu === '3-1'">
                 <p>这里是子功能1的简要介绍...</p>

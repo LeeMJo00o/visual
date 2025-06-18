@@ -3,157 +3,10 @@ import { GraphicTools, stringToUniqueColor, unrotatePoint } from './graph.js'
 import { WebSocketClient, demo_get_traj, get_svg_content, get_map_config, get_path_info } from './pp_backend.js'
 import { mapCache } from './map_cache.js'  // 导入缓存模块
 import { EventManager } from './event.js'  // 导入事件管理器
+import Agent from './agent.js'  // 导入 Agent 类
 
 const roundTo = (num, decimalPlaces) =>
   Math.round(num * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces)
-
-class Agent {
-  constructor(manager, vehicle_id) {
-    this.graphics = new Graphics()
-    this.manager = manager
-    this.w = 18
-    this.h = 7
-    this.vehicle_id = vehicle_id
-
-    // 添加位置信息属性，用于tooltip显示
-    this.position = {
-      x: 0,
-      y: 0,
-      theta: 0
-    }
-
-    // 添加目标位置和动画状态，用于平滑移动
-    this.targetPosition = {
-      x: 0,
-      y: 0,
-      theta: 0
-    }
-
-    // 是否正在动画中
-    this.isAnimating = false
-    // 动画速度因子（较大的值 = 更快的移动）
-    this.animationSpeed = 0.05
-    // 用于检测位置是否足够接近目标的阈值
-    this.positionThreshold = 0.01
-
-    this.text = new Text({
-      text: this.vehicle_id,
-      style: {
-        fontSize: 12,
-      },
-    })
-    this.color = stringToUniqueColor(vehicle_id)
-    // this.color_head = '#2570e8'
-    this.color_head = '#00d60b'
-
-    this.graph_short_path = new Graphics()
-    this.graph_long_path = new Graphics()
-
-  }
-
-  sync_text_pos(x, y) {
-    let scale = this.manager.g_scale;
-    this.text.position.set(x, y)
-    this.text.rotation = -this.manager.g_rotation
-  }
-
-  // 新方法：在每一帧更新位置
-  update() {
-    // 如果动画被禁用，直接返回
-    if (!this.manager.smoothMovementConfig.enabled || !this.isAnimating) {
-      return;
-    }
-
-    // 计算当前位置到目标位置的差距
-    const dx = this.targetPosition.x - this.position.x;
-    const dy = this.targetPosition.y - this.position.y;
-    let dTheta = this.targetPosition.theta - this.position.theta;
-
-    // 处理角度变化可能超过180度的情况（确保旋转走最短路径）
-    if (dTheta > Math.PI) dTheta -= 2 * Math.PI;
-    if (dTheta < -Math.PI) dTheta += 2 * Math.PI;
-
-    // 检查是否已经足够接近目标
-    if (Math.abs(dx) < this.positionThreshold &&
-      Math.abs(dy) < this.positionThreshold &&
-      Math.abs(dTheta) < this.positionThreshold) {
-      // 如果很接近，直接设置到目标位置
-      this.position = { ...this.targetPosition };
-      this._updateGraphics();
-      this.isAnimating = false;
-      return;
-    }
-
-    // 否则，向目标位置移动一小步
-    this.position.x += dx * this.animationSpeed;
-    this.position.y += dy * this.animationSpeed;
-    this.position.theta += dTheta * this.animationSpeed;
-
-    // 更新图形
-    this._updateGraphics();
-  }
-
-  setPosition(x, y, theta) {
-    const newPosition = {
-      x: roundTo(x, 4),
-      y: roundTo(y, 4),
-      theta: roundTo(theta, 4)
-    };
-
-    // 如果动画被禁用，直接设置位置并更新图形
-    if (!this.manager.smoothMovementConfig.enabled) {
-      this.position = newPosition;
-      this.targetPosition = newPosition;
-      this.isAnimating = false;
-      this._updateGraphics();
-      return;
-    }
-
-    // 动画启用时的原有逻辑
-    this.targetPosition = newPosition;
-    this.isAnimating = true;
-
-    // 如果是首次设置位置，直接更新到目标位置（无需动画）
-    if (this.position.x === 0 && this.position.y === 0 && this.position.theta === 0) {
-      this.position = { ...this.targetPosition };
-      this._updateGraphics();
-      this.isAnimating = false;
-    }
-  }
-
-  // 新方法：更新图形显示
-  _updateGraphics() {
-    this.graphics.clear()
-
-    let mid_v = 3 / 4
-    let x_t = -this.w * mid_v
-    let y_t = -this.h / 2
-
-    this.sync_text_pos(this.position.x, this.position.y)
-
-    let _x = this.position.x //+ this.manager.mainContainer.position.x
-    let _y = this.position.y //+ this.manager.mainContainer.position.y
-
-    this.graphics.pivot.set(_x, _y)
-    this.graphics.position.set(_x, _y)
-
-    this.graphics.rect(x_t, y_t, this.w, this.h)
-    this.graphics.stroke({ color: this.color, width: 1 })
-
-    this.graphics.moveTo(0, -this.h / 2)
-    this.graphics.lineTo(0, this.h / 2)
-
-    // this.graphics.moveTo(this.w * (1 - mid_v), -this.h / 2)
-    // this.graphics.lineTo(this.w * (1 - mid_v), this.h / 2)
-
-    this.graphics.stroke({ color: this.color_head, width: 1 })
-    this.graphics.rotation = -this.position.theta
-
-    this.graphics.pivot.set(0, 0)
-
-    // console.log("update pos:", this.vehicle_id, this.position.x, this.position.y);
-  }
-}
 
 export default class ApplicationManager extends GraphicTools {
   constructor() {
@@ -178,7 +31,7 @@ export default class ApplicationManager extends GraphicTools {
 
     // 车辆平滑移动的配置
     this.smoothMovementConfig = {
-      enabled: true,        // 是否启用平滑移动
+      enabled: false,        // 是否启用平滑移动
       speed: 0.1,           // 动画速度因子（较大的值 = 更快的移动）
       threshold: 0.01       // 用于检测位置是否足够接近目标的阈值
     }
@@ -488,15 +341,18 @@ export default class ApplicationManager extends GraphicTools {
         // }, 1000)
 
         let ws_prefix = `ws://${window.location.hostname}:${window.location.port}`
-        // const ws_long = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_path`, {
-        //   onMessage: (data) => { this.demo_update_path_ws(data) }
-        // });
-        // ws_long.connect();
+
+        const ws_long = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_path`, {
+          onMessage: (data) => { this.demo_update_path_ws(data) }
+        });
+        ws_long.connect();
+        this.addCleanupTask('websockets', ws_long);
 
         const ws_short = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_short_path`, {
           onMessage: (data) => { this.demo_update_path_short_ws(data) }
         });
         ws_short.connect();
+        this.addCleanupTask('websockets', ws_short);
 
         this.long_path_width = 1
         this.short_path_width = 3
@@ -504,8 +360,8 @@ export default class ApplicationManager extends GraphicTools {
         const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
           onMessage: (data) => { this.pose_update(data) }
         });
-
         ws_pose.connect();
+        this.addCleanupTask('websockets', ws_pose);
 
       } else {
         // 自己测试用
@@ -513,11 +369,13 @@ export default class ApplicationManager extends GraphicTools {
           onMessage: (data) => { this.path_update(data) }
         });
         ws.connect();
+        this.addCleanupTask('websockets', ws);
 
         const ws_pose = new WebSocketClient('ws://10.6.64.49:2030/api/ws/demo/pose_info', {
           onMessage: (data) => { this.pose_update(data) }
         });
         ws_pose.connect();
+        this.addCleanupTask('websockets', ws_pose);
 
         this.long_path_width = 2
         this.short_path_width = 3
@@ -527,6 +385,17 @@ export default class ApplicationManager extends GraphicTools {
       console.error('初始化地图时出错:', error)
       // 可以在这里添加错误处理逻辑，比如显示错误提示等
     }
+
+    // 添加页面卸载事件监听器，确保资源清理
+    const beforeUnloadHandler = () => {
+      this.cleanup()
+    }
+    window.addEventListener('beforeunload', beforeUnloadHandler)
+    this.addCleanupTask('eventListeners', {
+      target: window,
+      type: 'beforeunload',
+      listener: beforeUnloadHandler
+    })
   }
 
   // 修改获取SVG内容的方法
@@ -608,7 +477,7 @@ export default class ApplicationManager extends GraphicTools {
 
       cons.addChild(g)
       g.on('pointerover', (e) => {
-        console.log('pointerover', g.raw_path.getAttribute('id'));
+        // console.log('pointerover', g.raw_path.getAttribute('id'));
         const path_u = g.raw_path.cloneNode(true);
 
         if (g.raw_path.hasAttribute('id')) {
@@ -738,139 +607,62 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  demo_update_path(data, width) {
-    // console.log('demo_update_path: ', data)
+  demo_update_path_short(data, width) {
     for (const [vehicleId, v] of Object.entries(data.data)) {
       // console.log('path: ', v)
       let path_t = []
-      let start_index = v.start_pose.index
-      if (v.start_pose["is_ahead"]) {
-        start_index = start_index
-      } else {
-        start_index += 1
-      }
-      path_t.push([v.start_pose["x"], v.start_pose["y"]])
-      let start_llt_id = v["path"][0]
-      let path_start = this.map_path_info[start_llt_id]
-      path_t.push(...path_start.slice(start_index))
+      let start_llt_id = v.path[0]
+      let end_llt_id = v.path[v.path.length - 1]
 
-      for (let i = start_index; i < v["path"].length - 1; i++) {
-        let llt_id = v["path"][i]
-        let one_path = this.map_path_info[llt_id]
-        path_t.push(...one_path)
+      // 计算起始和结束索引
+      let start_index = v.start_pose.index
+      if (!v.start_pose.is_ahead) {
+        start_index += 1
       }
 
       let end_index = v.end_pose.index
-
-      if (v.end_pose["is_ahead"]) {
-        end_index = end_index - 1
-      } else {
-        end_index = end_index
+      if (v.end_pose.is_ahead) {
+        end_index -= 1
       }
 
-      let end_llt_id = v["path"][v["path"].length - 1]
-      let path_end = this.map_path_info[end_llt_id]
-      path_t.push(...path_end.slice(0, end_index))
+      // 添加起始点
+      path_t.push([v.start_pose.x, v.start_pose.y])
 
-      path_t.push([v.end_pose["x"], v.end_pose["y"]])
-
-      // console.log("get path rs", path_t)
-
-      if (!this.agents.hasOwnProperty(vehicleId)) {
-        this.add_agent(vehicleId, 9999, 9999, 0)
-      }
-      this.agents[vehicleId].graph_long_path.clear()
-      this.drawPath(
-        this.agents[vehicleId].graph_long_path,
-        vehicleId,
-        path_t,
-        false,
-        this.agents[vehicleId].color,
-        width,
-        1,
-      )
-
-    }
-  }
-
-
-    demo_update_path_short(data, width) {
-    // console.log('demo_update_path: ', data)
-    for (const [vehicleId, v] of Object.entries(data.data)) {
-      console.log('path: ', v)
-      let path_t = []
-      let start_llt_id = v["path"][0]
-      if(v.path.length == 1) {
-        let start_index = v.start_pose.index
-        if (v.start_pose["is_ahead"]) {
-          start_index = start_index
-        } else {
-          start_index += 1
-        }
-
-        let end_index = v.end_pose.index
-
-        if (v.end_pose["is_ahead"]) {
-          end_index = end_index - 1
-        } else {
-          end_index = end_index
-        }
-
-        path_t.push([v.start_pose["x"], v.start_pose["y"]])
-        if (start_index < end_index){
+      // 处理路径段
+      if (v.path.length === 1) {
+        // 单路径段：只添加中间部分
+        if (start_index < end_index) {
           let path_one = this.map_path_info[start_llt_id]
-          path_t.push(...path_one.slice(start_index, end_index))
+          if (Array.isArray(path_one)) {
+            path_t.push(...path_one.slice(start_index, end_index))
+          }
         }
-        path_t.push([v.end_pose["x"], v.end_pose["y"]])
-        console.log("index", start_index, end_index)
-        console.log("rs::::", start_index, end_index, path_t)
-        if (!this.agents.hasOwnProperty(vehicleId)) {
-          this.add_agent(vehicleId, 9999, 9999, 0)
+      } else {
+        // 多路径段：添加起始段、中间段、结束段
+        let path_start = this.map_path_info[start_llt_id]
+        if (Array.isArray(path_start)) {
+          path_t.push(...path_start.slice(start_index))
         }
-        this.agents[vehicleId].graph_short_path.clear()
-        this.drawPath(
-          this.agents[vehicleId].graph_short_path,
-          vehicleId,
-          path_t,
-          false,
-          this.agents[vehicleId].color,
-          width,
-          1,
-        )
-        return
-      }
-      let start_index = v.start_pose.index
-      if (v.start_pose["is_ahead"]) {
-        start_index = start_index
-      } else {
-        start_index += 1
-      }
-      path_t.push([v.start_pose["x"], v.start_pose["y"]])
 
-      let path_start = this.map_path_info[start_llt_id]
-      path_t.push(...path_start.slice(start_index))
+        for (let i = 1; i < v.path.length - 1; i++) {
+          let llt_id = v.path[i]
+          console.log("add:", llt_id)
+          let one_path = this.map_path_info[llt_id]
+          if (Array.isArray(one_path)) {
+            path_t.push(...one_path)
+          }
+        }
 
-      for (let i = start_index; i < v["path"].length - 1; i++) {
-        let llt_id = v["path"][i]
-        let one_path = this.map_path_info[llt_id]
-        path_t.push(...one_path)
+        let path_end = this.map_path_info[end_llt_id]
+        if (Array.isArray(path_end)) {
+          path_t.push(...path_end.slice(0, end_index))
+        }
       }
 
-      let end_index = v.end_pose.index
+      // 添加结束点
+      path_t.push([v.end_pose.x, v.end_pose.y])
 
-      if (v.end_pose["is_ahead"]) {
-        end_index = end_index - 1
-      } else {
-        end_index = end_index
-      }
-
-      let end_llt_id = v["path"][v["path"].length - 1]
-      let path_end = this.map_path_info[end_llt_id]
-      path_t.push(...path_end.slice(0, end_index))
-
-      path_t.push([v.end_pose["x"], v.end_pose["y"]])
-
-      console.log("get path rs", path_t, end_index)
+      // console.log("get path rs", path_t, end_index)
 
       if (!this.agents.hasOwnProperty(vehicleId)) {
         this.add_agent(vehicleId, 9999, 9999, 0)
@@ -885,35 +677,66 @@ export default class ApplicationManager extends GraphicTools {
         width,
         1,
       )
-
     }
   }
 
-  demo_update_path_ws(data) {
-    // console.log('demo_update_path_ws: ', data)
-    this.demo_update_path(data, this.long_path_width)
-  }
+  demo_update_path_long(data, width) {
+    for (const [vehicleId, v] of Object.entries(data.data)) {
+      // console.log('path: ', v)
+      let path_t = []
+      let start_llt_id = v.path[0]
+      let end_llt_id = v.path[v.path.length - 1]
 
-  demo_update_path_short_ws(data) {
-    // console.log('demo_update_short_path_ws: ', data)
-    this.demo_update_path_short(data, this.short_path_width)
-  }
-
-  demo_update_path_bak(data) {
-    // 获取所有车辆ID并排序
-    const vehicleIds = Object.keys(data.data).sort((a, b) => {
-      // 如果ID是纯数字，则按数字大小排序
-      if (!isNaN(a) && !isNaN(b)) {
-        return Number(a) - Number(b);
+      // 计算起始和结束索引
+      let start_index = v.start_pose.index
+      if (!v.start_pose.is_ahead) {
+        start_index += 1
       }
-      // 否则按字符串排序
-      return a.localeCompare(b);
-    });
-    console.log('sorted vehicle IDs:', vehicleIds);
-    // 按排序后的顺序处理每个车辆
-    for (const vehicleId of vehicleIds) {
-      const value = data.data[vehicleId];
-      let one_traj = value["point_path"]
+
+      let end_index = v.end_pose.index
+      if (v.end_pose.is_ahead) {
+        end_index -= 1
+      }
+
+      // 添加起始点
+      path_t.push([v.start_pose.x, v.start_pose.y])
+
+      // 处理路径段
+      if (v.path.length === 1) {
+        // 单路径段：只添加中间部分
+        if (start_index < end_index) {
+          let path_one = this.map_path_info[start_llt_id]
+          if (Array.isArray(path_one)) {
+            path_t.push(...path_one.slice(start_index, end_index))
+          }
+        }
+      } else {
+        // 多路径段：添加起始段、中间段、结束段
+        let path_start = this.map_path_info[start_llt_id]
+        if (Array.isArray(path_start)) {
+          path_t.push(...path_start.slice(start_index))
+        }
+
+        for (let i = 1; i < v.path.length - 1; i++) {
+          let llt_id = v.path[i]
+          console.log("add:", llt_id)
+          let one_path = this.map_path_info[llt_id]
+          if (Array.isArray(one_path)) {
+            path_t.push(...one_path)
+          }
+        }
+
+        let path_end = this.map_path_info[end_llt_id]
+        if (Array.isArray(path_end)) {
+          path_t.push(...path_end.slice(0, end_index))
+        }
+      }
+
+      // 添加结束点
+      path_t.push([v.end_pose.x, v.end_pose.y])
+
+      // console.log("get path rs", path_t, end_index)
+
       if (!this.agents.hasOwnProperty(vehicleId)) {
         this.add_agent(vehicleId, 9999, 9999, 0)
       }
@@ -921,13 +744,23 @@ export default class ApplicationManager extends GraphicTools {
       this.drawPath(
         this.agents[vehicleId].graph_long_path,
         vehicleId,
-        one_traj,
+        path_t,
         false,
         this.agents[vehicleId].color,
-        this.long_path_width,
+        width,
         1,
       )
     }
+  }
+
+  demo_update_path_ws(data) {
+    // console.log('demo_update_path_ws: ', data)
+    this.demo_update_path_long(data, this.long_path_width)
+  }
+
+  demo_update_path_short_ws(data) {
+    // console.log('demo_update_short_path_ws: ', data)
+    this.demo_update_path_short(data, this.short_path_width)
   }
 
   path_update(data) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, nextTick } from 'vue'
 import ApplicationManager from '../routing_map/main.js'
 
 const gameContainer = ref<HTMLDivElement | null>(null)
