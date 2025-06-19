@@ -3,7 +3,18 @@ import { ref } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { useGlobalStore } from '../stores/globalStore'
 // import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+
+// 声明全局接口
+declare global {
+  interface Window {
+    updateClickPosition: (x: number, y: number) => void
+    updatePointerPosition: (x: number, y: number) => void
+  }
+}
+
+const globalStore = useGlobalStore()
 
 // 添加当前选中的菜单项
 const currentMenu = ref('1')
@@ -31,14 +42,22 @@ const handleSliderChange = async (value: number) => {
   try {
     // 发送 HTTP 请求，将滑块值传递给服务器
     const response = await axios.post('/api/demo/change_weight', {
-      value: value
+      value: value,
     })
-    ElMessage({message: `set global sequece weight to ${value} ok`, type: 'success'})
+    ElMessage({ message: `set global sequece weight to ${value} ok`, type: 'success' })
     console.log('请求成功:', response.data)
   } catch (error) {
-    ElMessage({message: `set global sequece weight to error: ${error}`, type: 'error'})
+    ElMessage({ message: `set global sequece weight to error: ${error}`, type: 'error' })
     console.error('请求失败:', error)
   }
+}
+
+const onMapHide = () => {
+  window.dispatchEvent(new CustomEvent('map-hide-click'))
+}
+
+const onAgentHide = () => {
+  window.dispatchEvent(new CustomEvent('agent-hide-click'))
 }
 </script>
 
@@ -64,7 +83,7 @@ const handleSliderChange = async (value: number) => {
             </el-menu-item>
 
             <el-menu-item index="2">
-              <span>The func two</span>
+              <span>map tools</span>
             </el-menu-item>
 
             <el-menu-item index="3">
@@ -87,25 +106,47 @@ const handleSliderChange = async (value: number) => {
           <div>
             <div class="top-section">
               <div v-if="currentMenu === '1'">
-
-                <!-- <p>The func one</p> -->
                 <div class="slider-container">
-                  <button id="map_hide" style="font-size: 16px; display: inline">map show / hide</button>
-                  <div class="fixed-width-label">
+                  <div class="label-and-buttons">
+                    <el-button type="primary" plain id="map_hide" @click="onMapHide"
+                      >map show</el-button
+                    >
+                    <el-button type="primary" plain id="agent_hide" @click="onAgentHide"
+                      >agent show</el-button
+                    >
                     <span class="slider-label">set global sequece weight: </span>
                     <span class="slider-value">{{ sliderValue.toFixed(1) }}</span>
                   </div>
-
-                  <el-slider placement="right" :show-tooltip="true" class="slider-component" v-model="sliderValue" :min="0" :max="1" :step="0.1" @change="handleSliderChange" />
-                <!-- <span>rotation: {{ sliderValue.toFixed(1) }} </span> -->
+                  <el-slider
+                    placement="right"
+                    :show-tooltip="true"
+                    class="slider-component"
+                    v-model="sliderValue"
+                    :min="0"
+                    :max="1"
+                    :step="0.1"
+                    @change="handleSliderChange"
+                  />
                 </div>
               </div>
 
               <div v-else-if="currentMenu === '2'">
-                <p id="click-pos" style="font-size: 16px; display: inline">click:</p>
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              <!-- <button id="lock_hide" style="font-size: 16px; display: inline">lock_hide</button> -->
-              <p id="realtime-pos" style="font-size: 16px">pointer:</p>
+                <span>
+                  click:
+                  {{
+                    globalStore.positions.click
+                      ? `[${globalStore.positions.click[0].toFixed(4)}, ${globalStore.positions.click[1].toFixed(4)}]`
+                      : ''
+                  }}
+                </span>
+                <span style="margin-left: 20px;">
+                  pointer:
+                  {{
+                    globalStore.positions.pointer
+                      ? `[${globalStore.positions.pointer[0].toFixed(4)}, ${globalStore.positions.pointer[1].toFixed(4)}]`
+                      : ''
+                  }}
+                </span>
               </div>
               <div v-else-if="currentMenu === '3-1'">
                 <p>这里是子功能1的简要介绍...</p>
@@ -123,7 +164,6 @@ const handleSliderChange = async (value: number) => {
           <div class="main-map">
             <PixiGame />
           </div>
-
         </el-container>
       </el-main>
     </el-container>
@@ -189,32 +229,40 @@ const handleSliderChange = async (value: number) => {
 .slider-container {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 16px;
   margin: 10px 0;
 }
-
-.fixed-width-label {
+.label-and-buttons {
   display: flex;
   align-items: center;
-  min-width: 240px;
+  gap: 8px;
 }
 
-.slider-label, .slider-value {
+.slider-demo-block {
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+}
+
+.el-slider {
+  max-width: 200px;
+}
+.slider-demo-block .el-slider {
+  margin-top: 0;
+  margin-left: 12px;
+}
+.slider-demo-block .demonstration {
   font-size: 14px;
-  color: #606266;
-}
-
-.slider-label {
+  /* color: var(--el-text-color-secondary); */
+  line-height: 44px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  margin-bottom: 0;
 }
-
-.slider-value {
-  min-width: 30px;
-  text-align: right;
-}
-
-.slider-component {
-  width: 200px;
+.slider-demo-block .demonstration + .el-slider {
+  flex: 0 0 70%;
 }
 
 /* 侧边栏样式 */
@@ -233,7 +281,7 @@ const handleSliderChange = async (value: number) => {
   transform: translateY(-50%);
   width: 8px;
   height: 60px;
-  background-color: #409EFF;
+  background-color: #409eff;
   border: none;
   border-radius: 4px;
   display: flex;

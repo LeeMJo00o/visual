@@ -1,12 +1,14 @@
 import asyncio
 import random
 import math
+import time
 from fastapi import APIRouter
 from chain_websocket.server import ConnectionManager, MulLinkServerEndpoint
 from src.middlewares.mq import mq_route
 import json
 from src.middlewares.redis_handler.connect import redis_cli
 from src.core.config import DEMO_REDIS_URL
+from src.core.log import logger
 
 router = APIRouter()
 _manager = ConnectionManager()
@@ -81,7 +83,7 @@ class PoseWsServer(MulLinkServerEndpoint):
                     "data":  all_v_pose_t
                 })
             except Exception as e:
-                print(f"publish_pose error: {e}")
+                logger.error(f"publish_pose error: {repr(e)}")
             await asyncio.sleep(0.3)
 
 
@@ -120,7 +122,7 @@ class BasePathWs(MulLinkServerEndpoint):
         rs_t = {}
         from src.routing import g_routing
         all_long_path = await cls.get_traj_demo_from_redis_raw()
-        print(f"path count: {len(all_long_path)}")
+        # print(f"path count: {len(all_long_path)}")
         # all_long_path = dict(list(all_long_path.items())[:200])
         for k, v in all_long_path.items():
             try:
@@ -134,7 +136,7 @@ class BasePathWs(MulLinkServerEndpoint):
     @classmethod
     async def publish_demo_path(cls):
         # cycle_time = (all_number / batch_number) * sleep_time
-        cycle_time, sleep_time = 1, 0.1
+        cycle_time, sleep_time = 3, 0.1
         just_use = 100000
         while True:
             try:
@@ -145,9 +147,9 @@ class BasePathWs(MulLinkServerEndpoint):
                     await asyncio.sleep(0.5)
                     continue
                 batch_number = math.ceil(all_number / (cycle_time / sleep_time))
-                print(f"all path number: {batch_number} / {all_number}")
                 vehicle_ids = list(all_v_pose_t.keys())
                 # random.shuffle(vehicle_ids)  # 打乱车辆顺序
+                _t1 = time.perf_counter()
                 for i in range(0, len(vehicle_ids), batch_number):
                     batch_vehicles = vehicle_ids[i:i+batch_number]
                     batch_data = {vid: all_v_pose_t[vid] for vid in batch_vehicles}
@@ -156,8 +158,11 @@ class BasePathWs(MulLinkServerEndpoint):
                         "data": batch_data
                     })
                     await asyncio.sleep(sleep_time)
+                _t2 = time.perf_counter()
+                if (_t:=_t2 - _t1) < cycle_time:
+                    await asyncio.sleep(cycle_time - _t)
             except Exception as e:
-                print(f"publish path error: {e}")
+                logger.error(f"publish path error: {repr(e)}")
             await asyncio.sleep(0.1)
 
 

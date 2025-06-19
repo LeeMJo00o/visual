@@ -354,8 +354,8 @@ export default class ApplicationManager extends GraphicTools {
         ws_short.connect();
         this.addCleanupTask('websockets', ws_short);
 
-        this.long_path_width = 1
-        this.short_path_width = 3
+        this.long_path_width = 2
+        this.short_path_width = 4
 
         const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
           onMessage: (data) => { this.pose_update(data) }
@@ -453,7 +453,7 @@ export default class ApplicationManager extends GraphicTools {
     paths.forEach((path, index) => {
       const newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
 
-      path.setAttribute('style', 'fill:none;stroke:#888;stroke-width:1;') // 设置边框宽度
+      path.setAttribute('style', 'fill:none;stroke:#888;stroke-width:0.5;') // 设置边框宽度
 
       // console.log("path", path);
 
@@ -481,7 +481,7 @@ export default class ApplicationManager extends GraphicTools {
         const path_u = g.raw_path.cloneNode(true);
 
         if (g.raw_path.hasAttribute('id')) {
-          path_u.setAttribute('style', 'fill:none;stroke:#ff00ff;stroke-width:1.5');
+          path_u.setAttribute('style', 'fill:none;stroke:#42e2eb;stroke-width:0.5');
         }
 
         const newSVG2 = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -675,7 +675,7 @@ export default class ApplicationManager extends GraphicTools {
         false,
         this.agents[vehicleId].color,
         width,
-        1,
+        0.7,
       )
     }
   }

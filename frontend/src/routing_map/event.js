@@ -1,3 +1,5 @@
+import { useGlobalStore } from '../stores/globalStore'
+
 export class EventManager {
   constructor(app, manager) {
     this.app = app;
@@ -6,6 +8,7 @@ export class EventManager {
     this.lastX = 0;
     this.lastY = 0;
     this.rafId = null;
+    this.globalStore = useGlobalStore();
   }
 
   setupEventListeners() {
@@ -66,32 +69,21 @@ export class EventManager {
     this.lastY = e.global.y;
 
     let raw_pos = this.manager.raw_xy(e.global.x, e.global.y);
-    console.log('click-pos', raw_pos);
-
-    const clickPosElement = document.getElementById('click-pos');
-    if (clickPosElement) {
-      clickPosElement.innerHTML = `click: [${raw_pos[0]}, ${raw_pos[1]}]`;
-    }
+    // 使用Pinia store更新
+    this.globalStore.setPosition('click', raw_pos[0], raw_pos[1]);
   }
 
   handlePointerMove(e) {
-    // 更新指针位置显示
     let raw_pos = this.manager.raw_xy(e.global.x, e.global.y);
-    const realtimePosElement = document.getElementById('realtime-pos');
-    if (realtimePosElement) {
-      realtimePosElement.innerHTML = `pointer: [${raw_pos[0]}, ${raw_pos[1]}]`;
-    }
+    // 使用Pinia store更新
+    this.globalStore.setPosition('pointer', raw_pos[0], raw_pos[1]);
 
-    // 拖动处理 - 使用requestAnimationFrame优化性能
     if (this.isDragging) {
       if (this.rafId) cancelAnimationFrame(this.rafId);
-
       this.rafId = requestAnimationFrame(() => {
         const off_x = e.global.x - this.lastX;
         const off_y = e.global.y - this.lastY;
-
         this.manager.move_all_things(off_x, off_y);
-
         this.lastX = e.global.x;
         this.lastY = e.global.y;
         this.rafId = null;
@@ -131,23 +123,6 @@ export class EventManager {
     const smooth_toggle = document.getElementById('smooth_toggle');
     const smooth_speed = document.getElementById('smooth_speed');
 
-    // 使用事件委托处理 map_hide 按钮点击
-    // 将事件监听器绑定到 document 上，这样即使按钮被重新创建也能工作
-    const handleMapHideClick = (e) => {
-      if (e.target && e.target.id === 'map_hide') {
-        this.manager.map_container.visible = !this.manager.map_container.visible;
-      }
-    };
-
-    document.addEventListener('click', handleMapHideClick);
-
-    // 记录清理任务
-    this.manager.addCleanupTask('eventListeners', {
-      target: document,
-      type: 'click',
-      listener: handleMapHideClick
-    });
-
     // 平滑移动控制
     if (smooth_toggle) {
       smooth_toggle.checked = this.manager.smoothMovementConfig.enabled;
@@ -167,5 +142,19 @@ export class EventManager {
         }
       });
     }
+
+    // 只保留自定义事件监听，删除原生button相关事件委托
+    // window.addEventListener('map-hide-click', ...)
+    // window.addEventListener('agent-hide-click', ...)
+    window.addEventListener('map-hide-click', () => {
+      this.manager.map_container.visible = !this.manager.map_container.visible;
+    });
+    window.addEventListener('agent-hide-click', () => {
+      Object.values(this.manager.agents).forEach(agent => {
+        if (agent.graphics) agent.graphics.visible = !agent.graphics.visible;
+        if (agent.graph_short_path) agent.graph_short_path.visible = !agent.graph_short_path.visible;
+        if (agent.graph_long_path) agent.graph_long_path.visible = !agent.graph_long_path.visible;
+      });
+    });
   }
 }
