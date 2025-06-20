@@ -1287,20 +1287,37 @@ def export_osm_svg(osm_file: str):
             "points": [],
         }
         road_info["attrs"] = {k: v for k, v in llt.attributes.items()}
-        for p in llt.centerline:
-            road_info["points"].append([round(p.x, 3), round(p.y, 3)])
+
+        if road_info.get("is_straight") == True:
+            for p in llt.centerline:
+                road_info["points"].append([round(p.x, 3), round(p.y, 3)])
+        else:
+            last_p = None
+            for p in llt.centerline:
+                if last_p:
+                    dis = math.sqrt((p.x - last_p.x)**2 + (p.y - last_p.y)**2)
+                    if dis > 0.8:
+                        road_info["points"].append([round(p.x, 3), round(p.y, 3)])
+                        last_p = p
+                else:
+                    road_info["points"].append([round(p.x, 3), round(p.y, 3)])
+                    last_p = p
+            if last_p != llt.centerline[-1]:
+                road_info["points"].append([round(llt.centerline[-1].x, 3), round(llt.centerline[-1].y, 3)])
         map_info[llt.id] = road_info
 
-    with open(to_raw_path, "w") as f:   
+    with open(to_raw_path, "w") as f:
         json.dump(map_info, f, separators=(',', ':'))
+
 
 def lanelet_filter(llt_s):
     t = []
     for llt in llt_s:
         if "drivable" not in llt.attributes or ("drivable" in llt.attributes and llt.attributes["drivable"].lower() != "true"):
-                continue
+            continue
         t.append(llt)
     return t
+
 
 if __name__ == "__main__":
     # routing = Routing(f"map/Abuzhabi_QP_VPB_250509_V3.7.3.osm", gen_graph=False)

@@ -289,9 +289,6 @@ export default class ApplicationManager extends GraphicTools {
         throw error
       }
 
-      // 等待initMap完成
-      this.map_container = await this.initMap()
-
       // 获取路径数据（使用缓存）
       const cachedPathInfo = await mapCache.get('path_info')
       if (cachedPathInfo) {
@@ -309,6 +306,8 @@ export default class ApplicationManager extends GraphicTools {
           throw error
         }
       }
+      // 等待initMap完成
+      this.map_container = await this.initMap()
 
       this.app.stage.addChild(this.mainContainer);
 
@@ -425,11 +424,70 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  async initMapByRaw() {
-    
+  // 生成类似你期望的格式
+  pointsToSvgPath(points, color = "#fff", strokeWidth = 0.5, pathId = null) {
+    if (!points || points.length < 2) return null;
+
+    // 转换第一个点（绝对坐标）
+    let [x, y] = this.map_xy_to_app(points[0]);
+    let pathData = `M${roundTo(x, 2)} ${roundTo(y, 2)}`;
+
+    // 添加其余点（相对坐标），使用更简洁的格式
+    for (let i = 1; i < points.length; i++) {
+      let [prevX, prevY] = this.map_xy_to_app(points[i - 1]);
+      let [currX, currY] = this.map_xy_to_app(points[i]);
+
+      let dx = roundTo(currX - prevX, 2);
+      let dy = roundTo(currY - prevY, 2);
+
+      // 使用更简洁的相对坐标格式
+      pathData += `l${dx} ${dy}`;
+    }
+
+    // 生成完整的 SVG 字符串
+    const svgString = `
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <path d="${pathData}" id="${pathId || 'path'}" is_straight="false" style="fill:none;stroke:${color};stroke-width:${strokeWidth};" />
+      </svg>
+    `;
+
+    return svgString;
   }
 
   async initMap() {
+    console.log('map_path_info: ', this.map_path_info)
+    const cons = new Container()
+
+    Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
+      console.log(path_id, one_path);
+      const points = one_path["points"]
+
+      let g = new Graphics()
+      cons.addChild(g)
+
+      // 直接使用 drawPath 方法
+      this.drawPath(
+        g,
+        "N/A",
+        points,
+        false,
+        "#ff0",
+        0.5,
+      )
+
+      g.interactive = true
+      g.cursor = 'pointer'
+
+      // 保存原始数据用于交互
+      g.path_id = path_id;
+      g.original_points = points;
+    });
+
+    cons.alpha = 0.5;
+    return cons
+  }
+
+  async initMapBySvg() {
     const tooltip = document.createElement('div')
     tooltip.style.cssText = `
             position: fixed;
