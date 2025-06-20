@@ -36,6 +36,7 @@ export default class Agent {
     this.text = new Text({
       text: this.vehicle_id,
       style: {
+        // fontFamily: 'DejaVuSansMono',
         fontSize: 12,
         fill: "#fff"
       },

@@ -154,6 +154,7 @@ export class EventManager {
         if (agent.graphics) agent.graphics.visible = !agent.graphics.visible;
         if (agent.graph_short_path) agent.graph_short_path.visible = !agent.graph_short_path.visible;
         if (agent.graph_long_path) agent.graph_long_path.visible = !agent.graph_long_path.visible;
+        if (agent.text) agent.text.visible = !agent.text.visible;
       });
     });
   }

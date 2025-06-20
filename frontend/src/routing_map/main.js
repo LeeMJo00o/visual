@@ -1,9 +1,13 @@
-import { Application, Assets, Graphics, Text, Texture, Sprite, Container } from 'pixi.js'
+import { Application, Assets, Graphics, BitmapText, Text, Texture, Sprite, Container } from 'pixi.js'
 import { GraphicTools, stringToUniqueColor, unrotatePoint } from './graph.js'
 import { WebSocketClient, demo_get_traj, get_svg_content, get_map_config, get_path_info } from './pp_backend.js'
 import { mapCache } from './map_cache.js'  // 导入缓存模块
 import { EventManager } from './event.js'  // 导入事件管理器
 import Agent from './agent.js'  // 导入 Agent 类
+// import fontFile from '../assets/DejaVuSansMono-msdf.json?raw'
+
+// const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
+// await Assets.load(fontDataUrl);
 
 const roundTo = (num, decimalPlaces) =>
   Math.round(num * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces)
@@ -229,7 +233,7 @@ export default class ApplicationManager extends GraphicTools {
     this.add_graphics(v.graph_short_path)
     this.add_graphics(v.graph_long_path)
     this.add_graphics(v.graphics)
-    // this.add_graphics(v.text)
+    this.add_graphics(v.text)
 
     return v
     // g.on('pointerover', () => {
@@ -330,7 +334,7 @@ export default class ApplicationManager extends GraphicTools {
 
       // 设置动画循环，更新所有车辆位置
       const tickerCallback = () => this.updateAgents()
-      this.app.ticker.add(tickerCallback)
+      // this.app.ticker.add(tickerCallback)
       this.addCleanupTask('tickerCallbacks', tickerCallback)
 
       if (this.mode == "test-demo") {
