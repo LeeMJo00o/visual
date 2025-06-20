@@ -1,4 +1,4 @@
-import { Application, Assets, Graphics, BitmapText, Text, Texture, Sprite, Container } from 'pixi.js'
+import { Application, Assets, Graphics, BitmapText, Text, Texture, Sprite, Container, extensions, CullerPlugin } from 'pixi.js'
 import { GraphicTools, stringToUniqueColor, unrotatePoint } from './graph.js'
 import { WebSocketClient, demo_get_traj, get_svg_content, get_map_config, get_path_info } from './pp_backend.js'
 import { mapCache } from './map_cache.js'  // 导入缓存模块
@@ -8,6 +8,7 @@ import Agent from './agent.js'  // 导入 Agent 类
 
 // const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
 // await Assets.load(fontDataUrl);
+// extensions.add(CullerPlugin);
 
 const roundTo = (num, decimalPlaces) =>
   Math.round(num * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces)
@@ -454,6 +455,97 @@ export default class ApplicationManager extends GraphicTools {
     return svgString;
   }
 
+  // 新增：绘制箭头的辅助方法
+  drawArrow(graphics, x, y, angle, size = 5, color = "#ff0000", alpha=1) {
+    // 计算箭头的三个点
+    const arrowLength = size;
+    const arrowWidth = size * 0.5;
+
+    // 箭头头部（指向方向）- 现在就在给定点上
+    const tipX = x;
+    const tipY = y;
+
+    // 箭头尾部两个点 - 向后延伸
+    const leftX = x - arrowLength * Math.cos(angle) + arrowWidth * Math.cos(angle + Math.PI * 0.75);
+    const leftY = y - arrowLength * Math.sin(angle) + arrowWidth * Math.sin(angle + Math.PI * 0.75);
+    const rightX = x - arrowLength * Math.cos(angle) + arrowWidth * Math.cos(angle - Math.PI * 0.75);
+    const rightY = y - arrowLength * Math.sin(angle) + arrowWidth * Math.sin(angle - Math.PI * 0.75);
+
+    // 绘制箭头
+    graphics.moveTo(tipX, tipY);
+    graphics.lineTo(leftX, leftY);
+    graphics.moveTo(tipX, tipY);
+    graphics.lineTo(rightX, rightY);
+    graphics.stroke({ color: color, width: 0.6, alpha: alpha });
+  }
+
+  // 新增：计算两点之间的角度
+  calculateAngle(x1, y1, x2, y2) {
+    return Math.atan2(y2 - y1, x2 - x1);
+  }
+
+  draw_map_road(g, points, color, alpha=0.5) {
+    const width = 1
+    g.clear()
+    this.drawPath(
+      g,
+      "N/A",
+      points,
+      false,
+      color,
+      width,
+      alpha
+    )
+    // 在路径中间点绘制箭头
+    if (points.length >= 2) {
+      let arrowPoint, angle;
+
+      if (points.length === 2) {
+        // 只有两个点时，取中间点
+        const startPoint = points[0]; // 起点
+        const endPoint = points[1]; // 终点
+        arrowPoint = [
+          (startPoint[0] + endPoint[0]) / 2, // 中间点x坐标
+          (startPoint[1] + endPoint[1]) / 2  // 中间点y坐标
+        ];
+        const [startX, startY] = this.map_xy_to_app(startPoint);
+        const [endX, endY] = this.map_xy_to_app(endPoint);
+        angle = this.calculateAngle(startX, startY, endX, endY);
+      } else {
+        // 多个点时，取中间点
+        const midIndex = Math.floor(points.length / 2);
+        arrowPoint = points[midIndex];
+
+        // 计算箭头方向（使用中间点前后的点）
+        if (midIndex > 0 && midIndex < points.length - 1) {
+          // 使用前后两个点计算方向
+          const prevPoint = points[midIndex - 1];
+          const nextPoint = points[midIndex + 1];
+          const [prevX, prevY] = this.map_xy_to_app(prevPoint);
+          const [nextX, nextY] = this.map_xy_to_app(nextPoint);
+          angle = this.calculateAngle(prevX, prevY, nextX, nextY);
+        } else if (midIndex > 0) {
+          // 使用前一个点
+          const prevPoint = points[midIndex - 1];
+          const [prevX, prevY] = this.map_xy_to_app(prevPoint);
+          const [midX, midY] = this.map_xy_to_app(arrowPoint);
+          angle = this.calculateAngle(prevX, prevY, midX, midY);
+        } else {
+          // 使用后一个点
+          const nextPoint = points[midIndex + 1];
+          const [midX, midY] = this.map_xy_to_app(arrowPoint);
+          const [nextX, nextY] = this.map_xy_to_app(nextPoint);
+          angle = this.calculateAngle(midX, midY, nextX, nextY);
+        }
+      }
+
+      const [arrowX, arrowY] = this.map_xy_to_app(arrowPoint);
+
+      // 绘制箭头
+      this.drawArrow(g, arrowX, arrowY, angle, 3, color, alpha);
+    }
+  }
+
   async initMap() {
     console.log('map_path_info: ', this.map_path_info)
     const cons = new Container()
@@ -466,14 +558,53 @@ export default class ApplicationManager extends GraphicTools {
       cons.addChild(g)
 
       // 直接使用 drawPath 方法
-      this.drawPath(
-        g,
-        "N/A",
-        points,
-        false,
-        "#ff0",
-        0.5,
-      )
+      this.draw_map_road(g, points, "#fff", 0.5)
+
+      const tooltip = document.createElement('div')
+      tooltip.style.cssText = `
+              position: fixed;
+              padding: 5px 8px;
+              background: white;
+              color: black;
+              border-radius: 4px;
+              font-size: 14px;
+              pointer-events: none;
+              display: none;
+              z-index: 1000;
+              border: 1px solid black;
+          `
+      document.body.appendChild(tooltip)
+
+      g.on('pointerover', (e) => {
+        this.draw_map_road(g, points, "#f0f", 0.8)
+        // 将路径提升到最上层
+        cons.setChildIndex(g, cons.children.length - 1)
+        // console.log('pointerover', g.raw_path.getAttribute('id'));
+
+        // 获取所有属性
+        console.log("attrs", one_path["attrs"])
+        let attributes = ""
+        if (one_path["attrs"] && typeof one_path["attrs"] === 'object') {
+          // 定义需要过滤掉的属性
+          const filteredAttrs = ['L_ID', 'block_id', 'is_straight', 'road_type', 'pptype', 'cutin', 'cutin_from']
+          const filteredEntries = Object.entries(one_path["attrs"])
+            .filter(([key, value]) => filteredAttrs.includes(key)) // 过滤掉不需要的属性
+          attributes += '<pre style="margin: 0; font-family: inherit;"><code>'
+          attributes += `path_id: ${path_id}<br>`
+          filteredEntries.forEach(([key, value]) => {
+            attributes += `${key}: ${value}\n`
+          })
+          attributes += '</code></pre>'
+        }
+        tooltip.innerHTML = attributes;
+        tooltip.style.display = 'block';
+        tooltip.style.left = e.clientX + 15 + 'px';
+        tooltip.style.top = e.clientY + 10 + 'px';
+      })
+      g.on('pointerout', (e) => {
+        tooltip.style.display = 'none'
+        this.draw_map_road(g, points, "#fff")
+      })
 
       g.interactive = true
       g.cursor = 'pointer'
@@ -483,7 +614,7 @@ export default class ApplicationManager extends GraphicTools {
       g.original_points = points;
     });
 
-    cons.alpha = 0.5;
+    // cons.alpha = 0.6;
     return cons
   }
 
