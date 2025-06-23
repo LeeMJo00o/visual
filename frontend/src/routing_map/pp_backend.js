@@ -93,7 +93,7 @@ export class WebSocketClient {
     this.clearHeartbeat();
     this.heartbeatTimer = setInterval(() => {
       if (this.isConnected()) {
-        this.send('♥');
+        this.send('heart');
       } else {
         this.clearHeartbeat();
       }

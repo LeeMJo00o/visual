@@ -52,7 +52,7 @@ def osm_to_json(routing: Routing):
     try:
         for idx, llt in enumerate(routing.map.laneletLayer):
             llt: lanelet2.core.Lanelet = llt
-            if "drivable" not in llt.attributes or ("drivable" in llt.attributes and llt.attributes["drivable"].lower() != "true"):
+            if "drivable" in llt.attributes and llt.attributes["drivable"].lower() == "false":
                 continue
             is_straight = True if "is_straight" in llt.attributes.keys() and llt.attributes[
                 "is_straight"].lower() == 'true' else False
@@ -1319,10 +1319,70 @@ def export_osm_path_info(osm_file: str):
 def lanelet_filter(llt_s):
     t = []
     for llt in llt_s:
-        if "drivable" not in llt.attributes or ("drivable" in llt.attributes and llt.attributes["drivable"].lower() != "true"):
+        if "drivable" in llt.attributes and llt.attributes["drivable"].lower() == "false":
             continue
         t.append(llt)
     return t
+
+from .routing import PointIndexOnLanelet, vec_point_distance, get_vec_point_angle, normalize_angle, MAP_NAME
+class Roads():
+    def __init__(self) -> None:
+        self.road_info = self.get_path_info()
+    
+    def get_point_road_index(self, point: tuple, lanelet_id: str) -> PointIndexOnLanelet:
+        line = self.road_info[lanelet_id]["points"]
+        closest_idx = 0
+        min_dist = float('inf')
+
+        # 使用lanelet2的geometry模块计算距离
+        for i, point in enumerate(line):
+            dist = vec_point_distance(line[i], point)
+            if dist < min_dist:
+                min_dist = dist
+                closest_idx = i
+
+        # 获取车道线角度
+        lanelet_angle = get_vec_point_angle(line, closest_idx)
+
+        # 计算点到最近点的角度
+        ab_angle = np.arctan2(
+            point[1] - line[closest_idx][1],
+            point[0] - line[closest_idx][0]
+        )
+
+        # 计算角度差并归一化
+        angle_diff = normalize_angle(ab_angle - lanelet_angle)
+        is_projection_ahead = bool(abs(angle_diff) > np.pi / 2)
+
+        return PointIndexOnLanelet(closest_idx, is_projection_ahead)
+
+    def get_path_info(self):
+        map_path = f"map/{MAP_NAME}"
+        path_file = f"map/raw_path_{MAP_NAME}.json"
+
+        # 检查文件是否存在
+        if os.path.exists(path_file):
+            pass
+        else:
+            export_osm_path_info(map_path)
+
+        with open(path_file, "r") as f:
+            path_info = json.load(f)
+        return path_info
+
+    def trans_path(self, path):
+        start_pose = path["start_pose"]["x"], path["start_pose"]["y"]
+        end_pose = path["end_pose"]["x"], path["end_pose"]["y"]
+        start_idx_info = self.get_point_road_index(start_pose, path["path"][0])
+        end_idx_info = self.get_point_road_index(end_pose, path["path"][-1])
+        path["start_pose"]["index"] = start_idx_info.index
+        path["end_pose"]["index"] = end_idx_info.index
+        path["start_pose"]["is_ahead"] = start_idx_info.is_projection_ahead
+        path["end_pose"]["is_ahead"] = end_idx_info.is_projection_ahead
+        return path
+
+# g_routing = Routing(f"map/{MAP_NAME}", gen_graph=False)
+g_roads = Roads()
 
 
 if __name__ == "__main__":

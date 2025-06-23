@@ -2,7 +2,7 @@ import multiprocessing as mp
 import time
 from tests.data_sample.demo_path_data import sa_1
 from enum import StrEnum
-from typing import TypeAlias
+from typing import TypeAlias, List, Tuple
 from scipy.special import comb
 import numpy as np
 import lanelet2
@@ -16,6 +16,8 @@ from shapely.geometry import Polygon, MultiPolygon
 import json
 from dataclasses import dataclass
 
+# 延迟导入，避免循环导入
+# from .map_tools import export_osm_path_info
 
 class Pose():
     def __init__(self, x, y, yaw, tx=None, ty=None, tyaw=None):
@@ -141,6 +143,9 @@ class TruckModel():
 
 def point_distance(p1, p2):
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
+
+def vec_point_distance(p1, p2):
+    return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
 
 
 truck_model = TruckModel()
@@ -292,6 +297,18 @@ def get_point_angle(lanelet: Lanelet, idx: int) -> float:
         return np.arctan2(
             line[idx].y - line[idx - 1].y,
             line[idx].x - line[idx - 1].x
+        )
+
+def get_vec_point_angle(line, idx: int) -> float:
+    if idx < len(line) - 1:
+        return np.arctan2(
+            line[idx + 1][1] - line[idx][1],
+            line[idx + 1][0] - line[idx][0]
+        )
+    else:
+        return np.arctan2(
+            line[idx][1] - line[idx - 1][1],
+            line[idx][0] - line[idx - 1][0]
         )
 
 
@@ -593,10 +610,6 @@ class Routing:
         path["start_pose"]["is_ahead"] = start_idx_info.is_projection_ahead
         path["end_pose"]["is_ahead"] = end_idx_info.is_projection_ahead
         return path
-
-
-g_routing = Routing(f"map/{MAP_NAME}", gen_graph=False)
-
 
 def process_path(_):
     rs = g_routing.parse_demo_path(sa_1)

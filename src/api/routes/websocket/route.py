@@ -9,6 +9,7 @@ import json
 from src.middlewares.redis_handler.connect import redis_cli
 from src.core.config import DEMO_REDIS_URL
 from src.core.log import logger
+import traceback
 
 router = APIRouter()
 _manager = ConnectionManager()
@@ -120,13 +121,13 @@ class BasePathWs(MulLinkServerEndpoint):
     @classmethod
     async def get_traj_demo(cls):
         rs_t = {}
-        from src.routing import g_routing
+        from src.map_tools import g_roads
         all_long_path = await cls.get_traj_demo_from_redis_raw()
         # print(f"path count: {len(all_long_path)}")
         # all_long_path = dict(list(all_long_path.items())[:200])
         for k, v in all_long_path.items():
             try:
-                rs_t[k] = g_routing.trans_path(v)
+                rs_t[k] = g_roads.trans_path(v)
             except Exception as ex:
                 print(f"error for {k}: {v}")
                 raise ex
@@ -162,7 +163,7 @@ class BasePathWs(MulLinkServerEndpoint):
                 if (_t := _t2 - _t1) < cycle_time:
                     await asyncio.sleep(cycle_time - _t)
             except Exception as e:
-                logger.error(f"publish path error: {repr(e)}")
+                logger.error(f"publish path error: {traceback.format_exc()}")
             await asyncio.sleep(0.1)
 
 

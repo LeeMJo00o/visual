@@ -42,7 +42,22 @@ export default class ApplicationManager extends GraphicTools {
     }
 
     // 创建全局tooltip元素
-    this.tooltip = null
+    this.tooltip = document.createElement('div')
+    this.tooltip.style.cssText = `
+      position: fixed;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.95);
+      color: black;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: monospace;
+      pointer-events: none;
+      display: none;
+      z-index: 1000;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    `
+    document.body.appendChild(this.tooltip)
 
     // 存储所有需要清理的资源
     this.cleanupTasks = {
@@ -199,10 +214,11 @@ export default class ApplicationManager extends GraphicTools {
       // 创建tooltip内容
       const agent = this.agents[vehicle_id];
       const tooltipContent = `
-        vehicle_id: ${agent.vehicle_id}<br>
-        x: ${agent.position.x}<br>
-        y: ${agent.position.y}<br>
-        angle: ${agent.position.theta}
+        <div style="font-weight: bold; margin-bottom: 4px;">车辆信息</div>
+        <div>ID: ${agent.vehicle_id}</div>
+        <div>X: ${agent.position.x.toFixed(2)}</div>
+        <div>Y: ${-agent.position.y.toFixed(2)}</div>
+        <div>角度: ${agent.position.theta.toFixed(3)}</div>
       `;
 
       // 显示tooltip
@@ -218,14 +234,17 @@ export default class ApplicationManager extends GraphicTools {
           this.tooltip.style.top = moveEvent.clientY + 10 + 'px';
         };
 
-        document.addEventListener('mousemove', onMouseMove);
-
         // 鼠标离开时移除事件监听
-        v.graphics.on('pointerout', () => {
+        const onPointerOut = () => {
           document.removeEventListener('mousemove', onMouseMove);
           this.tooltip.style.display = 'none';
           v.graphics.tint = 0xFFFFFF; // 恢复正常颜色
-        });
+          // 移除pointerout事件监听器，避免重复绑定
+          v.graphics.off('pointerout', onPointerOut);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        v.graphics.on('pointerout', onPointerOut);
       }
     });
 
@@ -234,7 +253,7 @@ export default class ApplicationManager extends GraphicTools {
     this.add_graphics(v.graph_short_path)
     this.add_graphics(v.graph_long_path)
     this.add_graphics(v.graphics)
-    this.add_graphics(v.text)
+    // this.add_graphics(v.text)
 
     return v
     // g.on('pointerover', () => {
@@ -271,6 +290,24 @@ export default class ApplicationManager extends GraphicTools {
     let game_container = document.getElementById('map_main_container')
     game_container.appendChild(this.app.canvas)
     this.mainContainer = new Container();
+
+    // 创建全局tooltip元素
+    this.tooltip = document.createElement('div')
+    this.tooltip.style.cssText = `
+      position: fixed;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.95);
+      color: black;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: monospace;
+      pointer-events: none;
+      display: none;
+      z-index: 1000;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    `
+    document.body.appendChild(this.tooltip)
 
     try {
       // 获取地图配置
@@ -385,21 +422,17 @@ export default class ApplicationManager extends GraphicTools {
         this.short_path_width = 3
       }
 
-    } catch (error) {
-      console.error('初始化地图时出错:', error)
-      // 可以在这里添加错误处理逻辑，比如显示错误提示等
-    }
+      // 添加页面卸载事件监听器
+      const beforeUnloadHandler = () => {
+        this.cleanup()
+      }
+      window.addEventListener('beforeunload', beforeUnloadHandler)
+      this.addCleanupTask('eventListeners', { target: window, type: 'beforeunload', listener: beforeUnloadHandler })
 
-    // 添加页面卸载事件监听器，确保资源清理
-    const beforeUnloadHandler = () => {
-      this.cleanup()
+    } catch (error) {
+      console.error('初始化失败:', error)
+      throw error
     }
-    window.addEventListener('beforeunload', beforeUnloadHandler)
-    this.addCleanupTask('eventListeners', {
-      target: window,
-      type: 'beforeunload',
-      listener: beforeUnloadHandler
-    })
   }
 
   // 生成类似你期望的格式
@@ -433,7 +466,7 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   // 新增：绘制箭头的辅助方法
-  drawArrow(graphics, x, y, angle, size = 5, color = "#ff0000", alpha=1) {
+  drawArrow(graphics, x, y, angle, size = 5, color = "#ff0000", alpha = 1) {
     // 计算箭头的三个点
     const arrowLength = size;
     const arrowWidth = size * 0.5;
@@ -461,7 +494,7 @@ export default class ApplicationManager extends GraphicTools {
     return Math.atan2(y2 - y1, x2 - x1);
   }
 
-  draw_map_road(g, points, color, alpha=0.5) {
+  draw_map_road(g, points, color, alpha = 0.5) {
     const width = 1
     g.clear()
     this.drawPath(
@@ -689,60 +722,76 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
+
+  demo_path_to_my(path) {
+    // 缓存频繁访问的属性
+    const pathArray = path.path
+    const pathLength = pathArray.length
+    const startPose = path.start_pose
+    const endPose = path.end_pose
+    const mapPathInfo = this.map_path_info
+
+    // 预分配数组大小以提高性能
+    let path_t = []
+    path_t.push([startPose.x, startPose.y])
+
+    // 计算起始和结束索引
+    let start_index = startPose.index
+    if (!startPose.is_ahead) {
+      start_index += 1
+    }
+
+    let end_index = endPose.index
+    if (endPose.is_ahead) {
+      end_index -= 1
+    }
+
+    // 处理路径段
+    if (pathLength === 1) {
+      // 单路径段：只添加中间部分
+      if (start_index < end_index) {
+        const startLltId = pathArray[0]
+        const pathInfo = mapPathInfo[startLltId]
+        if (pathInfo && Array.isArray(pathInfo.points)) {
+          path_t.push(...pathInfo.points.slice(start_index, end_index))
+        }
+      }
+    } else {
+      // 多路径段：添加起始段、中间段、结束段
+      const startLltId = pathArray[0]
+      const endLltId = pathArray[pathLength - 1]
+
+      // 处理起始段
+      const startPathInfo = mapPathInfo[startLltId]
+      if (startPathInfo && Array.isArray(startPathInfo.points)) {
+        path_t.push(...startPathInfo.points.slice(start_index))
+      }
+
+      // 处理中间段 - 优化循环
+      for (let i = 1; i < pathLength - 1; i++) {
+        const lltId = pathArray[i]
+        const pathInfo = mapPathInfo[lltId]
+        if (pathInfo && Array.isArray(pathInfo.points)) {
+          path_t.push(...pathInfo.points)
+        }
+      }
+
+      // 处理结束段
+      const endPathInfo = mapPathInfo[endLltId]
+      if (endPathInfo && Array.isArray(endPathInfo.points)) {
+        path_t.push(...endPathInfo.points.slice(0, end_index))
+      }
+    }
+
+    // 添加结束点
+    path_t.push([endPose.x, endPose.y])
+    return path_t
+  }
+
   demo_update_path_short(data, width) {
     for (const [vehicleId, v] of Object.entries(data.data)) {
       // console.log('path: ', v)
-      let path_t = []
-      let start_llt_id = v.path[0]
-      let end_llt_id = v.path[v.path.length - 1]
-
-      // 计算起始和结束索引
-      let start_index = v.start_pose.index
-      if (!v.start_pose.is_ahead) {
-        start_index += 1
-      }
-
-      let end_index = v.end_pose.index
-      if (v.end_pose.is_ahead) {
-        end_index -= 1
-      }
-
-      // 添加起始点
-      path_t.push([v.start_pose.x, v.start_pose.y])
-
-      // 处理路径段
-      if (v.path.length === 1) {
-        // 单路径段：只添加中间部分
-        if (start_index < end_index) {
-          let path_one = this.map_path_info[start_llt_id]
-          if (Array.isArray(path_one)) {
-            path_t.push(...path_one.slice(start_index, end_index))
-          }
-        }
-      } else {
-        // 多路径段：添加起始段、中间段、结束段
-        let path_start = this.map_path_info[start_llt_id]
-        if (Array.isArray(path_start)) {
-          path_t.push(...path_start.slice(start_index))
-        }
-
-        for (let i = 1; i < v.path.length - 1; i++) {
-          let llt_id = v.path[i]
-          console.log("add:", llt_id)
-          let one_path = this.map_path_info[llt_id]
-          if (Array.isArray(one_path)) {
-            path_t.push(...one_path)
-          }
-        }
-
-        let path_end = this.map_path_info[end_llt_id]
-        if (Array.isArray(path_end)) {
-          path_t.push(...path_end.slice(0, end_index))
-        }
-      }
-
-      // 添加结束点
-      path_t.push([v.end_pose.x, v.end_pose.y])
+      let path_t = this.demo_path_to_my(v)
 
       // console.log("get path rs", path_t, end_index)
 
@@ -764,65 +813,13 @@ export default class ApplicationManager extends GraphicTools {
 
   demo_update_path_long(data, width) {
     for (const [vehicleId, v] of Object.entries(data.data)) {
-      // console.log('path: ', v)
-      let path_t = []
-      let start_llt_id = v.path[0]
-      let end_llt_id = v.path[v.path.length - 1]
-
-      // 计算起始和结束索引
-      let start_index = v.start_pose.index
-      if (!v.start_pose.is_ahead) {
-        start_index += 1
-      }
-
-      let end_index = v.end_pose.index
-      if (v.end_pose.is_ahead) {
-        end_index -= 1
-      }
-
-      // 添加起始点
-      path_t.push([v.start_pose.x, v.start_pose.y])
-
-      // 处理路径段
-      if (v.path.length === 1) {
-        // 单路径段：只添加中间部分
-        if (start_index < end_index) {
-          let path_one = this.map_path_info[start_llt_id]
-          if (Array.isArray(path_one)) {
-            path_t.push(...path_one.slice(start_index, end_index))
-          }
-        }
-      } else {
-        // 多路径段：添加起始段、中间段、结束段
-        let path_start = this.map_path_info[start_llt_id]
-        if (Array.isArray(path_start)) {
-          path_t.push(...path_start.slice(start_index))
-        }
-
-        for (let i = 1; i < v.path.length - 1; i++) {
-          let llt_id = v.path[i]
-          console.log("add:", llt_id)
-          let one_path = this.map_path_info[llt_id]
-          if (Array.isArray(one_path)) {
-            path_t.push(...one_path)
-          }
-        }
-
-        let path_end = this.map_path_info[end_llt_id]
-        if (Array.isArray(path_end)) {
-          path_t.push(...path_end.slice(0, end_index))
-        }
-      }
-
-      // 添加结束点
-      path_t.push([v.end_pose.x, v.end_pose.y])
-
+      let path_t = this.demo_path_to_my(v)
       // console.log("get path rs", path_t, end_index)
-
       if (!this.agents.hasOwnProperty(vehicleId)) {
         this.add_agent(vehicleId, 9999, 9999, 0)
       }
       this.agents[vehicleId].graph_long_path.clear()
+      // console.log("draw path: ", vehicleId, path_t)
       this.drawPath(
         this.agents[vehicleId].graph_long_path,
         vehicleId,

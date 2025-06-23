@@ -1,7 +1,7 @@
 
 pp_visual_RUN_PORT=2030
 pp_visual_REDIS_URL=redis://:Xijingkeji@2024@127.0.0.1:6379/0
-MAP_NAME=fangzhen0610V1.5.osm
+MAP_NAME=fangzhen0623V1.0.osm
 DEMO_REDIS_URL=redis://:Xijingkeji@2024@127.0.0.1:6379/0
 pp_visual_RUN_WORKERS=1
 
