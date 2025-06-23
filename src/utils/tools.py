@@ -17,8 +17,10 @@ def gen_josm_query_string(lane_ids: list[int]):
     ids2 = [f"L_ID={i}" for i in lane_ids]
     return " or ".join(ids2)
 
+
 def euclidean_distance(pose1: dict, pose2: dict) -> float:
     return math.sqrt((pose1["x"] - pose2["x"])**2 + (pose1["y"] - pose2["y"])**2)
+
 
 def kv_hash_to_json(s: dict) -> dict:
     rs = {}

@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from src.api.routes.http.maintain import router as maintain_router
 from src.api.routes.http.demo import router as demo_router
 
+
 from src.api.routes.websocket.route import router as ws_demo_router
 from src.api.routes.http.map import router as map_router
 

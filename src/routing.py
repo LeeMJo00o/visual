@@ -1,3 +1,4 @@
+import multiprocessing as mp
 import time
 from tests.data_sample.demo_path_data import sa_1
 from enum import StrEnum
@@ -14,6 +15,7 @@ from src.core.config import MAP_NAME
 from shapely.geometry import Polygon, MultiPolygon
 import json
 from dataclasses import dataclass
+
 
 class Pose():
     def __init__(self, x, y, yaw, tx=None, ty=None, tyaw=None):
@@ -97,6 +99,7 @@ def load_map(map_path: str):
     map_info = get_map_info(map_path)
     proj = lanelet2.projection.UtmProjector(lanelet2.io.Origin(float(map_info["lat"]), float(map_info["lon"])))
     map = lanelet2.io.load(map_path, proj)
+
     return map
 
 
@@ -228,14 +231,15 @@ class PointIndexOnLanelet:
     index: int
     is_projection_ahead: bool
 
+
 def get_point_lanelet_index(point: BasicPoint3d, lanelet: Lanelet) -> PointIndexOnLanelet:
     """
     计算点在车道线上的投影位置
-    
+
     Args:
         point: lanelet2的BasicPoint3d点
         lanelet: lanelet2的ConstLanelet对象
-    
+
     Returns:
         PointIndexOnLanelet: 包含最近点索引和投影方向
     """
@@ -243,37 +247,38 @@ def get_point_lanelet_index(point: BasicPoint3d, lanelet: Lanelet) -> PointIndex
     line = lanelet.centerline
     closest_idx = 0
     min_dist = float('inf')
-    
+
     # 使用lanelet2的geometry模块计算距离
     for i in range(len(line)):
         dist = lanelet2.geometry.distance(line[i], point)
         if dist < min_dist:
             min_dist = dist
             closest_idx = i
-    
+
     # 获取车道线角度
     lanelet_angle = get_point_angle(lanelet, closest_idx)
-    
+
     # 计算点到最近点的角度
     ab_angle = np.arctan2(
         point.y - line[closest_idx].y,
         point.x - line[closest_idx].x
     )
-    
+
     # 计算角度差并归一化
     angle_diff = normalize_angle(ab_angle - lanelet_angle)
     is_projection_ahead = bool(abs(angle_diff) > np.pi / 2)
-    
+
     return PointIndexOnLanelet(closest_idx, is_projection_ahead)
+
 
 def get_point_angle(lanelet: Lanelet, idx: int) -> float:
     """
     获取车道线在指定点的角度
-    
+
     Args:
         lanelet: 车道线对象
         idx: 点的索引
-    
+
     Returns:
         角度（弧度）
     """
@@ -289,6 +294,7 @@ def get_point_angle(lanelet: Lanelet, idx: int) -> float:
             line[idx].x - line[idx - 1].x
         )
 
+
 def normalize_angle(angle: float) -> float:
     """
     将角度归一化到 [-pi, pi] 范围内
@@ -298,7 +304,9 @@ def normalize_angle(angle: float) -> float:
 
 class Routing:
     def __init__(self, map_path: str, gen_graph: bool = True):
+
         self.map = load_map(map_path)
+
         routing_cost = lanelet2.routing.RoutingCostDistance(0)
         traffic_rules = lanelet2.traffic_rules.create(
             lanelet2.traffic_rules.Locations.Germany, lanelet2.traffic_rules.Participants.Vehicle)
@@ -402,7 +410,7 @@ class Routing:
             return path_short, is_change
 
     def parse_demo_path(self, path_data: dict) -> list[Pose]:
-        start =  path_data["start_pose"]
+        start = path_data["start_pose"]
         end = path_data["end_pose"]
         path_t = []
         for id_str in path_data["path"]:
@@ -546,7 +554,6 @@ class Routing:
         self.add_angle_for_path(path)
         return path
 
-    
     def get_point_path_by_lanelet_for_demo(self, lanelet: Lanelet, start: BasicPoint3d | None, end: BasicPoint3d | None, is_last=False) -> list:
         line = lanelet.centerline
         line_inter = self.linear_interpolation(line)
@@ -590,11 +597,11 @@ class Routing:
 
 g_routing = Routing(f"map/{MAP_NAME}", gen_graph=False)
 
-import multiprocessing as mp
 
 def process_path(_):
     rs = g_routing.parse_demo_path(sa_1)
     return rs
+
 
 def test_parse():
     t1 = time.time()
@@ -602,6 +609,7 @@ def test_parse():
     t2 = time.time()
     print(f"cost time: {1000 * (t2 - t1)} ms")
     print(len(rs))
+
 
 def test_req_path():
     url = "http://127.0.0.1:8088/api/v1/tool/to_point_path"
@@ -614,6 +622,7 @@ def test_req_path():
     print(rs.text)
     print("??")
     print(rs.status_code)
+
 
 if __name__ == "__main__":
     # test_req_path()

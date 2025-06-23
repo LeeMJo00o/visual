@@ -52,7 +52,7 @@ def get_application() -> FastAPI:
         application.mount("/", StaticFiles(directory=frontend_dist_path, html=True), name="frontend")
     else:
         logger.info(f"frontend dist: {frontend_dist_path} no exists, may you env is dev")
-    
+
     return application
 
 

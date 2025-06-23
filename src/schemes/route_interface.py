@@ -122,7 +122,7 @@ class UpdateResponseForPathRecycle(BaseModel):
     special_navi_is_finished: bool = False
     nearest_navi_pose: Any = None
     reverse_done: bool | None = False
-    recycle_type:  str = ""
+    recycle_type: str = ""
     code: int = 200
 
 
@@ -161,12 +161,13 @@ class WellTrajType(StrEnum):
     LONG = "long"
     ROUTE_GRAPH = ""
 
+
 class GetTrajRequest(BaseModel):
     device_id: str = ""
     device_type: str = ""
     map_firmware_id: str = ""
-    trans_id: str|int = ""
-    timestamp: int|float = 0
+    trans_id: str | int = ""
+    timestamp: int | float = 0
     task_id: str | int = ""
     task_type: int = 0      # 未用到
     traj_type: str = ""     # “”: route graph; "short": short traj; "long": long traj

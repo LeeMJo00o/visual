@@ -165,7 +165,7 @@ def angle_rad(theta1: float, theta2: float) -> float:
     else:
         included_angle = abs(angle1) + abs(angle2)
         if included_angle > math.pi:
-            included_angle = 2*math.pi - included_angle
+            included_angle = 2 * math.pi - included_angle
     return included_angle
 
 
@@ -183,17 +183,17 @@ def calculateCurvature(points: List[Point]) -> Tuple[List[float], List[float]]:
         _len = len(points)
         for i in range(_len - 1):
             p1 = points[i]
-            p2 = points[i+1]
+            p2 = points[i + 1]
             ds = math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2)
             dtheta = abs(angle_rad(p2.h, p1.h))
             if ds == 0:
                 continue
             else:
-                _list1.append(dtheta/ds)
+                _list1.append(dtheta / ds)
         _len1 = len(_list1)
         if _len1 >= 2:
             for j in range(_len1 - 1):
-                _list2.append(abs(_list1[j+1] - _list1[j]))
+                _list2.append(abs(_list1[j + 1] - _list1[j]))
 
     return _list1, _list2
 
@@ -523,18 +523,18 @@ def parseMapNew(file_path, minGap: float, maxGap: float, maxGap2: float, type1: 
         for i in range(len(__lanePoints2_temp)):
             curP = __lanePoints2_temp[i]
             if i == 0:
-                _x = str(round(xk*curP['x'], 2))
-                _y = str(round(yk*curP['y'], 2))
+                _x = str(round(xk * curP['x'], 2))
+                _y = str(round(yk * curP['y'], 2))
                 _y = _y if _y.startswith('-') else f" {_y}"
                 __lanePointsStr2 = f"M{_x}{_y}l"
             else:
-                preP = __lanePoints2_temp[i-1]
-                _x = str(round(xk*curP['x'] - xk*preP['x'], 2))
+                preP = __lanePoints2_temp[i - 1]
+                _x = str(round(xk * curP['x'] - xk * preP['x'], 2))
                 if _x.startswith('0.'):
                     _x = _x[1:]
                 elif _x.startswith('-0.'):
                     _x = _x.replace('-0', '-')
-                _y = str(round(yk*curP['y'] - yk*preP['y'], 2))
+                _y = str(round(yk * curP['y'] - yk * preP['y'], 2))
                 if _y.startswith('0.'):
                     _y = _y[1:]
                 elif _y.startswith('-0.'):
@@ -767,7 +767,7 @@ def parseMapNew(file_path, minGap: float, maxGap: float, maxGap2: float, type1: 
                     print(f"angle1: {_angle1}, angle3: {_angle3}")
                     _theta = _angle(_angle1, _angle3)
                     if _theta >= 95:
-                        print("-"*30)
+                        print("-" * 30)
                         print(f"_dd = {_dd}, angle3 = {round(_angle3, 4)}, angle1 = {round(_angle1, 4)}, theta = {round(_theta, 4)}")
                         print(f"_dd = {_dd}, {_curLaneId}[{_curLanePoints[-1]['x']}, {_curLanePoints[-1]['y']}] -> {_nextLaneId}[{_nextLanePoints[0]['x']}, {_nextLanePoints[0]['y']}]")
                         _errorLanePoints[_curLaneId] = _curLanePointsObj
@@ -866,8 +866,8 @@ def createLines(lines_points, lineColor='#91cc7564', optimize=False, withName=Fa
 
 def __rotate(p, angle):
     """点旋转"""
-    x = p[0]*math.cos(angle) + p[1]*math.sin(angle)
-    y = -p[0]*math.sin(angle) + p[1]*math.cos(angle)
+    x = p[0] * math.cos(angle) + p[1] * math.sin(angle)
+    y = -p[0] * math.sin(angle) + p[1] * math.cos(angle)
     return [x, y]
 
 
@@ -898,7 +898,7 @@ def __heading(p1, p2):
             ret = (1 if aXb < 0 else -1) * angle
         else:
             raise Exception("Parameter is not Point ...")
-    except:
+    except BaseException:
         print(p1)
         print(p2)
         print(traceback.format_exc())
@@ -954,7 +954,7 @@ def __getArrowPoints(points, width):
     # 以原点计算得到的三角形顶点坐标
     p1 = [-width / 2, 0]
     p2 = [0, math.sqrt(3) * width / 2]
-    p3 = [width/2, 0]
+    p3 = [width / 2, 0]
     hlen = int(len(points) / 2)
     m = [points[hlen]['x'], points[hlen]['y']]
     __angle = __getAngle(points[hlen], points[hlen + 1])
@@ -990,7 +990,7 @@ def createArrows(lines_points, arrowColor='#91cc7564', width=1.0, inverseXAxis: 
             continue
         if __l <= 2:
             # 两个点 - 直线，插入一个中点
-            __line = [__line[0], {'x': (__line[0]['x'] + __line[1]['x'])/2.0, 'y': (__line[0]['y'] + __line[1]['y'])/2.0}, __line[1]]
+            __line = [__line[0], {'x': (__line[0]['x'] + __line[1]['x']) / 2.0, 'y': (__line[0]['y'] + __line[1]['y']) / 2.0}, __line[1]]
 
         __points = __getArrowPoints(__line, width)  # 三个顶点
         _p1 = __getPoint(__points[0], inverseXAxis, inverseYAxis)
@@ -1294,7 +1294,7 @@ def export_osm_path_info(osm_file: str):
         }
         road_info["attrs"] = {k: v for k, v in llt.attributes.items()}
 
-        if road_info.get("is_straight") == True:
+        if road_info.get("is_straight"):
             for p in llt.centerline:
                 road_info["points"].append([round(p.x, 3), round(p.y, 3)])
         else:

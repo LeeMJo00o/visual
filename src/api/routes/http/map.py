@@ -69,7 +69,7 @@ def get_path_info():
         pass
     else:
         export_osm_path_info(map_path)
-    
+
     with open(path_file, "r") as f:
         path_info = json.load(f)
     return path_info

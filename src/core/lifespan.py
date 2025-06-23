@@ -16,6 +16,8 @@ from chain_utils.asyncio_utils import RefTasks
 ref_tasks = RefTasks(logger_done=logger)
 
 # trigger when the program starts
+
+
 async def start():
     try:
         logger.info(f"start ok")
@@ -30,7 +32,6 @@ async def start():
 
     ref_tasks << DemoPathWsServer.publish_demo_path()
     ref_tasks << DemoPathWsServerShort.publish_demo_path()
-    pass
 
 # trigger when the program exits
 

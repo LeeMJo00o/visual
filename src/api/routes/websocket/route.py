@@ -80,7 +80,7 @@ class PoseWsServer(MulLinkServerEndpoint):
                     all_v_pose_t[v_id] = pose_data
                 await cls.ws_manager.broadcast_json({
                     "type": "pose",
-                    "data":  all_v_pose_t
+                    "data": all_v_pose_t
                 })
             except Exception as e:
                 logger.error(f"publish_pose error: {repr(e)}")
@@ -151,7 +151,7 @@ class BasePathWs(MulLinkServerEndpoint):
                 # random.shuffle(vehicle_ids)  # 打乱车辆顺序
                 _t1 = time.perf_counter()
                 for i in range(0, len(vehicle_ids), batch_number):
-                    batch_vehicles = vehicle_ids[i:i+batch_number]
+                    batch_vehicles = vehicle_ids[i:i + batch_number]
                     batch_data = {vid: all_v_pose_t[vid] for vid in batch_vehicles}
                     await cls.ws_manager.broadcast_json({
                         "type": "long_path",
@@ -159,7 +159,7 @@ class BasePathWs(MulLinkServerEndpoint):
                     })
                     await asyncio.sleep(sleep_time)
                 _t2 = time.perf_counter()
-                if (_t:=_t2 - _t1) < cycle_time:
+                if (_t := _t2 - _t1) < cycle_time:
                     await asyncio.sleep(cycle_time - _t)
             except Exception as e:
                 logger.error(f"publish path error: {repr(e)}")

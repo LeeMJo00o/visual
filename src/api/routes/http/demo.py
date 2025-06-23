@@ -39,6 +39,7 @@ async def change_weight(req: dict = Body()) -> StdRes:
     await redis_t.hset("attribute_map", "GLOBAL_SEQUENCE", json.dumps(sq))
     return StdRes()
 
+
 async def get_traj_demo_from_redis_raw() -> dict:
     from chain_redis.aio_connect import get_single
     ext_config = {

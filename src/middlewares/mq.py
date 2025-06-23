@@ -6,6 +6,7 @@ from src.middlewares.redis_handler.connect import redis_cli
 from chain_utils.asyncio_utils import RefTasks
 from src.core.log import logger
 
+
 class Mq():
     def __init__(self, topic, callback=None) -> None:
         self.topic = topic
@@ -43,6 +44,7 @@ class Mq():
 
     async def __default_callback(self, message):
         logger.info(f"recv message __default_callback: {message}")
+
 
 mq = Mq("pp:route_update")
 mq_route = Mq("__cpp_pp:path")

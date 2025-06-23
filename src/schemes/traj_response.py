@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time : 2025/3/24
 # @Author : simon
-# @File : traj_response.py 
+# @File : traj_response.py
 # @Software: PyCharm
 # @Description:
 from typing import List
@@ -25,6 +25,7 @@ class TrajData(BaseModel):
     traj_id: str = ""
     traj_type: str = ""
     traj_info: list = []
+
 
 class LongTrajRespone(BaseModel):
     device_id: str = ""
