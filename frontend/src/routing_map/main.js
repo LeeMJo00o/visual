@@ -466,14 +466,14 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   // 新增：绘制箭头的辅助方法
-  drawArrow(graphics, x, y, angle, size = 5, color = "#ff0000", alpha = 1) {
+  drawArrow(graphics, x, y, angle, size = 1, color = "#ff0000", alpha = 1) {
     // 计算箭头的三个点
     const arrowLength = size;
-    const arrowWidth = size * 0.5;
+    const arrowWidth = size * 2;
 
-    // 箭头头部（指向方向）- 现在就在给定点上
-    const tipX = x;
-    const tipY = y;
+    // 箭头头部（指向方向）- 向前延伸
+    const tipX = x + arrowLength * Math.cos(angle);
+    const tipY = y + arrowLength * Math.sin(angle);
 
     // 箭头尾部两个点 - 向后延伸
     const leftX = x - arrowLength * Math.cos(angle) + arrowWidth * Math.cos(angle + Math.PI * 0.75);
@@ -481,12 +481,9 @@ export default class ApplicationManager extends GraphicTools {
     const rightX = x - arrowLength * Math.cos(angle) + arrowWidth * Math.cos(angle - Math.PI * 0.75);
     const rightY = y - arrowLength * Math.sin(angle) + arrowWidth * Math.sin(angle - Math.PI * 0.75);
 
-    // 绘制箭头
-    graphics.moveTo(tipX, tipY);
-    graphics.lineTo(leftX, leftY);
-    graphics.moveTo(tipX, tipY);
-    graphics.lineTo(rightX, rightY);
-    graphics.stroke({ color: color, width: 0.6, alpha: alpha });
+    // 绘制实心三角形箭头
+    graphics.poly([tipX, tipY, leftX, leftY, rightX, rightY]).fill({ color: color, alpha: alpha })
+
   }
 
   // 新增：计算两点之间的角度
@@ -552,7 +549,7 @@ export default class ApplicationManager extends GraphicTools {
       const [arrowX, arrowY] = this.map_xy_to_app(arrowPoint);
 
       // 绘制箭头
-      this.drawArrow(g, arrowX, arrowY, angle, 3, color, alpha);
+      this.drawArrow(g, arrowX, arrowY, angle, 1, color, alpha);
     }
   }
 
