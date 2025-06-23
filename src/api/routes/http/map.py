@@ -2,7 +2,7 @@ from chain_model.model import StdRes
 from fastapi import APIRouter, Body, Response
 from src.core.config import MAP_NAME
 import json
-from src.map_tools import export_osm_svg
+from src.map_tools import export_osm_svg, export_osm_path_info
 import os
 
 router = APIRouter()
@@ -61,7 +61,15 @@ def get_config():
 
 @router.post('/path_info')
 def get_path_info():
+    map_path = f"map/{MAP_NAME}"
     path_file = f"map/raw_path_{MAP_NAME}.json"
+
+    # 检查文件是否存在
+    if os.path.exists(path_file):
+        pass
+    else:
+        export_osm_path_info(map_path)
+    
     with open(path_file, "r") as f:
         path_info = json.load(f)
     return path_info

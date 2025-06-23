@@ -1279,6 +1279,12 @@ def export_osm_svg(osm_file: str):
     # delet json file
     os.remove(to_json)
 
+
+def export_osm_path_info(osm_file: str):
+    dir_path = os.path.dirname(osm_file)
+    osm_file_name = os.path.basename(osm_file)
+    to_raw_path = os.path.join(dir_path, f"raw_path_{osm_file_name}.json")
+    routing = Routing(osm_file, gen_graph=False)
     map_info = {}
     llts = lanelet_filter(routing.map.laneletLayer)
     for llt in llts:

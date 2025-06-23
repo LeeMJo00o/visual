@@ -402,29 +402,6 @@ export default class ApplicationManager extends GraphicTools {
     })
   }
 
-  // 修改获取SVG内容的方法
-  async fetchSvgContent() {
-    // 尝试从缓存获取
-    const cachedSvg = await mapCache.get('svg')
-    if (cachedSvg) {
-      console.log('使用缓存的SVG数据')
-      this.svgContent = cachedSvg
-      return cachedSvg
-    }
-
-    // 如果缓存中没有，从服务器获取
-    console.log('从服务器获取SVG数据')
-    try {
-      const data = await get_svg_content('/api/map/svg', {})
-      this.svgContent = data
-      await mapCache.save('svg', data)
-      return data
-    } catch (error) {
-      console.error('获取SVG内容失败:', error)
-      throw error
-    }
-  }
-
   // 生成类似你期望的格式
   pointsToSvgPath(points, color = "#fff", strokeWidth = 0.5, pathId = null) {
     if (!points || points.length < 2) return null;
@@ -547,11 +524,11 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   async initMap() {
-    console.log('map_path_info: ', this.map_path_info)
+    // console.log('map_path_info: ', this.map_path_info)
     const cons = new Container()
 
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
-      console.log(path_id, one_path);
+      // console.log(path_id, one_path);
       const points = one_path["points"]
 
       let g = new Graphics()
@@ -582,7 +559,7 @@ export default class ApplicationManager extends GraphicTools {
         // console.log('pointerover', g.raw_path.getAttribute('id'));
 
         // 获取所有属性
-        console.log("attrs", one_path["attrs"])
+        // console.log("attrs", one_path["attrs"])
         let attributes = ""
         if (one_path["attrs"] && typeof one_path["attrs"] === 'object') {
           // 定义需要过滤掉的属性
@@ -615,98 +592,6 @@ export default class ApplicationManager extends GraphicTools {
     });
 
     // cons.alpha = 0.6;
-    return cons
-  }
-
-  async initMapBySvg() {
-    const tooltip = document.createElement('div')
-    tooltip.style.cssText = `
-            position: fixed;
-            padding: 5px 8px;
-            background: white;
-            color: black;
-            border-radius: 4px;
-            font-size: 14px;
-            pointer-events: none;
-            display: none;
-            z-index: 1000;
-            border: 1px solid black;
-        `
-    document.body.appendChild(tooltip)
-    this.tooltip = tooltip
-
-    const cons = new Container()
-    const parser = new DOMParser()
-
-    // 获取SVG内容
-    if (!this.svgContent) {
-      await this.fetchSvgContent()
-    }
-
-    const doc = parser.parseFromString(this.svgContent, 'image/svg+xml')
-    console.log('doc: ', doc)
-    const paths = Array.from(doc.querySelectorAll('path')).reverse()
-    console.log('all path: ', paths.length)
-    paths.forEach((path, index) => {
-      const newSVG = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-
-      path.setAttribute('style', 'fill:none;stroke:#888;stroke-width:0.5;') // 设置边框宽度
-
-      // console.log("path", path);
-
-      newSVG.appendChild(path);
-
-      const serializer = new XMLSerializer()
-      const svg = serializer.serializeToString(newSVG)
-      let g = new Graphics()
-      g.svg(svg)
-
-      g.raw_path = path
-      g.raw_svg = svg
-
-      if (g.raw_path.hasAttribute('id')) {
-        g.interactive = true
-        g.cursor = 'pointer'
-      } else {
-        g.interactive = false
-        g.cursor = 'default'
-      }
-
-      cons.addChild(g)
-      g.on('pointerover', (e) => {
-        // console.log('pointerover', g.raw_path.getAttribute('id'));
-        const path_u = g.raw_path.cloneNode(true);
-
-        if (g.raw_path.hasAttribute('id')) {
-          path_u.setAttribute('style', 'fill:none;stroke:#42e2eb;stroke-width:0.5');
-        }
-
-        const newSVG2 = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        newSVG2.appendChild(path_u);
-        const serializer = new XMLSerializer();
-        const svg2 = serializer.serializeToString(newSVG2);
-        g.clear();
-        g.svg(svg2);
-        cons.setChildIndex(g, cons.children.length - 1);
-
-        // 获取所有属性
-        const attributes = Array.from(g.raw_path.attributes)
-          .filter(attr => !['d', 'style'].includes(attr.name))  // 过滤掉d和style属性
-          .map(attr => `${attr.name}: ${attr.value}`)
-          .join('<br>');
-
-        tooltip.innerHTML = attributes;
-        tooltip.style.display = 'block';
-        tooltip.style.left = e.clientX + 15 + 'px';
-        tooltip.style.top = e.clientY + 10 + 'px';
-      })
-      g.on('pointerout', (e) => {
-        g.clear()
-        g.svg(g.raw_svg)
-        tooltip.style.display = 'none'
-      })
-    })
-    cons.alpha = 0.7
     return cons
   }
 
