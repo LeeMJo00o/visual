@@ -127,30 +127,6 @@ export class EventManager {
   }
 
   setupUIControls() {
-    const map_hide = document.getElementById('map_hide')
-    const smooth_toggle = document.getElementById('smooth_toggle')
-    const smooth_speed = document.getElementById('smooth_speed')
-
-    // 平滑移动控制
-    if (smooth_toggle) {
-      smooth_toggle.checked = this.manager.smoothMovementConfig.enabled
-      smooth_toggle.addEventListener('change', (e) => {
-        this.manager.smoothMovementConfig.enabled = e.target.checked
-      })
-    }
-
-    // 平滑移动速度控制
-    if (smooth_speed) {
-      smooth_speed.value = this.manager.smoothMovementConfig.speed * 100
-      smooth_speed.addEventListener('input', (e) => {
-        this.manager.smoothMovementConfig.speed = e.target.value / 100
-        // 更新所有车辆的动画速度
-        for (const agent of Object.values(this.manager.agents)) {
-          agent.animationSpeed = this.manager.smoothMovementConfig.speed
-        }
-      })
-    }
-
     // 只保留自定义事件监听，删除原生button相关事件委托
     // window.addEventListener('map-hide-click', ...)
     // window.addEventListener('agent-hide-click', ...)

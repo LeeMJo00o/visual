@@ -53,9 +53,7 @@ export default class ApplicationManager extends GraphicTools {
 
     // 车辆平滑移动的配置
     this.smoothMovementConfig = {
-      enabled: false, // 是否启用平滑移动
-      speed: 0.1, // 动画速度因子（较大的值 = 更快的移动）
-      threshold: 0.01, // 用于检测位置是否足够接近目标的阈值
+      enabled: true, // 是否启用平滑移动
     }
 
     // 创建全局tooltip元素
@@ -216,10 +214,6 @@ export default class ApplicationManager extends GraphicTools {
     v.graphics.interactive = true
     v.graphics.cursor = 'pointer'
 
-    // 应用平滑移动配置
-    v.animationSpeed = this.smoothMovementConfig.speed
-    v.positionThreshold = this.smoothMovementConfig.threshold
-
     this.agents[vehicle_id] = v
     this.agents[vehicle_id].setPosition(x, y, theta)
 
@@ -337,9 +331,6 @@ export default class ApplicationManager extends GraphicTools {
         this.mainContainer.rotation = this.g_rotation
         this.mainContainer.scale.set(config.scale)
         this.mainContainer.position.set(config.offset[0], config.offset[1])
-        this.agentTextContainer.rotation = this.g_rotation
-        this.agentTextContainer.scale.set(config.scale)
-        this.agentTextContainer.position.set(config.offset[0], config.offset[1])
         this.mode = config.mode
 
         // 设置缓存版本, 不清理旧缓存
@@ -394,7 +385,7 @@ export default class ApplicationManager extends GraphicTools {
 
       // 设置动画循环，更新所有车辆位置
       const tickerCallback = () => this.updateAgents()
-      // this.app.ticker.add(tickerCallback)
+      this.app.ticker.add(tickerCallback)
       this.addCleanupTask('tickerCallbacks', tickerCallback)
 
       if (this.mode == 'test-demo') {
@@ -593,7 +584,7 @@ export default class ApplicationManager extends GraphicTools {
       cons.addChild(g)
 
       // 直接使用 drawPath 方法
-      this.draw_map_road(g, points, '#fff', 0.5)
+      this.draw_map_road(g, points, '#fff', 0.4)
 
       const tooltip = document.createElement('div')
       tooltip.style.cssText = `
@@ -695,7 +686,9 @@ export default class ApplicationManager extends GraphicTools {
     const scale_to = graphic.scale.x * scale_level_v
     graphic.scale.set(scale_to)
 
-    this.agentTextContainer.scale.set(scale_to)
+    // 移除对agentTextContainer的缩放，因为文本现在不随地图缩放
+    // this.agentTextContainer.scale.set(scale_to)
+
     // 缩放以左上角为原点，为了看起来是在指针处缩放的，我们把原先指针所指的点移回指针位置
     // 考虑某个点坐标 x, 缩放之后位置会偏移 (x * scale_level_v) 的距离
     // 因此需要调整的距离是 (x * scale_level_v) - x
@@ -708,10 +701,10 @@ export default class ApplicationManager extends GraphicTools {
       this.mainContainer.position.y + off_y,
     )
 
-    this.agentTextContainer.position.set(
-      this.agentTextContainer.position.x + off_x,
-      this.agentTextContainer.position.y + off_y,
-    )
+    // 更新所有文本的位置
+    Object.values(this.agents).forEach((agent) => {
+      agent.sync_text_pos(agent.position.x, agent.position.y)
+    })
 
     console.log('main container: ', this.mainContainer.position, this.mainContainer.scale.x)
   }
@@ -726,6 +719,8 @@ export default class ApplicationManager extends GraphicTools {
     // 遍历所有车辆，调用更新方法
     for (const agent of Object.values(this.agents)) {
       agent.update()
+      // 在动画更新后同步文本位置
+      agent.sync_text_pos(agent.position.x, agent.position.y)
     }
   }
 
