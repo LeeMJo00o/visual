@@ -1,9 +1,26 @@
-import { Application, Assets, Graphics, BitmapText, Text, Texture, Sprite, Container, extensions, CullerPlugin } from 'pixi.js'
+import {
+  Application,
+  Assets,
+  Graphics,
+  BitmapText,
+  Text,
+  Texture,
+  Sprite,
+  Container,
+  extensions,
+  CullerPlugin,
+} from 'pixi.js'
 import { GraphicTools, stringToUniqueColor, unrotatePoint } from './graph.js'
-import { WebSocketClient, demo_get_traj, get_svg_content, get_map_config, get_path_info } from './pp_backend.js'
-import { mapCache } from './map_cache.js'  // 导入缓存模块
-import { EventManager } from './event.js'  // 导入事件管理器
-import Agent from './agent.js'  // 导入 Agent 类
+import {
+  WebSocketClient,
+  demo_get_traj,
+  get_svg_content,
+  get_map_config,
+  get_path_info,
+} from './pp_backend.js'
+import { mapCache } from './map_cache.js' // 导入缓存模块
+import { EventManager } from './event.js' // 导入事件管理器
+import Agent from './agent.js' // 导入 Agent 类
 // import fontFile from '../assets/DejaVuSansMono-msdf.json?raw'
 
 // const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
@@ -32,13 +49,13 @@ export default class ApplicationManager extends GraphicTools {
 
     this.mainContainer = null
     this.g_rotation = 0
-    this.mode = "test-demo"
+    this.mode = 'test-demo'
 
     // 车辆平滑移动的配置
     this.smoothMovementConfig = {
-      enabled: false,        // 是否启用平滑移动
-      speed: 0.1,           // 动画速度因子（较大的值 = 更快的移动）
-      threshold: 0.01       // 用于检测位置是否足够接近目标的阈值
+      enabled: false, // 是否启用平滑移动
+      speed: 0.1, // 动画速度因子（较大的值 = 更快的移动）
+      threshold: 0.01, // 用于检测位置是否足够接近目标的阈值
     }
 
     // 创建全局tooltip元素
@@ -61,11 +78,11 @@ export default class ApplicationManager extends GraphicTools {
 
     // 存储所有需要清理的资源
     this.cleanupTasks = {
-      intervals: [],      // 存储所有setInterval的ID
-      timeouts: [],       // 存储所有setTimeout的ID
+      intervals: [], // 存储所有setInterval的ID
+      timeouts: [], // 存储所有setTimeout的ID
       eventListeners: [], // 存储所有事件监听器
       tickerCallbacks: [], // 存储所有ticker回调
-      websockets: [],     // 存储所有WebSocket连接
+      websockets: [], // 存储所有WebSocket连接
     }
 
     // 创建事件管理器实例
@@ -84,10 +101,10 @@ export default class ApplicationManager extends GraphicTools {
     console.log('开始清理资源...')
 
     // 清理所有定时器
-    this.cleanupTasks.intervals.forEach(id => {
+    this.cleanupTasks.intervals.forEach((id) => {
       clearInterval(id)
     })
-    this.cleanupTasks.timeouts.forEach(id => {
+    this.cleanupTasks.timeouts.forEach((id) => {
       clearTimeout(id)
     })
 
@@ -99,21 +116,21 @@ export default class ApplicationManager extends GraphicTools {
     })
 
     // 清理所有ticker回调
-    this.cleanupTasks.tickerCallbacks.forEach(callback => {
+    this.cleanupTasks.tickerCallbacks.forEach((callback) => {
       if (this.app && this.app.ticker) {
         this.app.ticker.remove(callback)
       }
     })
 
     // 关闭所有WebSocket连接
-    this.cleanupTasks.websockets.forEach(ws => {
+    this.cleanupTasks.websockets.forEach((ws) => {
       if (ws && ws.readyState !== WebSocket.CLOSED) {
         ws.close()
       }
     })
 
     // 清理所有agents
-    Object.values(this.agents).forEach(agent => {
+    Object.values(this.agents).forEach((agent) => {
       if (agent.graphics) {
         agent.graphics.destroy({ children: true })
       }
@@ -164,7 +181,7 @@ export default class ApplicationManager extends GraphicTools {
     }
 
     // 清空清理任务列表
-    Object.keys(this.cleanupTasks).forEach(key => {
+    Object.keys(this.cleanupTasks).forEach((key) => {
       this.cleanupTasks[key] = []
     })
 
@@ -179,7 +196,7 @@ export default class ApplicationManager extends GraphicTools {
   // 逆运算即可算出原坐标
 
   raw_xy(x, y) {
-    let scale = this.mainContainer.scale.x;
+    let scale = this.mainContainer.scale.x
 
     let _x = x - this.mainContainer.position.x
     let _y = y - this.mainContainer.position.y
@@ -188,7 +205,7 @@ export default class ApplicationManager extends GraphicTools {
 
     let t_x = newPoint.x / scale
     let t_y = newPoint.y / scale
-    t_y = -t_y  // 前端 y 的方向与原地图相反
+    t_y = -t_y // 前端 y 的方向与原地图相反
     return [roundTo(t_x, 4), roundTo(t_y, 4)]
   }
 
@@ -209,50 +226,51 @@ export default class ApplicationManager extends GraphicTools {
     // 添加鼠标悬停事件处理，显示车辆信息
     v.graphics.on('pointerover', (e) => {
       // 高亮显示车辆
-      v.graphics.tint = 0xFFFFFF; // 亮白色
+      v.graphics.tint = 0xffffff // 亮白色
 
       // 创建tooltip内容
-      const agent = this.agents[vehicle_id];
+      const agent = this.agents[vehicle_id]
       const tooltipContent = `
         <div style="font-weight: bold; margin-bottom: 4px;">车辆信息</div>
         <div>ID: ${agent.vehicle_id}</div>
         <div>X: ${agent.position.x.toFixed(2)}</div>
         <div>Y: ${-agent.position.y.toFixed(2)}</div>
         <div>角度: ${agent.position.theta.toFixed(3)}</div>
-      `;
+      `
 
       // 显示tooltip
       if (this.tooltip) {
-        this.tooltip.innerHTML = tooltipContent;
-        this.tooltip.style.display = 'block';
-        this.tooltip.style.left = e.clientX + 15 + 'px';
-        this.tooltip.style.top = e.clientY + 10 + 'px';
+        this.tooltip.innerHTML = tooltipContent
+        this.tooltip.style.display = 'block'
+        this.tooltip.style.left = e.clientX + 15 + 'px'
+        this.tooltip.style.top = e.clientY + 10 + 'px'
 
         // 跟随鼠标移动
         const onMouseMove = (moveEvent) => {
-          this.tooltip.style.left = moveEvent.clientX + 15 + 'px';
-          this.tooltip.style.top = moveEvent.clientY + 10 + 'px';
-        };
+          this.tooltip.style.left = moveEvent.clientX + 15 + 'px'
+          this.tooltip.style.top = moveEvent.clientY + 10 + 'px'
+        }
 
         // 鼠标离开时移除事件监听
         const onPointerOut = () => {
-          document.removeEventListener('mousemove', onMouseMove);
-          this.tooltip.style.display = 'none';
-          v.graphics.tint = 0xFFFFFF; // 恢复正常颜色
+          document.removeEventListener('mousemove', onMouseMove)
+          this.tooltip.style.display = 'none'
+          v.graphics.tint = 0xffffff // 恢复正常颜色
           // 移除pointerout事件监听器，避免重复绑定
-          v.graphics.off('pointerout', onPointerOut);
-        };
+          v.graphics.off('pointerout', onPointerOut)
+        }
 
-        document.addEventListener('mousemove', onMouseMove);
-        v.graphics.on('pointerout', onPointerOut);
+        document.addEventListener('mousemove', onMouseMove)
+        v.graphics.on('pointerout', onPointerOut)
       }
-    });
+    })
 
     console.log('add graphics1: ', v)
     console.log('add graphics2: ', v.graph_long_path)
     this.add_graphics(v.graph_short_path)
     this.add_graphics(v.graph_long_path)
     this.add_graphics(v.graphics)
+    this.agentTextContainer.addChild(v.text)
     // this.add_graphics(v.text)
 
     return v
@@ -289,7 +307,8 @@ export default class ApplicationManager extends GraphicTools {
     })
     let game_container = document.getElementById('map_main_container')
     game_container.appendChild(this.app.canvas)
-    this.mainContainer = new Container();
+    this.mainContainer = new Container()
+    this.agentTextContainer = new Container()
 
     // 创建全局tooltip元素
     this.tooltip = document.createElement('div')
@@ -318,6 +337,9 @@ export default class ApplicationManager extends GraphicTools {
         this.mainContainer.rotation = this.g_rotation
         this.mainContainer.scale.set(config.scale)
         this.mainContainer.position.set(config.offset[0], config.offset[1])
+        this.agentTextContainer.rotation = this.g_rotation
+        this.agentTextContainer.scale.set(config.scale)
+        this.agentTextContainer.position.set(config.offset[0], config.offset[1])
         this.mode = config.mode
 
         // 设置缓存版本, 不清理旧缓存
@@ -347,7 +369,8 @@ export default class ApplicationManager extends GraphicTools {
       // 等待initMap完成
       this.map_container = await this.initMap()
 
-      this.app.stage.addChild(this.mainContainer);
+      this.app.stage.addChild(this.mainContainer)
+      this.app.stage.addChild(this.agentTextContainer)
 
       this.graphics_path_short = new Graphics()
       this.graphics_path_long = new Graphics()
@@ -366,15 +389,15 @@ export default class ApplicationManager extends GraphicTools {
       this.graphics_lock_area.alpha = 0.4
 
       // 初始化事件管理器
-      this.eventManager = new EventManager(this.app, this);
-      this.eventManager.setupEventListeners();
+      this.eventManager = new EventManager(this.app, this)
+      this.eventManager.setupEventListeners()
 
       // 设置动画循环，更新所有车辆位置
       const tickerCallback = () => this.updateAgents()
       // this.app.ticker.add(tickerCallback)
       this.addCleanupTask('tickerCallbacks', tickerCallback)
 
-      if (this.mode == "test-demo") {
+      if (this.mode == 'test-demo') {
         // // 义东 demo 用
         // demo_get_traj(this.demo_update_path.bind(this), '/api/demo/get_traj');
         // setInterval(() => {
@@ -384,39 +407,48 @@ export default class ApplicationManager extends GraphicTools {
         let ws_prefix = `ws://${window.location.hostname}:${window.location.port}`
 
         const ws_long = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_path`, {
-          onMessage: (data) => { this.demo_update_path_ws(data) }
-        });
-        ws_long.connect();
-        this.addCleanupTask('websockets', ws_long);
+          onMessage: (data) => {
+            this.demo_update_path_ws(data)
+          },
+        })
+        ws_long.connect()
+        this.addCleanupTask('websockets', ws_long)
 
         const ws_short = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_short_path`, {
-          onMessage: (data) => { this.demo_update_path_short_ws(data) }
-        });
-        ws_short.connect();
-        this.addCleanupTask('websockets', ws_short);
+          onMessage: (data) => {
+            this.demo_update_path_short_ws(data)
+          },
+        })
+        ws_short.connect()
+        this.addCleanupTask('websockets', ws_short)
 
         this.long_path_width = 2
         this.short_path_width = 4
 
         const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
-          onMessage: (data) => { this.pose_update(data) }
-        });
-        ws_pose.connect();
-        this.addCleanupTask('websockets', ws_pose);
-
+          onMessage: (data) => {
+            this.pose_update(data)
+          },
+        })
+        ws_pose.connect()
+        this.addCleanupTask('websockets', ws_pose)
       } else {
         // 自己测试用
         const ws = new WebSocketClient('ws://10.6.64.49:2030/api/ws/demo/route_info', {
-          onMessage: (data) => { this.path_update(data) }
-        });
-        ws.connect();
-        this.addCleanupTask('websockets', ws);
+          onMessage: (data) => {
+            this.path_update(data)
+          },
+        })
+        ws.connect()
+        this.addCleanupTask('websockets', ws)
 
         const ws_pose = new WebSocketClient('ws://10.6.64.49:2030/api/ws/demo/pose_info', {
-          onMessage: (data) => { this.pose_update(data) }
-        });
-        ws_pose.connect();
-        this.addCleanupTask('websockets', ws_pose);
+          onMessage: (data) => {
+            this.pose_update(data)
+          },
+        })
+        ws_pose.connect()
+        this.addCleanupTask('websockets', ws_pose)
 
         this.long_path_width = 2
         this.short_path_width = 3
@@ -427,8 +459,11 @@ export default class ApplicationManager extends GraphicTools {
         this.cleanup()
       }
       window.addEventListener('beforeunload', beforeUnloadHandler)
-      this.addCleanupTask('eventListeners', { target: window, type: 'beforeunload', listener: beforeUnloadHandler })
-
+      this.addCleanupTask('eventListeners', {
+        target: window,
+        type: 'beforeunload',
+        listener: beforeUnloadHandler,
+      })
     } catch (error) {
       console.error('初始化失败:', error)
       throw error
@@ -436,23 +471,23 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   // 生成类似你期望的格式
-  pointsToSvgPath(points, color = "#fff", strokeWidth = 0.5, pathId = null) {
-    if (!points || points.length < 2) return null;
+  pointsToSvgPath(points, color = '#fff', strokeWidth = 0.5, pathId = null) {
+    if (!points || points.length < 2) return null
 
     // 转换第一个点（绝对坐标）
-    let [x, y] = this.map_xy_to_app(points[0]);
-    let pathData = `M${roundTo(x, 2)} ${roundTo(y, 2)}`;
+    let [x, y] = this.map_xy_to_app(points[0])
+    let pathData = `M${roundTo(x, 2)} ${roundTo(y, 2)}`
 
     // 添加其余点（相对坐标），使用更简洁的格式
     for (let i = 1; i < points.length; i++) {
-      let [prevX, prevY] = this.map_xy_to_app(points[i - 1]);
-      let [currX, currY] = this.map_xy_to_app(points[i]);
+      let [prevX, prevY] = this.map_xy_to_app(points[i - 1])
+      let [currX, currY] = this.map_xy_to_app(points[i])
 
-      let dx = roundTo(currX - prevX, 2);
-      let dy = roundTo(currY - prevY, 2);
+      let dx = roundTo(currX - prevX, 2)
+      let dy = roundTo(currY - prevY, 2)
 
       // 使用更简洁的相对坐标格式
-      pathData += `l${dx} ${dy}`;
+      pathData += `l${dx} ${dy}`
     }
 
     // 生成完整的 SVG 字符串
@@ -460,96 +495,87 @@ export default class ApplicationManager extends GraphicTools {
       <svg xmlns="http://www.w3.org/2000/svg">
         <path d="${pathData}" id="${pathId || 'path'}" is_straight="false" style="fill:none;stroke:${color};stroke-width:${strokeWidth};" />
       </svg>
-    `;
+    `
 
-    return svgString;
+    return svgString
   }
 
   // 新增：绘制箭头的辅助方法
-  drawArrow(graphics, x, y, angle, size = 1, color = "#ff0000", alpha = 1) {
+  drawArrow(graphics, x, y, angle, size = 1, color = '#ff0000', alpha = 1) {
     // 计算箭头的三个点
-    const arrowLength = size;
-    const arrowWidth = size * 2;
+    const arrowLength = size
+    const arrowWidth = size * 2
 
     // 箭头头部（指向方向）- 向前延伸
-    const tipX = x + arrowLength * Math.cos(angle);
-    const tipY = y + arrowLength * Math.sin(angle);
+    const tipX = x + arrowLength * Math.cos(angle)
+    const tipY = y + arrowLength * Math.sin(angle)
 
     // 箭头尾部两个点 - 向后延伸
-    const leftX = x - arrowLength * Math.cos(angle) + arrowWidth * Math.cos(angle + Math.PI * 0.75);
-    const leftY = y - arrowLength * Math.sin(angle) + arrowWidth * Math.sin(angle + Math.PI * 0.75);
-    const rightX = x - arrowLength * Math.cos(angle) + arrowWidth * Math.cos(angle - Math.PI * 0.75);
-    const rightY = y - arrowLength * Math.sin(angle) + arrowWidth * Math.sin(angle - Math.PI * 0.75);
+    const leftX = x - arrowLength * Math.cos(angle) + arrowWidth * Math.cos(angle + Math.PI * 0.75)
+    const leftY = y - arrowLength * Math.sin(angle) + arrowWidth * Math.sin(angle + Math.PI * 0.75)
+    const rightX = x - arrowLength * Math.cos(angle) + arrowWidth * Math.cos(angle - Math.PI * 0.75)
+    const rightY = y - arrowLength * Math.sin(angle) + arrowWidth * Math.sin(angle - Math.PI * 0.75)
 
     // 绘制实心三角形箭头
     graphics.poly([tipX, tipY, leftX, leftY, rightX, rightY]).fill({ color: color, alpha: alpha })
-
   }
 
   // 新增：计算两点之间的角度
   calculateAngle(x1, y1, x2, y2) {
-    return Math.atan2(y2 - y1, x2 - x1);
+    return Math.atan2(y2 - y1, x2 - x1)
   }
 
   draw_map_road(g, points, color, alpha = 0.5) {
     const width = 1
     g.clear()
-    this.drawPath(
-      g,
-      "N/A",
-      points,
-      false,
-      color,
-      width,
-      alpha
-    )
+    this.drawPath(g, 'N/A', points, false, color, width, alpha)
     // 在路径中间点绘制箭头
     if (points.length >= 2) {
-      let arrowPoint, angle;
+      let arrowPoint, angle
 
       if (points.length === 2) {
         // 只有两个点时，取中间点
-        const startPoint = points[0]; // 起点
-        const endPoint = points[1]; // 终点
+        const startPoint = points[0] // 起点
+        const endPoint = points[1] // 终点
         arrowPoint = [
           (startPoint[0] + endPoint[0]) / 2, // 中间点x坐标
-          (startPoint[1] + endPoint[1]) / 2  // 中间点y坐标
-        ];
-        const [startX, startY] = this.map_xy_to_app(startPoint);
-        const [endX, endY] = this.map_xy_to_app(endPoint);
-        angle = this.calculateAngle(startX, startY, endX, endY);
+          (startPoint[1] + endPoint[1]) / 2, // 中间点y坐标
+        ]
+        const [startX, startY] = this.map_xy_to_app(startPoint)
+        const [endX, endY] = this.map_xy_to_app(endPoint)
+        angle = this.calculateAngle(startX, startY, endX, endY)
       } else {
         // 多个点时，取中间点
-        const midIndex = Math.floor(points.length / 2);
-        arrowPoint = points[midIndex];
+        const midIndex = Math.floor(points.length / 2)
+        arrowPoint = points[midIndex]
 
         // 计算箭头方向（使用中间点前后的点）
         if (midIndex > 0 && midIndex < points.length - 1) {
           // 使用前后两个点计算方向
-          const prevPoint = points[midIndex - 1];
-          const nextPoint = points[midIndex + 1];
-          const [prevX, prevY] = this.map_xy_to_app(prevPoint);
-          const [nextX, nextY] = this.map_xy_to_app(nextPoint);
-          angle = this.calculateAngle(prevX, prevY, nextX, nextY);
+          const prevPoint = points[midIndex - 1]
+          const nextPoint = points[midIndex + 1]
+          const [prevX, prevY] = this.map_xy_to_app(prevPoint)
+          const [nextX, nextY] = this.map_xy_to_app(nextPoint)
+          angle = this.calculateAngle(prevX, prevY, nextX, nextY)
         } else if (midIndex > 0) {
           // 使用前一个点
-          const prevPoint = points[midIndex - 1];
-          const [prevX, prevY] = this.map_xy_to_app(prevPoint);
-          const [midX, midY] = this.map_xy_to_app(arrowPoint);
-          angle = this.calculateAngle(prevX, prevY, midX, midY);
+          const prevPoint = points[midIndex - 1]
+          const [prevX, prevY] = this.map_xy_to_app(prevPoint)
+          const [midX, midY] = this.map_xy_to_app(arrowPoint)
+          angle = this.calculateAngle(prevX, prevY, midX, midY)
         } else {
           // 使用后一个点
-          const nextPoint = points[midIndex + 1];
-          const [midX, midY] = this.map_xy_to_app(arrowPoint);
-          const [nextX, nextY] = this.map_xy_to_app(nextPoint);
-          angle = this.calculateAngle(midX, midY, nextX, nextY);
+          const nextPoint = points[midIndex + 1]
+          const [midX, midY] = this.map_xy_to_app(arrowPoint)
+          const [nextX, nextY] = this.map_xy_to_app(nextPoint)
+          angle = this.calculateAngle(midX, midY, nextX, nextY)
         }
       }
 
-      const [arrowX, arrowY] = this.map_xy_to_app(arrowPoint);
+      const [arrowX, arrowY] = this.map_xy_to_app(arrowPoint)
 
       // 绘制箭头
-      this.drawArrow(g, arrowX, arrowY, angle, 1, color, alpha);
+      this.drawArrow(g, arrowX, arrowY, angle, 1, color, alpha)
     }
   }
 
@@ -561,13 +587,13 @@ export default class ApplicationManager extends GraphicTools {
 
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
       // console.log(path_id, one_path);
-      const points = one_path["points"]
+      const points = one_path['points']
 
       let g = new Graphics()
       cons.addChild(g)
 
       // 直接使用 drawPath 方法
-      this.draw_map_road(g, points, "#fff", 0.5)
+      this.draw_map_road(g, points, '#fff', 0.5)
 
       const tooltip = document.createElement('div')
       tooltip.style.cssText = `
@@ -585,19 +611,28 @@ export default class ApplicationManager extends GraphicTools {
       document.body.appendChild(tooltip)
 
       g.on('pointerover', (e) => {
-        this.draw_map_road(g, points, "#f0f", 0.8)
+        this.draw_map_road(g, points, '#f0f', 0.8)
         // 将路径提升到最上层
         cons.setChildIndex(g, cons.children.length - 1)
         // console.log('pointerover', g.raw_path.getAttribute('id'));
 
         // 获取所有属性
         // console.log("attrs", one_path["attrs"])
-        let attributes = ""
-        if (one_path["attrs"] && typeof one_path["attrs"] === 'object') {
+        let attributes = ''
+        if (one_path['attrs'] && typeof one_path['attrs'] === 'object') {
           // 定义需要过滤掉的属性
-          const filteredAttrs = ['L_ID', 'block_id', 'is_straight', 'road_type', 'pptype', 'cutin', 'cutin_from']
-          const filteredEntries = Object.entries(one_path["attrs"])
-            .filter(([key, value]) => filteredAttrs.includes(key)) // 过滤掉不需要的属性
+          const filteredAttrs = [
+            'L_ID',
+            'block_id',
+            'is_straight',
+            'road_type',
+            'pptype',
+            'cutin',
+            'cutin_from',
+          ]
+          const filteredEntries = Object.entries(one_path['attrs']).filter(([key, value]) =>
+            filteredAttrs.includes(key),
+          ) // 过滤掉不需要的属性
           attributes += '<pre style="margin: 0; font-family: inherit;"><code>'
           attributes += `path_id: ${path_id}<br>`
           filteredEntries.forEach(([key, value]) => {
@@ -605,23 +640,23 @@ export default class ApplicationManager extends GraphicTools {
           })
           attributes += '</code></pre>'
         }
-        tooltip.innerHTML = attributes;
-        tooltip.style.display = 'block';
-        tooltip.style.left = e.clientX + 15 + 'px';
-        tooltip.style.top = e.clientY + 10 + 'px';
+        tooltip.innerHTML = attributes
+        tooltip.style.display = 'block'
+        tooltip.style.left = e.clientX + 15 + 'px'
+        tooltip.style.top = e.clientY + 10 + 'px'
       })
       g.on('pointerout', (e) => {
         tooltip.style.display = 'none'
-        this.draw_map_road(g, points, "#fff")
+        this.draw_map_road(g, points, '#fff')
       })
 
       g.interactive = true
       g.cursor = 'pointer'
 
       // 保存原始数据用于交互
-      g.path_id = path_id;
-      g.original_points = points;
-    });
+      g.path_id = path_id
+      g.original_points = points
+    })
 
     // cons.alpha = 0.6;
     return cons
@@ -651,27 +686,33 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  graphics_sacle_move(e, graphic, scale_level_v) {
+  graphics_sacle_move(e, scale_level_v) {
+    const graphic = this.mainContainer
     let the_x = e.global.x - graphic.position.x
     let the_y = e.global.y - graphic.position.y
 
     // 缩放
-    graphic.scale.set(graphic.scale.x * scale_level_v)
+    const scale_to = graphic.scale.x * scale_level_v
+    graphic.scale.set(scale_to)
 
+    this.agentTextContainer.scale.set(scale_to)
     // 缩放以左上角为原点，为了看起来是在指针处缩放的，我们把原先指针所指的点移回指针位置
     // 考虑某个点坐标 x, 缩放之后位置会偏移 (x * scale_level_v) 的距离
     // 因此需要调整的距离是 (x * scale_level_v) - x
-    graphic.position.set(
-      graphic.position.x - the_x * (scale_level_v - 1),
-      graphic.position.y - the_y * (scale_level_v - 1),
-    )
+    this.move_all(-the_x * (scale_level_v - 1), -the_y * (scale_level_v - 1))
   }
 
-  move_all_things(off_x, off_y) {
+  move_all(off_x, off_y) {
     this.mainContainer.position.set(
       this.mainContainer.position.x + off_x,
       this.mainContainer.position.y + off_y,
     )
+
+    this.agentTextContainer.position.set(
+      this.agentTextContainer.position.x + off_x,
+      this.agentTextContainer.position.y + off_y,
+    )
+
     console.log('main container: ', this.mainContainer.position, this.mainContainer.scale.x)
   }
 
@@ -679,19 +720,18 @@ export default class ApplicationManager extends GraphicTools {
   updateAgents() {
     // 如果动画被禁用，直接返回，不执行任何操作
     if (!this.smoothMovementConfig.enabled) {
-      return;
+      return
     }
 
     // 遍历所有车辆，调用更新方法
     for (const agent of Object.values(this.agents)) {
-      agent.update();
+      agent.update()
     }
   }
 
   map_xy_to_app(point) {
     return [point[0], -point[1]]
   }
-
 
   get_lock_data_update(data) {
     // console.log("get lock area backend data:", data);
@@ -720,7 +760,6 @@ export default class ApplicationManager extends GraphicTools {
       g.stroke({ color: color, width: 1, pixelLine: false })
     }
   }
-
 
   demo_path_to_my(path) {
     // 缓存频繁访问的属性
@@ -843,7 +882,7 @@ export default class ApplicationManager extends GraphicTools {
 
   path_update(data) {
     // console.log("get pp backend data:", data);
-    if (data.type == "long_path") {
+    if (data.type == 'long_path') {
       let vehicleId = data.data.v
       this.agents[vehicleId].graph_long_path.clear()
       this.drawPath(
@@ -855,7 +894,7 @@ export default class ApplicationManager extends GraphicTools {
         this.long_path_width,
         0.7,
       )
-    } else if (data.type == "short_path") {
+    } else if (data.type == 'short_path') {
       let vehicleId = data.data.v
       this.agents[vehicleId].graph_short_path.clear()
       this.drawPath(
@@ -876,7 +915,7 @@ export default class ApplicationManager extends GraphicTools {
     for (const [id, v] of Object.entries(data.data)) {
       // 如果禁用了平滑移动，则为每个Agent重置设置
       if (!this.smoothMovementConfig.enabled && this.agents[id]) {
-        this.agents[id].isAnimating = false;
+        this.agents[id].isAnimating = false
       }
 
       this.drawOneAgent({

@@ -37,7 +37,7 @@ export default class Agent {
       text: this.vehicle_id,
       style: {
         // fontFamily: 'DejaVuSansMono',
-        fontSize: 12,
+        fontSize: 14,
         fill: "#fff"
       },
     })
@@ -53,21 +53,8 @@ export default class Agent {
   }
 
   sync_text_pos(x, y) {
-    return
-    let scale = this.manager.mainContainer.scale.x;
     this.text.position.set(x, y)
     this.text.rotation = -this.manager.g_rotation
-    // 动态调整字号，保持缩放时清晰
-    const baseFontSize = 14;
-    let newFontSize = baseFontSize
-    // if (scale > 1){
-    //   newFontSize *= scale
-    // }else{
-    //   newFontSize = baseFontSize / scale
-    // }
-    if (this.text.style.fontSize !== newFontSize) {
-      this.text.style.fontSize = newFontSize;
-    }
   }
 
   // 新方法：在每一帧更新位置
