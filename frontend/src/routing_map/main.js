@@ -555,7 +555,9 @@ export default class ApplicationManager extends GraphicTools {
 
   async initMap() {
     // console.log('map_path_info: ', this.map_path_info)
-    const cons = new Container()
+    const cons = new Container({
+      isRenderGroup: true,
+    })
 
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
       // console.log(path_id, one_path);
