@@ -6,7 +6,7 @@ config = Config()
 
 __version__ = "3.2.3.1-2"
 
-TITLE: str = "scenario"
+TITLE: str = "pp-visual"
 VERSION: str = config("pp_visual_VERSION", default=__version__)
 DEBUG: bool = config("DEBUG", cast=bool, default=False)
 ENABLE_DOCS: bool = config("ENABLE_DOCS", cast=bool, default=True)
