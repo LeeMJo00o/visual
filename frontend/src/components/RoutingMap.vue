@@ -8,15 +8,22 @@ let appManager: ApplicationManager | null = null
 // 处理窗口大小变化
 const handleResize = () => {
   if (appManager && appManager.app && gameContainer.value) {
-    appManager.app.renderer.resize(gameContainer.value.clientWidth, gameContainer.value.clientHeight)
+    appManager.app.renderer.resize(
+      gameContainer.value.clientWidth,
+      gameContainer.value.clientHeight,
+    )
   }
 }
 
 // 组件挂载时初始化游戏
 onMounted(async () => {
-  // 创建并初始化应用管理器
-  appManager = new ApplicationManager()
-  await appManager.init()
+  // 使用单例模式获取应用管理器实例
+  appManager = ApplicationManager.getInstance()
+
+  // 如果还没有初始化，则进行初始化
+  if (!appManager.mainContainer) {
+    await appManager.init()
+  }
 
   // 添加窗口大小变化的监听
   window.addEventListener('resize', handleResize)
@@ -24,14 +31,11 @@ onMounted(async () => {
 
 // 组件卸载时清理资源
 onUnmounted(() => {
-  // 清理所有资源
-  if (appManager) {
-    appManager.cleanup()
-    appManager = null
-  }
-
   // 移除窗口大小变化监听
   window.removeEventListener('resize', handleResize)
+
+  // 注意：不在这里清理ApplicationManager，因为它是单例
+  // 只有在页面完全卸载时才会清理
 })
 </script>
 

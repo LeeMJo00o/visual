@@ -30,9 +30,32 @@ import Agent from './agent.js' // 导入 Agent 类
 const roundTo = (num, decimalPlaces) =>
   Math.round(num * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces)
 
+// 使用window对象存储全局单例实例，避免热重载时丢失
+const getGlobalInstance = () => {
+  return window.__applicationManagerInstance || null
+}
+
+const setGlobalInstance = (instance) => {
+  window.__applicationManagerInstance = instance
+}
+
+const clearGlobalInstance = () => {
+  delete window.__applicationManagerInstance
+}
+
 export default class ApplicationManager extends GraphicTools {
   constructor() {
+    // 如果已经存在实例，返回现有实例
+    const existingInstance = getGlobalInstance()
+    if (existingInstance) {
+      return existingInstance
+    }
+
     super()
+
+    // 设置全局实例
+    setGlobalInstance(this)
+
     this.app = new Application()
     this.graphics_path_short = null
     this.graphics_path_long = null
@@ -85,6 +108,37 @@ export default class ApplicationManager extends GraphicTools {
 
     // 创建事件管理器实例
     this.eventManager = null
+  }
+
+  // 获取单例实例
+  static getInstance() {
+    const existingInstance = getGlobalInstance()
+    if (!existingInstance) {
+      console.log('创建新的ApplicationManager实例')
+      return new ApplicationManager()
+    } else {
+      console.log('返回现有的ApplicationManager实例')
+      // 确保canvas正确显示
+      existingInstance.ensureCanvasDisplay()
+      return existingInstance
+    }
+  }
+
+  // 确保canvas正确显示
+  ensureCanvasDisplay() {
+    if (this.app && this.app.canvas) {
+      const game_container = document.getElementById('map_main_container')
+      if (game_container && !game_container.contains(this.app.canvas)) {
+        console.log('重新添加canvas到DOM')
+        game_container.appendChild(this.app.canvas)
+      }
+
+      // 确保应用正常渲染
+      if (this.app.renderer) {
+        console.log('强制重新渲染PIXI应用')
+        this.app.renderer.render(this.app.stage)
+      }
+    }
   }
 
   // 添加需要清理的资源
@@ -182,6 +236,9 @@ export default class ApplicationManager extends GraphicTools {
     Object.keys(this.cleanupTasks).forEach((key) => {
       this.cleanupTasks[key] = []
     })
+
+    // 重置全局单例实例
+    clearGlobalInstance()
 
     // mapCache.close()
 
@@ -447,7 +504,9 @@ export default class ApplicationManager extends GraphicTools {
 
       // 添加页面卸载事件监听器
       const beforeUnloadHandler = () => {
-        this.cleanup()
+        // 页面重载时不调用cleanup，保持单例实例
+        // 只有在页面完全关闭时才清理资源
+        console.log('页面卸载，但不清理ApplicationManager单例')
       }
       window.addEventListener('beforeunload', beforeUnloadHandler)
       this.addCleanupTask('eventListeners', {

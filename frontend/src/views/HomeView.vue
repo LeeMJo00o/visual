@@ -79,7 +79,7 @@ const onAgentHide = () => {
             :collapse="isSidebarCollapsed"
           >
             <el-menu-item index="1">
-              <span>The func one</span>
+              <span>The func one 4</span>
             </el-menu-item>
 
             <el-menu-item index="2">
