@@ -79,24 +79,6 @@ export default class ApplicationManager extends GraphicTools {
       enabled: true, // 是否启用平滑移动
     }
 
-    // 创建全局tooltip元素
-    this.tooltip = document.createElement('div')
-    this.tooltip.style.cssText = `
-      position: fixed;
-      padding: 8px 12px;
-      background: rgba(255, 255, 255, 0.95);
-      color: black;
-      border-radius: 6px;
-      font-size: 14px;
-      font-family: monospace;
-      pointer-events: none;
-      display: none;
-      z-index: 1000;
-      border: 1px solid #ccc;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    `
-    document.body.appendChild(this.tooltip)
-
     // 存储所有需要清理的资源
     this.cleanupTasks = {
       intervals: [], // 存储所有setInterval的ID
@@ -635,6 +617,21 @@ export default class ApplicationManager extends GraphicTools {
       isRenderGroup: true,
     })
 
+    this.path_tooltip = document.createElement('div')
+    this.path_tooltip.style.cssText = `
+      position: fixed;
+      padding: 5px 8px;
+      background: white;
+      color: black;
+      border-radius: 4px;
+      font-size: 14px;
+      pointer-events: none;
+      display: none;
+      z-index: 1000;
+      border: 1px solid black;
+    `
+    document.body.appendChild(this.path_tooltip)
+
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
       // console.log(path_id, one_path);
       const points = one_path['points']
@@ -644,21 +641,6 @@ export default class ApplicationManager extends GraphicTools {
 
       // 直接使用 drawPath 方法
       this.draw_map_road(g, points, '#fff', 0.4)
-
-      const tooltip = document.createElement('div')
-      tooltip.style.cssText = `
-              position: fixed;
-              padding: 5px 8px;
-              background: white;
-              color: black;
-              border-radius: 4px;
-              font-size: 14px;
-              pointer-events: none;
-              display: none;
-              z-index: 1000;
-              border: 1px solid black;
-          `
-      document.body.appendChild(tooltip)
 
       g.on('pointerover', (e) => {
         this.draw_map_road(g, points, '#f0f', 0.8)
@@ -690,13 +672,13 @@ export default class ApplicationManager extends GraphicTools {
           })
           attributes += '</code></pre>'
         }
-        tooltip.innerHTML = attributes
-        tooltip.style.display = 'block'
-        tooltip.style.left = e.clientX + 15 + 'px'
-        tooltip.style.top = e.clientY + 10 + 'px'
+        this.path_tooltip.innerHTML = attributes
+        this.path_tooltip.style.display = 'block'
+        this.path_tooltip.style.left = e.clientX + 15 + 'px'
+        this.path_tooltip.style.top = e.clientY + 10 + 'px'
       })
       g.on('pointerout', (e) => {
-        tooltip.style.display = 'none'
+        this.path_tooltip.style.display = 'none'
         this.draw_map_road(g, points, '#fff')
       })
 
