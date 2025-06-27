@@ -46,6 +46,7 @@ def osm_to_json(routing: Routing):
                  "block_id",
                  "cut_in_block_ids",
                  "lane_change",
+                 "prefer"
                  ]
 
     lanes = []
@@ -1394,4 +1395,4 @@ if __name__ == "__main__":
     # )
     # with open("map/map.svg", "w") as f:
     #     f.write(svg)
-    export_osm_svg("map/fangzhen0610V1.5.osm")
+    export_osm_svg("map/MexicoMap_20250626V9.0.osm")

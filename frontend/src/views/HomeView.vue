@@ -5,6 +5,8 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { useGlobalStore } from '../stores/globalStore'
 // import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import LockArea from '@/components/LockArea.vue'
+import AgentsManager from '@/components/AgentsManager.vue'
 
 // 声明全局接口
 declare global {
@@ -17,7 +19,7 @@ declare global {
 const globalStore = useGlobalStore()
 
 // 添加当前选中的菜单项
-const currentMenu = ref('1')
+const currentMenu = ref('main-map')
 
 // 滑块数值
 const sliderValue = ref(0)
@@ -78,16 +80,24 @@ const onAgentHide = () => {
             @select="handleMenuSelect"
             :collapse="isSidebarCollapsed"
           >
-            <el-menu-item index="1">
-              <span>The func one 4</span>
+            <el-menu-item index="main-map">
+              <span>Main Map</span>
             </el-menu-item>
 
             <el-menu-item index="2">
-              <span>map tools</span>
+              <span>Map Tools</span>
             </el-menu-item>
 
             <el-menu-item index="3">
               <span>No func2</span>
+            </el-menu-item>
+
+            <el-menu-item index="agents-manager">
+              <span>Agent List</span>
+            </el-menu-item>
+
+            <el-menu-item index="lock-area">
+              <span>Lock Area</span>
             </el-menu-item>
 
             <el-sub-menu index="4">
@@ -105,7 +115,7 @@ const onAgentHide = () => {
         <el-container class="inner-container">
           <div>
             <div class="top-section">
-              <div v-if="currentMenu === '1'">
+              <div v-if="currentMenu === 'main-map'">
                 <div class="slider-container">
                   <div class="label-and-buttons">
                     <el-button type="primary" plain id="map_hide" @click="onMapHide"
@@ -139,7 +149,7 @@ const onAgentHide = () => {
                       : ''
                   }}
                 </span>
-                <span style="margin-left: 20px;">
+                <span style="margin-left: 20px">
                   pointer:
                   {{
                     globalStore.positions.pointer
@@ -148,11 +158,20 @@ const onAgentHide = () => {
                   }}
                 </span>
               </div>
+
+              <div v-else-if="currentMenu === 'agents-manager'">
+                <AgentsManager />
+              </div>
+
+              <div v-else-if="currentMenu === 'lock-area'">
+                <LockArea />
+              </div>
+
               <div v-else-if="currentMenu === '3-1'">
-                <p>这里是子功能1的简要介绍...</p>
+                <p>这里是子功能1的简要介绍 ...</p>
               </div>
               <div v-else-if="currentMenu === '3-2'">
-                <p>这里是子功能2的简要介绍...</p>
+                <p>这里是子功能2的简要介绍 ...</p>
               </div>
               <div v-else>
                 <!-- <h3>请选择一个功能</h3> -->
@@ -218,6 +237,7 @@ const onAgentHide = () => {
 
 .top-section {
   height: 100%;
+  margin-bottom: 10px;
 }
 
 .main-map {
@@ -230,7 +250,6 @@ const onAgentHide = () => {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin: 10px 0;
 }
 .label-and-buttons {
   display: flex;
