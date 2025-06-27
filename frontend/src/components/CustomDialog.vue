@@ -7,6 +7,7 @@
         class="custom-dialog"
         :style="dialogStyle"
         @mousedown="handleDialogMouseDown"
+        @wheel="handleWheel"
       >
         <!-- 标题栏 -->
         <div class="dialog-header" @mousedown="startDrag">
@@ -128,8 +129,29 @@ const handleMouseLeave = () => {
 }
 
 const handleWheel = (e: WheelEvent) => {
-  // 确保滚轮事件不被阻止，让内容正常滚动
-  e.stopPropagation()
+  const target = e.currentTarget as HTMLElement
+
+  // 如果事件发生在对话框根元素上，我们需要找到内容区域
+  let scrollTarget = target
+  if (target.classList.contains('custom-dialog')) {
+    const dialogBody = target.querySelector('.dialog-body') as HTMLElement
+    if (dialogBody) {
+      scrollTarget = dialogBody
+    }
+  }
+
+  // 检查滚动容器是否已经到达边界
+  const isAtTop = scrollTarget.scrollTop === 0
+  const isAtBottom = scrollTarget.scrollTop + scrollTarget.clientHeight >= scrollTarget.scrollHeight
+
+  // 如果向上滚动且已经在顶部，或者向下滚动且已经在底部，则阻止默认行为和冒泡
+  if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+    e.preventDefault()
+    e.stopPropagation()
+  } else {
+    // 否则只阻止事件冒泡，让内容正常滚动
+    e.stopPropagation()
+  }
 }
 
 const handleDialogMouseDown = () => {
