@@ -95,7 +95,7 @@ const dialogRef = ref<HTMLElement>()
 const dialogWidth = ref(props.width)
 const dialogHeight = ref(props.height)
 const dialogLeft = ref(0)
-const dialogTop = ref(0)
+const dialogTop = ref(100)
 
 // 拖拽状态
 const isDragging = ref(false)
@@ -296,9 +296,8 @@ const handleKeydown = (e: KeyboardEvent) => {
 const centerDialog = () => {
   if (!dialogRef.value) return
 
-  const rect = dialogRef.value.getBoundingClientRect()
-  dialogLeft.value = (window.innerWidth - rect.width) / 2
-  dialogTop.value = (window.innerHeight - rect.height) / 2
+  dialogLeft.value = 0
+  dialogTop.value = 200 // 位置(0, 200)
 }
 
 // 监听窗口大小变化

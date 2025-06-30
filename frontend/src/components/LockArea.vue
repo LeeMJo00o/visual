@@ -7,7 +7,7 @@ const handleDrawBox = () => {
 
 <template>
   <div class="lock-area-func">
-    <el-button type="primary" plain @click="handleDrawBox">画框</el-button>
+    <el-button type="primary" plain @click="handleDrawBox">start draw</el-button>
   </div>
 </template>
 
