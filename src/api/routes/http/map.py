@@ -55,6 +55,13 @@ def get_config():
             "mode": "test-demo",
             "version": MAP_NAME
         },
+        "taiguo": {
+            "rotation": 0.29,
+            "offset": [768, 695],
+            "scale": 1.319,
+            "mode": "test-demo",
+            "version": MAP_NAME
+        }
     }
     return get_config_by_prefix(config_map, MAP_NAME)
 
