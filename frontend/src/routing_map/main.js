@@ -326,7 +326,6 @@ export default class ApplicationManager extends GraphicTools {
       this.app.stage.addChild(this.drawingGraphics)
 
       this.graphics_path_apply_area.alpha = 0.5
-      this.graphics_lock_area.alpha = 0.4
 
       // 初始化事件管理器
       this.eventManager = new EventManager(this.app, this)
@@ -371,6 +370,15 @@ export default class ApplicationManager extends GraphicTools {
           },
         })
         ws_pose.connect()
+
+        const ws_areas = new WebSocketClient(`${ws_prefix}/api/ws/demo/lock_area`, {
+          onMessage: (data) => {
+            this.areas_update(data)
+          },
+        })
+        ws_areas.connect()
+        this.addCleanupTask('websockets', ws_areas)
+
         this.addCleanupTask('websockets', ws_pose)
       } else {
         // 自己测试用
@@ -743,15 +751,22 @@ export default class ApplicationManager extends GraphicTools {
         return { x: mapX, y: mapY }
       })
 
+      // 创建闭合多边形（添加第一个点作为最后一个点）
+      const polygon = [...mapVertices, mapVertices[0]]
+
       const requestData = {
-        vertices: mapVertices,
-        timestamp: new Date().toISOString(),
+        name: 'lock_area_' + Date.now(), // 生成唯一名称
+        subtype: 'lock',
+        type: 'lock',
+        created_by: 'pp-visual',
+        describe: '',
+        polygon: polygon,
       }
 
       console.log('发送画框请求:', requestData)
 
       // 发送HTTP请求到后端
-      const response = await axios.post('/api/drawing/process', requestData, {
+      const response = await axios.post('/api/map/add_lock_area', requestData, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1014,6 +1029,55 @@ export default class ApplicationManager extends GraphicTools {
       }
       g.stroke({ color: color, width: 1, pixelLine: false })
     }
+  }
+
+  areas_update(data) {
+    const all_areas = data.data
+    console.log('get areas: ', all_areas)
+
+    // 清除之前的锁定区域显示
+    if (this.graphics_lock_area) {
+      this.graphics_lock_area.clear()
+    }
+
+    // 绘制所有锁定区域
+    Object.values(all_areas).forEach((area) => {
+      this.drawLockArea(area)
+    })
+  }
+
+  // 绘制单个锁定区域
+  drawLockArea(area) {
+    if (!this.graphics_lock_area || !area.polygon || area.polygon.length < 3) {
+      return
+    }
+
+    const g = this.graphics_lock_area
+    const polygon = area.polygon
+
+    // 转换第一个点到应用坐标
+    const firstPoint = this.map_xy_to_app([polygon[0].x, polygon[0].y])
+    g.moveTo(firstPoint[0], firstPoint[1])
+
+    // 绘制多边形路径
+    for (let i = 1; i < polygon.length; i++) {
+      const point = this.map_xy_to_app([polygon[i].x, polygon[i].y])
+      g.lineTo(point[0], point[1])
+    }
+
+    // 设置样式并绘制
+    g.stroke({
+      color: '#ffff00',
+      width: 2,
+      pixelLine: false,
+      alpha: 0.7
+    })
+
+    // // 添加半透明填充
+    // g.fill({
+    //   color: '#ff0000',
+    //   alpha: 0.1,
+    // })
   }
 
   demo_path_to_my(path) {

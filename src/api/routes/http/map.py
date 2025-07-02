@@ -4,12 +4,13 @@ from src.core.config import MAP_NAME
 import json
 from src.map_tools import export_osm_svg, export_osm_path_info
 import os
+from src.middlewares.redis_handler.connect import redis_cli
 
 router = APIRouter()
 
 
 @router.post('/svg')
-def get_svg():
+async def get_svg():
     map_path = f"map/{MAP_NAME}"
     svg_file = f"map/raw_{MAP_NAME}.svg"
 
@@ -32,7 +33,7 @@ def get_config_by_prefix(config_map: dict, src: str) -> dict:
 
 
 @router.post('/config')
-def get_config():
+async def get_config():
     config_map = {
         "Abuzhabi_QP_VPB": {
             "rotation": -2.471,
@@ -67,7 +68,7 @@ def get_config():
 
 
 @router.post('/path_info')
-def get_path_info():
+async def get_path_info():
     map_path = f"map/{MAP_NAME}"
     path_file = f"map/raw_path_{MAP_NAME}.json"
 
@@ -80,3 +81,12 @@ def get_path_info():
     with open(path_file, "r") as f:
         path_info = json.load(f)
     return path_info
+
+# {"name":"lock_area_1751455131293","subtype":"lock","type":"lock","created_by":"pp-visual","describe":"","polygon":[{"x":1449.7863,"y":1769.692},{"x":712.9327,"y":543.7826},{"x":198.9195,"y":852.739},{"x":935.7731,"y":2078.6483},{"x":1449.7863,"y":1769.692}]}
+
+@router.post('/add_lock_area')
+async def get_path_info(req: dict = Body()):
+    key_simweb_lock = "pp4:lock_area:simweb"
+    name = req["name"]
+    await redis_cli.hset(key_simweb_lock, name, json.dumps(req))
+    return StdRes()

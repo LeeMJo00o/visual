@@ -16,6 +16,7 @@ _manager = ConnectionManager()
 _manager_demo_path = ConnectionManager()
 _manager_demo_short_path = ConnectionManager()
 _manager_pose = ConnectionManager()
+_manager_lock_area = ConnectionManager()
 
 
 def str_to_json(s: dict) -> dict:
@@ -127,7 +128,7 @@ class BasePathWs(MulLinkServerEndpoint):
         # all_long_path = dict(list(all_long_path.items())[:200])
         for vehicle_id, a_path in all_long_path.items():
             try:
-                if a_path["start_pose"]:
+                if a_path["start_pose"] and a_path["path"]:
                     rs_t[vehicle_id] = g_roads.trans_path(a_path)
                 else:
                     rs_t[vehicle_id] = None
@@ -167,6 +168,7 @@ class BasePathWs(MulLinkServerEndpoint):
                     await asyncio.sleep(cycle_time - _t)
             except Exception as e:
                 logger.error(f"publish path error: {traceback.format_exc()}")
+                await asyncio.sleep(1)
             await asyncio.sleep(0.1)
 
 
@@ -180,3 +182,46 @@ class DemoPathWsServer(BasePathWs):
 class DemoPathWsServerShort(BasePathWs):
     path_kv_key = "pp4:path:short"
     ws_manager = _manager_demo_short_path
+
+
+@router.websocket_route("/lock_area", name="websocket for lock area")
+class AreaWsServer(MulLinkServerEndpoint):
+    ws_manager = _manager_lock_area
+
+    async def on_receive_json(self, mess: dict):
+        print(f"I receive mess: {mess}")
+
+        # send message to the connection
+        await self.websocket.send_json({
+            "msg": "this is a mepublish_demo_pathsage for the one connection"
+        })
+
+        # braodcast message to all connections
+        await self.broadcast_json({
+            "msg_all": "this is a mesage for the all connections"
+        })
+
+    @classmethod
+    async def on_mq_message(cls, message: dict[str, str]):
+        for key, value in message.items():
+            await cls.ws_manager.broadcast_json({
+                "type": key,
+                "data": json.loads(value)
+            })
+    
+    @classmethod
+    async def publish_lock_area(cls):
+        while True:
+            all_areas_t = {}
+            try:
+                all_lock_areas = await redis_cli.hgetall("pp4:lock_area:simweb")
+                for v_id, area in all_lock_areas.items():
+                    pose_data = json.loads(area)
+                    all_areas_t[v_id] = pose_data
+                await cls.ws_manager.broadcast_json({
+                    "type": "areas",
+                    "data": all_areas_t
+                })
+            except Exception as e:
+                logger.error(f"publish_lock_area error: {repr(e)}")
+            await asyncio.sleep(2)
