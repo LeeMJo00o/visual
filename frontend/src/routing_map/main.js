@@ -660,18 +660,33 @@ export default class ApplicationManager extends GraphicTools {
 
   // 显示画框确认对话框
   showDrawingConfirmDialog(left, top, width, height) {
+    // 计算四个顶点的屏幕坐标
+    const screenVertices = [
+      { x: left, y: top }, // 左上角
+      { x: left + width, y: top }, // 右上角
+      { x: left + width, y: top + height }, // 右下角
+      { x: left, y: top + height }, // 左下角
+    ]
+
+    // 转换为地图坐标用于显示
+    const mapVertices = screenVertices.map((vertex) => {
+      const [mapX, mapY] = this.raw_xy(vertex.x, vertex.y)
+      return { x: mapX, y: mapY }
+    })
+
+    const verticesText = mapVertices
+      .map((v, i) => `[${v.x.toFixed(2)}, ${v.y.toFixed(2)}]`)
+      .join('<br>')
+
     // 导入Element Plus的ElMessageBox
     import('element-plus')
       .then(({ ElMessageBox }) => {
-        ElMessageBox.confirm(
-          `确认要处理这个区域吗？\n位置: (${left.toFixed(2)}, ${top.toFixed(2)})\n尺寸: ${width.toFixed(2)} x ${height.toFixed(2)}`,
-          '画框确认',
-          {
-            confirmButtonText: '确认',
-            cancelButtonText: '取消',
-            type: 'info',
-          },
-        )
+        ElMessageBox.confirm(`${verticesText}`, '画框确认', {
+          confirmButtonText: '确认',
+          cancelButtonText: '取消',
+          type: 'success',
+          dangerouslyUseHTMLString: true,
+        })
           .then(() => {
             // 用户点击确认，发送HTTP请求
             this.sendDrawingRequest(left, top, width, height)
@@ -689,7 +704,7 @@ export default class ApplicationManager extends GraphicTools {
         console.error('加载Element Plus组件失败:', error)
         // 降级处理：使用原生confirm
         const confirmed = confirm(
-          `确认要处理这个区域吗？\n位置: (${left.toFixed(2)}, ${top.toFixed(2)})\n尺寸: ${width.toFixed(2)} x ${height.toFixed(2)}`,
+          `确认要处理这个区域吗？\n\n${verticesText}\n\n尺寸: ${width.toFixed(2)} x ${height.toFixed(2)}`,
         )
         if (confirmed) {
           this.sendDrawingRequest(left, top, width, height)
@@ -714,11 +729,22 @@ export default class ApplicationManager extends GraphicTools {
       // 导入axios
       const { default: axios } = await import('axios')
 
+      // 计算四个顶点的屏幕坐标
+      const screenVertices = [
+        { x: left, y: top }, // 左上角
+        { x: left + width, y: top }, // 右上角
+        { x: left + width, y: top + height }, // 右下角
+        { x: left, y: top + height }, // 左下角
+      ]
+
+      // 转换为地图坐标
+      const mapVertices = screenVertices.map((vertex) => {
+        const [mapX, mapY] = this.raw_xy(vertex.x, vertex.y)
+        return { x: mapX, y: mapY }
+      })
+
       const requestData = {
-        left: left,
-        top: top,
-        width: width,
-        height: height,
+        vertices: mapVertices,
         timestamp: new Date().toISOString(),
       }
 
