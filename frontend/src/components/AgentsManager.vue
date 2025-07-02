@@ -56,13 +56,10 @@
 
       <el-table-column label="显示" width="120" align="center">
         <template #default="{ row }">
-          <el-switch
-            v-model="row.isShow"
-            size="small"
-            :active-text="'显示'"
-            :inactive-text="'隐藏'"
-            @change="handleStatusChange(row)"
-          />
+          <div class="switch-container">
+            <el-switch v-model="row.isShow" size="small" @change="handleStatusChange(row)" />
+            <span class="switch-text">{{ row.isShow ? '显示' : '隐藏' }}</span>
+          </div>
         </template>
       </el-table-column>
 
@@ -338,6 +335,20 @@ const hideAllVehicles = () => {
 .position-info {
   font-size: 12px;
   line-height: 1.2;
+}
+
+.switch-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.switch-text {
+  font-size: 12px;
+  color: #606266;
+  min-width: 24px;
+  text-align: center;
 }
 
 /* Element Plus 组件样式覆盖 */

@@ -9,7 +9,7 @@ export default class Agent {
     this.graphics = new Graphics()
     this.manager = manager
     this.w = 16
-    this.h = 6
+    this.h = 3.5
     this.vehicle_id = vehicle_id
 
     // 添加位置信息属性，用于tooltip显示
@@ -85,7 +85,7 @@ export default class Agent {
     // 优化字体缩放：只在缩放变化超过阈值时才更新字体大小
     if (Math.abs(scale - this.lastScale) > this.scaleUpdateThreshold) {
       if (scale > 1) {
-        this.text.style.fontSize = 12 + 12 * (scale - 1) * 0.4
+        this.text.style.fontSize = 12 + 12 * (scale - 1) * 0.1
       } else {
         this.text.style.fontSize = 12
       }

@@ -2,7 +2,5 @@
 pp_visual_RUN_PORT=2030
 pp_visual_REDIS_URL=redis://:Xijingkeji@2024@10.6.64.197:6382/0
 MAP_NAME=taiguo250411V1.3_gzn.osm
-DEMO_REDIS_URL=redis://:Xijingkeji@2024@127.0.0.1:6379/0
+DEMO_REDIS_URL=redis://:Xijingkeji@2024@10.6.64.197:6382/0
 pp_visual_RUN_WORKERS=1
-
-#DEMO_REDIS_URL=redis://:Xijingkeji@2024@10.3.8.71:6379/0

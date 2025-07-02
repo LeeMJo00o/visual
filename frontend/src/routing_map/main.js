@@ -300,11 +300,12 @@ export default class ApplicationManager extends GraphicTools {
 
     console.log('add graphics1: ', v)
     console.log('add graphics2: ', v.graph_long_path)
-    this.add_graphics(v.graph_short_path)
-    this.add_graphics(v.graph_long_path)
-    this.add_graphics(v.graphics)
+
+    this.agentContainer.addChild(v.graphics)
+    this.longPathContainer.addChild(v.graph_long_path)
+    this.shortPathContainer.addChild(v.graph_short_path)
+
     this.agentTextContainer.addChild(v.text)
-    // this.add_graphics(v.text)
 
     return v
     // g.on('pointerover', () => {
@@ -341,6 +342,9 @@ export default class ApplicationManager extends GraphicTools {
     let game_container = document.getElementById('map_main_container')
     game_container.appendChild(this.app.canvas)
     this.mainContainer = new Container()
+    this.agentContainer = new Container()
+    this.longPathContainer = new Container()
+    this.shortPathContainer = new Container()
     this.agentTextContainer = new Container()
 
     // 创建全局tooltip元素
@@ -400,21 +404,19 @@ export default class ApplicationManager extends GraphicTools {
       this.map_container = await this.initMap()
 
       this.app.stage.addChild(this.mainContainer)
+
       this.app.stage.addChild(this.agentTextContainer)
 
-      this.graphics_path_short = new Graphics()
-      this.graphics_path_long = new Graphics()
       this.graphics_path_apply_area = new Graphics()
       this.graphics_lock_area = new Graphics()
 
       this.add_graphics(this.map_container)
-      this.add_graphics(this.graphics_path_long)
-      this.add_graphics(this.graphics_path_short)
+      this.mainContainer.addChild(this.longPathContainer)
+      this.mainContainer.addChild(this.shortPathContainer)
       this.add_graphics(this.graphics_path_apply_area)
       this.add_graphics(this.graphics_lock_area)
+      this.mainContainer.addChild(this.agentContainer)
 
-      this.graphics_path_short.alpha = 0.8
-      this.graphics_path_long.alpha = 0.7
       this.graphics_path_apply_area.alpha = 0.5
       this.graphics_lock_area.alpha = 0.4
 
@@ -452,7 +454,7 @@ export default class ApplicationManager extends GraphicTools {
         ws_short.connect()
         this.addCleanupTask('websockets', ws_short)
 
-        this.long_path_width = 2
+        this.long_path_width = 1
         this.short_path_width = 4
 
         const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
@@ -880,7 +882,7 @@ export default class ApplicationManager extends GraphicTools {
         false,
         this.agents[vehicleId].color,
         width,
-        0.7,
+        0.5,
       )
     }
   }
