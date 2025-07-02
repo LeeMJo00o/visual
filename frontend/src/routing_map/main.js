@@ -227,106 +227,6 @@ export default class ApplicationManager extends GraphicTools {
     console.log('资源清理完成')
   }
 
-  // 坐标变换，注意 pixijs 的变换顺序是 缩放、旋转、平移
-  // 考虑地图坐标 (raw_x, raw_y) 则点击位置 (x, y) 与原位置的关系为：
-  // x = rotate(raw_x * scale) + offset_x
-  // 逆运算即可算出原坐标
-
-  raw_xy(x, y) {
-    let scale = this.mainContainer.scale.x
-
-    let _x = x - this.mainContainer.position.x
-    let _y = y - this.mainContainer.position.y
-
-    let newPoint = unrotatePoint(_x, _y, this.g_rotation)
-
-    let t_x = newPoint.x / scale
-    let t_y = newPoint.y / scale
-    t_y = -t_y // 前端 y 的方向与原地图相反
-    return [roundTo(t_x, 4), roundTo(t_y, 4)]
-  }
-
-  add_agent(vehicle_id, x = 0, y = 0, theta = 0) {
-    console.log('add agent:', vehicle_id, x, y, theta)
-    let v = new Agent(this, vehicle_id)
-    // this.agent_graphics.push(v.graphics)
-    v.graphics.interactive = true
-    v.graphics.cursor = 'pointer'
-
-    this.agents[vehicle_id] = v
-    this.agents[vehicle_id].setPosition(x, y, theta)
-
-    // 添加鼠标悬停事件处理，显示车辆信息
-    v.graphics.on('pointerover', (e) => {
-      // 高亮显示车辆
-      v.graphics.tint = 0xffffff // 亮白色
-
-      // 创建tooltip内容
-      const agent = this.agents[vehicle_id]
-      const tooltipContent = `
-        <div style="font-weight: bold; margin-bottom: 4px;">车辆信息</div>
-        <div>ID: ${agent.vehicle_id}</div>
-        <div>X: ${agent.position.x.toFixed(2)}</div>
-        <div>Y: ${-agent.position.y.toFixed(2)}</div>
-        <div>角度: ${agent.position.theta.toFixed(3)}</div>
-      `
-
-      // 显示tooltip
-      if (this.tooltip) {
-        this.tooltip.innerHTML = tooltipContent
-        this.tooltip.style.display = 'block'
-        this.tooltip.style.left = e.clientX + 15 + 'px'
-        this.tooltip.style.top = e.clientY + 10 + 'px'
-
-        // 跟随鼠标移动
-        const onMouseMove = (moveEvent) => {
-          this.tooltip.style.left = moveEvent.clientX + 15 + 'px'
-          this.tooltip.style.top = moveEvent.clientY + 10 + 'px'
-        }
-
-        // 鼠标离开时移除事件监听
-        const onPointerOut = () => {
-          document.removeEventListener('mousemove', onMouseMove)
-          this.tooltip.style.display = 'none'
-          v.graphics.tint = 0xffffff // 恢复正常颜色
-          // 移除pointerout事件监听器，避免重复绑定
-          v.graphics.off('pointerout', onPointerOut)
-        }
-
-        document.addEventListener('mousemove', onMouseMove)
-        v.graphics.on('pointerout', onPointerOut)
-      }
-    })
-
-    console.log('add graphics1: ', v)
-    console.log('add graphics2: ', v.graph_long_path)
-
-    this.agentContainer.addChild(v.graphics)
-    this.longPathContainer.addChild(v.graph_long_path)
-    this.shortPathContainer.addChild(v.graph_short_path)
-
-    this.agentTextContainer.addChild(v.text)
-
-    return v
-    // g.on('pointerover', () => {
-    //     console.log('鼠标悬停在车上', g);
-    // });
-
-    // g.on('pointerout', () => {
-    //     console.log('鼠标离开车');
-    // });
-  }
-
-  add_graphics(g, index = null) {
-    if (index === null) {
-      this.mainContainer.addChild(g)
-    } else {
-      this.mainContainer.addChildAt(g, index)
-    }
-    g.interactive = true
-    g.cursor = 'pointer'
-  }
-
   async init() {
     const resolution = window.devicePixelRatio > 1 || window.innerHeight > 1080 ? 2 : 1
     await this.app.init({
@@ -346,6 +246,11 @@ export default class ApplicationManager extends GraphicTools {
     this.longPathContainer = new Container()
     this.shortPathContainer = new Container()
     this.agentTextContainer = new Container()
+
+    this.mouse_func = 'default'
+    this.drawingStartPoint = null
+    this.drawingEndPoint = null
+    this.drawingGraphics = null
 
     // 创建全局tooltip元素
     this.tooltip = document.createElement('div')
@@ -504,6 +409,106 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
+  // 坐标变换，注意 pixijs 的变换顺序是 缩放、旋转、平移
+  // 考虑地图坐标 (raw_x, raw_y) 则点击位置 (x, y) 与原位置的关系为：
+  // x = rotate(raw_x * scale) + offset_x
+  // 逆运算即可算出原坐标
+
+  raw_xy(x, y) {
+    let scale = this.mainContainer.scale.x
+
+    let _x = x - this.mainContainer.position.x
+    let _y = y - this.mainContainer.position.y
+
+    let newPoint = unrotatePoint(_x, _y, this.g_rotation)
+
+    let t_x = newPoint.x / scale
+    let t_y = newPoint.y / scale
+    t_y = -t_y // 前端 y 的方向与原地图相反
+    return [roundTo(t_x, 4), roundTo(t_y, 4)]
+  }
+
+  add_agent(vehicle_id, x = 0, y = 0, theta = 0) {
+    console.log('add agent:', vehicle_id, x, y, theta)
+    let v = new Agent(this, vehicle_id)
+    // this.agent_graphics.push(v.graphics)
+    v.graphics.interactive = true
+    v.graphics.cursor = 'pointer'
+
+    this.agents[vehicle_id] = v
+    this.agents[vehicle_id].setPosition(x, y, theta)
+
+    // 添加鼠标悬停事件处理，显示车辆信息
+    v.graphics.on('pointerover', (e) => {
+      // 高亮显示车辆
+      v.graphics.tint = 0xffffff // 亮白色
+
+      // 创建tooltip内容
+      const agent = this.agents[vehicle_id]
+      const tooltipContent = `
+        <div style="font-weight: bold; margin-bottom: 4px;">车辆信息</div>
+        <div>ID: ${agent.vehicle_id}</div>
+        <div>X: ${agent.position.x.toFixed(2)}</div>
+        <div>Y: ${-agent.position.y.toFixed(2)}</div>
+        <div>角度: ${agent.position.theta.toFixed(3)}</div>
+      `
+
+      // 显示tooltip
+      if (this.tooltip) {
+        this.tooltip.innerHTML = tooltipContent
+        this.tooltip.style.display = 'block'
+        this.tooltip.style.left = e.clientX + 15 + 'px'
+        this.tooltip.style.top = e.clientY + 10 + 'px'
+
+        // 跟随鼠标移动
+        const onMouseMove = (moveEvent) => {
+          this.tooltip.style.left = moveEvent.clientX + 15 + 'px'
+          this.tooltip.style.top = moveEvent.clientY + 10 + 'px'
+        }
+
+        // 鼠标离开时移除事件监听
+        const onPointerOut = () => {
+          document.removeEventListener('mousemove', onMouseMove)
+          this.tooltip.style.display = 'none'
+          v.graphics.tint = 0xffffff // 恢复正常颜色
+          // 移除pointerout事件监听器，避免重复绑定
+          v.graphics.off('pointerout', onPointerOut)
+        }
+
+        document.addEventListener('mousemove', onMouseMove)
+        v.graphics.on('pointerout', onPointerOut)
+      }
+    })
+
+    console.log('add graphics1: ', v)
+    console.log('add graphics2: ', v.graph_long_path)
+
+    this.agentContainer.addChild(v.graphics)
+    this.longPathContainer.addChild(v.graph_long_path)
+    this.shortPathContainer.addChild(v.graph_short_path)
+
+    this.agentTextContainer.addChild(v.text)
+
+    return v
+    // g.on('pointerover', () => {
+    //     console.log('鼠标悬停在车上', g);
+    // });
+
+    // g.on('pointerout', () => {
+    //     console.log('鼠标离开车');
+    // });
+  }
+
+  add_graphics(g, index = null) {
+    if (index === null) {
+      this.mainContainer.addChild(g)
+    } else {
+      this.mainContainer.addChildAt(g, index)
+    }
+    g.interactive = true
+    g.cursor = 'pointer'
+  }
+
   // 生成类似你期望的格式
   pointsToSvgPath(points, color = '#fff', strokeWidth = 0.5, pathId = null) {
     if (!points || points.length < 2) return null
@@ -557,6 +562,79 @@ export default class ApplicationManager extends GraphicTools {
   // 新增：计算两点之间的角度
   calculateAngle(x1, y1, x2, y2) {
     return Math.atan2(y2 - y1, x2 - x1)
+  }
+
+  // 设置鼠标功能
+  setMouseFunction(func) {
+    this.mouse_func = func
+    if (func === 'draw') {
+      // 设置鼠标为十字光标
+      if (this.app && this.app.canvas) {
+        this.app.canvas.style.cursor = 'crosshair'
+      }
+      console.log('进入画框模式')
+    } else {
+      // 恢复默认光标
+      if (this.app && this.app.canvas) {
+        this.app.canvas.style.cursor = 'default'
+      }
+      console.log('退出画框模式')
+    }
+  }
+
+  // 处理画框相关的鼠标事件
+  handleDrawingMouseDown(e) {
+    if (this.mouse_func !== 'draw') return
+
+    const point = e.global
+    this.drawingStartPoint = { x: point.x, y: point.y }
+
+    // 创建临时绘制图形
+    this.drawingGraphics = new Graphics()
+    this.mainContainer.addChild(this.drawingGraphics)
+
+    console.log('开始画框:', this.drawingStartPoint)
+  }
+
+  handleDrawingMouseMove(e) {
+    if (this.mouse_func !== 'draw' || !this.drawingStartPoint || !this.drawingGraphics) return
+
+    const point = e.global
+    this.drawingEndPoint = { x: point.x, y: point.y }
+
+    // 清除之前的绘制
+    this.drawingGraphics.clear()
+
+    // 绘制矩形
+    const width = this.drawingEndPoint.x - this.drawingStartPoint.x
+    const height = this.drawingEndPoint.y - this.drawingStartPoint.y
+
+    this.drawingGraphics
+      .rect(this.drawingStartPoint.x, this.drawingStartPoint.y, width, height)
+      .stroke({ color: '#ff0000', width: 2 })
+  }
+
+  handleDrawingMouseUp(e) {
+    if (this.mouse_func !== 'draw' || !this.drawingStartPoint || !this.drawingGraphics) return
+
+    const point = e.global
+    this.drawingEndPoint = { x: point.x, y: point.y }
+
+    // 完成画框
+    console.log('完成画框:', this.drawingStartPoint, this.drawingEndPoint)
+
+    // 清理临时绘制图形
+    if (this.drawingGraphics) {
+      this.drawingGraphics.destroy()
+      this.drawingGraphics = null
+    }
+
+    // 重置状态
+    this.drawingStartPoint = null
+    this.drawingEndPoint = null
+
+    // 恢复默认鼠标功能
+    this.setMouseFunction('default')
   }
 
   draw_map_road(g, points, color, alpha = 0.5) {
@@ -867,6 +945,10 @@ export default class ApplicationManager extends GraphicTools {
   demo_update_path_short(data, width) {
     for (const [vehicleId, v] of Object.entries(data.data)) {
       // console.log('path: ', v)
+      if (v === null) {
+        this.agents[vehicleId].graph_short_path.clear()
+        return
+      }
       let path_t = this.demo_path_to_my(v)
 
       // console.log("get path rs", path_t, end_index)
@@ -889,6 +971,10 @@ export default class ApplicationManager extends GraphicTools {
 
   demo_update_path_long(data, width) {
     for (const [vehicleId, v] of Object.entries(data.data)) {
+      if (v === null) {
+        this.agents[vehicleId].graph_long_path.clear()
+        return
+      }
       let path_t = this.demo_path_to_my(v)
       // console.log("get path rs", path_t, end_index)
       if (!this.agents.hasOwnProperty(vehicleId)) {

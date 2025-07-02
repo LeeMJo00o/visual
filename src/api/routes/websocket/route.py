@@ -125,11 +125,14 @@ class BasePathWs(MulLinkServerEndpoint):
         all_long_path = await cls.get_traj_demo_from_redis_raw()
         # print(f"path count: {len(all_long_path)}")
         # all_long_path = dict(list(all_long_path.items())[:200])
-        for k, v in all_long_path.items():
+        for vehicle_id, a_path in all_long_path.items():
             try:
-                rs_t[k] = g_roads.trans_path(v)
+                if a_path["start_pose"]:
+                    rs_t[vehicle_id] = g_roads.trans_path(a_path)
+                else:
+                    rs_t[vehicle_id] = None
             except Exception as ex:
-                print(f"error for {k}: {v}")
+                print(f"error for {vehicle_id}: {a_path}")
                 raise ex
 
         return rs_t

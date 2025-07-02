@@ -1336,8 +1336,8 @@ class Roads():
         min_dist = float('inf')
 
         # 使用lanelet2的geometry模块计算距离
-        for i, point in enumerate(line):
-            dist = vec_point_distance(line[i], point)
+        for i, point_line in enumerate(line):
+            dist = vec_point_distance(point_line, point)
             if dist < min_dist:
                 min_dist = dist
                 closest_idx = i

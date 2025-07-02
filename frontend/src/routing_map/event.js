@@ -72,30 +72,40 @@ export class EventManager {
   }
 
   handlePointerDown(e) {
-    this.isDragging = true
-    this.lastX = e.global.x
-    this.lastY = e.global.y
+    // 只在默认模式下执行拖拽功能
+    if (this.manager.mouse_func === 'default') {
+      this.isDragging = true
+      this.lastX = e.global.x
+      this.lastY = e.global.y
 
-    let raw_pos = this.manager.raw_xy(e.global.x, e.global.y)
-    // 使用Pinia store更新
-    this.globalStore.setPosition('click', raw_pos[0], raw_pos[1])
+      let raw_pos = this.manager.raw_xy(e.global.x, e.global.y)
+      // 使用Pinia store更新
+      this.globalStore.setPosition('click', raw_pos[0], raw_pos[1])
+    } else if (this.manager.mouse_func === 'draw') {
+      this.manager.handleDrawingMouseDown(e)
+    }
   }
 
   handlePointerMove(e) {
-    let raw_pos = this.manager.raw_xy(e.global.x, e.global.y)
-    // 使用Pinia store更新
-    this.globalStore.setPosition('pointer', raw_pos[0], raw_pos[1])
+    // 只在默认模式下执行拖拽功能
+    if (this.manager.mouse_func === 'default') {
+      let raw_pos = this.manager.raw_xy(e.global.x, e.global.y)
+      // 使用Pinia store更新
+      this.globalStore.setPosition('pointer', raw_pos[0], raw_pos[1])
 
-    if (this.isDragging) {
-      if (this.rafId) cancelAnimationFrame(this.rafId)
-      this.rafId = requestAnimationFrame(() => {
-        const off_x = e.global.x - this.lastX
-        const off_y = e.global.y - this.lastY
-        this.manager.move_all(off_x, off_y)
-        this.lastX = e.global.x
-        this.lastY = e.global.y
-        this.rafId = null
-      })
+      if (this.isDragging) {
+        if (this.rafId) cancelAnimationFrame(this.rafId)
+        this.rafId = requestAnimationFrame(() => {
+          const off_x = e.global.x - this.lastX
+          const off_y = e.global.y - this.lastY
+          this.manager.move_all(off_x, off_y)
+          this.lastX = e.global.x
+          this.lastY = e.global.y
+          this.rafId = null
+        })
+      }
+    } else if (this.manager.mouse_func === 'draw') {
+      this.manager.handleDrawingMouseMove(e)
     }
   }
 
@@ -118,12 +128,22 @@ export class EventManager {
     console.log('now scale', this.manager.mainContainer.scale.x)
   }
 
-  handlePointerUp() {
-    this.isDragging = false
+  handlePointerUp(e) {
+    // 只在默认模式下执行拖拽功能
+    if (this.manager.mouse_func === 'default') {
+      this.isDragging = false
+    } else if (this.manager.mouse_func === 'draw') {
+      this.manager.handleDrawingMouseUp(e)
+    }
   }
 
-  handlePointerUpOutside() {
-    this.isDragging = false
+  handlePointerUpOutside(e) {
+    // 只在默认模式下执行拖拽功能
+    if (this.manager.mouse_func === 'default') {
+      this.isDragging = false
+    } else if (this.manager.mouse_func === 'draw') {
+      this.manager.handleDrawingMouseUp(e)
+    }
   }
 
   setupUIControls() {
