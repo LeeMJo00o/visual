@@ -58,7 +58,7 @@ class Pose():
 
 
 class PathType(StrEnum):
-    self_lane_change = "self_tbg5"
+    self_lane_change = "self_lane_change"
     pp_plan = "pp_plan"
 
 
