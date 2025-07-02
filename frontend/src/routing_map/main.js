@@ -322,6 +322,9 @@ export default class ApplicationManager extends GraphicTools {
       this.add_graphics(this.graphics_lock_area)
       this.mainContainer.addChild(this.agentContainer)
 
+      this.drawingGraphics = new Graphics()
+      this.app.stage.addChild(this.drawingGraphics)
+
       this.graphics_path_apply_area.alpha = 0.5
       this.graphics_lock_area.alpha = 0.4
 
@@ -572,11 +575,21 @@ export default class ApplicationManager extends GraphicTools {
       if (this.app && this.app.canvas) {
         this.app.canvas.style.cursor = 'crosshair'
       }
+      // 禁用mainContainer的交互
+      if (this.mainContainer) {
+        this.mainContainer.interactive = false
+        this.mainContainer.eventMode = 'none'
+      }
       console.log('进入画框模式')
     } else {
       // 恢复默认光标
       if (this.app && this.app.canvas) {
         this.app.canvas.style.cursor = 'default'
+      }
+      // 恢复mainContainer的交互
+      if (this.mainContainer) {
+        this.mainContainer.interactive = true
+        this.mainContainer.eventMode = 'static'
       }
       console.log('退出画框模式')
     }
@@ -589,11 +602,8 @@ export default class ApplicationManager extends GraphicTools {
     const point = e.global
     this.drawingStartPoint = { x: point.x, y: point.y }
 
-    // 创建临时绘制图形
-    this.drawingGraphics = new Graphics()
-    this.mainContainer.addChild(this.drawingGraphics)
-
     console.log('开始画框:', this.drawingStartPoint)
+    this.drawingGraphics.clear()
   }
 
   handleDrawingMouseMove(e) {
@@ -605,13 +615,13 @@ export default class ApplicationManager extends GraphicTools {
     // 清除之前的绘制
     this.drawingGraphics.clear()
 
-    // 绘制矩形
-    const width = this.drawingEndPoint.x - this.drawingStartPoint.x
-    const height = this.drawingEndPoint.y - this.drawingStartPoint.y
+    // 计算矩形的实际位置和尺寸，支持任意方向拖动
+    const left = Math.min(this.drawingStartPoint.x, this.drawingEndPoint.x)
+    const top = Math.min(this.drawingStartPoint.y, this.drawingEndPoint.y)
+    const width = Math.abs(this.drawingEndPoint.x - this.drawingStartPoint.x)
+    const height = Math.abs(this.drawingEndPoint.y - this.drawingStartPoint.y)
 
-    this.drawingGraphics
-      .rect(this.drawingStartPoint.x, this.drawingStartPoint.y, width, height)
-      .stroke({ color: '#ff0000', width: 2 })
+    this.drawingGraphics.rect(left, top, width, height).stroke({ color: '#ff0000', width: 2 })
   }
 
   handleDrawingMouseUp(e) {
@@ -623,10 +633,18 @@ export default class ApplicationManager extends GraphicTools {
     // 完成画框
     console.log('完成画框:', this.drawingStartPoint, this.drawingEndPoint)
 
-    // 清理临时绘制图形
-    if (this.drawingGraphics) {
-      this.drawingGraphics.destroy()
-      this.drawingGraphics = null
+    // 计算矩形的实际位置和尺寸
+    const left = Math.min(this.drawingStartPoint.x, this.drawingEndPoint.x)
+    const top = Math.min(this.drawingStartPoint.y, this.drawingEndPoint.y)
+    const width = Math.abs(this.drawingEndPoint.x - this.drawingStartPoint.x)
+    const height = Math.abs(this.drawingEndPoint.y - this.drawingStartPoint.y)
+
+    // 保存画框信息，但不立即清除
+    this.currentDrawingInfo = {
+      left: left,
+      top: top,
+      width: width,
+      height: height,
     }
 
     // 重置状态
@@ -635,6 +653,101 @@ export default class ApplicationManager extends GraphicTools {
 
     // 恢复默认鼠标功能
     this.setMouseFunction('default')
+
+    // 显示确认对话框
+    this.showDrawingConfirmDialog(left, top, width, height)
+  }
+
+  // 显示画框确认对话框
+  showDrawingConfirmDialog(left, top, width, height) {
+    // 导入Element Plus的ElMessageBox
+    import('element-plus')
+      .then(({ ElMessageBox }) => {
+        ElMessageBox.confirm(
+          `确认要处理这个区域吗？\n位置: (${left.toFixed(2)}, ${top.toFixed(2)})\n尺寸: ${width.toFixed(2)} x ${height.toFixed(2)}`,
+          '画框确认',
+          {
+            confirmButtonText: '确认',
+            cancelButtonText: '取消',
+            type: 'info',
+          },
+        )
+          .then(() => {
+            // 用户点击确认，发送HTTP请求
+            this.sendDrawingRequest(left, top, width, height)
+          })
+          .catch(() => {
+            // 用户点击取消，什么都不做
+            console.log('用户取消了画框操作')
+          })
+          .finally(() => {
+            // 无论用户选择什么，都清除画框
+            this.clearCurrentDrawing()
+          })
+      })
+      .catch((error) => {
+        console.error('加载Element Plus组件失败:', error)
+        // 降级处理：使用原生confirm
+        const confirmed = confirm(
+          `确认要处理这个区域吗？\n位置: (${left.toFixed(2)}, ${top.toFixed(2)})\n尺寸: ${width.toFixed(2)} x ${height.toFixed(2)}`,
+        )
+        if (confirmed) {
+          this.sendDrawingRequest(left, top, width, height)
+        }
+        // 无论用户选择什么，都清除画框
+        this.clearCurrentDrawing()
+      })
+  }
+
+  // 清除当前画框
+  clearCurrentDrawing() {
+    if (this.drawingGraphics) {
+      this.drawingGraphics.clear()
+    }
+    // 清除保存的画框信息
+    this.currentDrawingInfo = null
+  }
+
+  // 发送画框请求
+  async sendDrawingRequest(left, top, width, height) {
+    try {
+      // 导入axios
+      const { default: axios } = await import('axios')
+
+      const requestData = {
+        left: left,
+        top: top,
+        width: width,
+        height: height,
+        timestamp: new Date().toISOString(),
+      }
+
+      console.log('发送画框请求:', requestData)
+
+      // 发送HTTP请求到后端
+      const response = await axios.post('/api/drawing/process', requestData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      console.log('画框请求成功:', response.data)
+
+      // 导入Element Plus的ElMessage显示成功消息
+      const { ElMessage } = await import('element-plus')
+      ElMessage.success('画框处理成功')
+    } catch (error) {
+      console.error('画框请求失败:', error)
+
+      // 显示错误消息
+      try {
+        const { ElMessage } = await import('element-plus')
+        ElMessage.error('画框处理失败: ' + (error.response?.data?.message || error.message))
+      } catch (importError) {
+        console.error('无法加载Element Plus消息组件:', importError)
+        alert('画框处理失败: ' + (error.response?.data?.message || error.message))
+      }
+    }
   }
 
   draw_map_road(g, points, color, alpha = 0.5) {
