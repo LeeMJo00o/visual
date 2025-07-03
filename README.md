@@ -14,7 +14,7 @@ pp_visual_RUN_PORT=8080
 
 应用你的环境变量，运行 `run.sh`，比如在控制台中，你可以这样应用自己的环境变量：
 
-env $(cat ～/env_local | xargs) ./run.sh
+env $(cat ~/env_local | xargs) ./run.sh
 
 其他的工具、编辑器或 IDE 参考相应的文档。
 
