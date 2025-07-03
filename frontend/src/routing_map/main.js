@@ -90,6 +90,9 @@ export default class ApplicationManager extends GraphicTools {
 
     // 创建事件管理器实例
     this.eventManager = null
+
+    // 存储锁闭区图形对象
+    this.lockAreas = {}
   }
 
   // 获取单例实例
@@ -193,6 +196,14 @@ export default class ApplicationManager extends GraphicTools {
     if (this.graphics_lock_area) {
       this.graphics_lock_area.destroy()
     }
+
+    // 清理所有锁闭区图形对象
+    Object.values(this.lockAreas).forEach((areaGraphics) => {
+      if (areaGraphics) {
+        areaGraphics.destroy({ children: true })
+      }
+    })
+    this.lockAreas = {}
 
     // 清理地图容器
     if (this.map_container) {
@@ -457,11 +468,9 @@ export default class ApplicationManager extends GraphicTools {
       // 创建tooltip内容
       const agent = this.agents[vehicle_id]
       const tooltipContent = `
-        <div style="font-weight: bold; margin-bottom: 4px;">车辆信息</div>
-        <div>ID: ${agent.vehicle_id}</div>
-        <div>X: ${agent.position.x.toFixed(2)}</div>
-        <div>Y: ${-agent.position.y.toFixed(2)}</div>
-        <div>角度: ${agent.position.theta.toFixed(3)}</div>
+        <div style="font-weight: bold; margin-bottom: 4px;">Vehicle Info</div>
+        <div>id: ${agent.vehicle_id}</div>
+        <div>pose: ${agent.position.x.toFixed(3)}, ${-agent.position.y.toFixed(3)}, ${agent.position.theta.toFixed(3)}</div>
       `
 
       // 显示tooltip
@@ -1033,51 +1042,119 @@ export default class ApplicationManager extends GraphicTools {
 
   areas_update(data) {
     const all_areas = data.data
-    console.log('get areas: ', all_areas)
+    console.log('收到锁闭区数据:', Object.keys(all_areas).length, '个区域')
 
     // 清除之前的锁定区域显示
     if (this.graphics_lock_area) {
       this.graphics_lock_area.clear()
     }
 
-    // 绘制所有锁定区域
-    Object.values(all_areas).forEach((area) => {
-      this.drawLockArea(area)
+    // 清理所有现有的锁闭区图形对象
+    console.log('清理现有锁闭区图形对象:', Object.keys(this.lockAreas).length, '个')
+    Object.values(this.lockAreas).forEach((areaGraphics) => {
+      if (areaGraphics && areaGraphics.parent) {
+        areaGraphics.parent.removeChild(areaGraphics)
+      }
+      if (areaGraphics) {
+        areaGraphics.destroy({ children: true })
+      }
     })
+    this.lockAreas = {}
+
+    // 绘制所有锁定区域
+    Object.entries(all_areas).forEach(([areaId, area]) => {
+      this.drawLockArea(areaId, area)
+    })
+
+    console.log('锁闭区更新完成，总共绘制了', Object.keys(this.lockAreas).length, '个区域')
   }
 
   // 绘制单个锁定区域
-  drawLockArea(area) {
-    if (!this.graphics_lock_area || !area.polygon || area.polygon.length < 3) {
+  drawLockArea(areaId, area) {
+    if (!area.polygon || area.polygon.length < 3) {
+      console.log('跳过无效的锁闭区:', areaId, area)
       return
     }
 
-    const g = this.graphics_lock_area
-    const polygon = area.polygon
+    console.log('绘制锁闭区:', areaId, area.name)
 
-    // 转换第一个点到应用坐标
-    const firstPoint = this.map_xy_to_app([polygon[0].x, polygon[0].y])
-    g.moveTo(firstPoint[0], firstPoint[1])
+    // 为每个锁闭区创建独立的图形对象
+    const areaGraphics = new Graphics()
 
-    // 绘制多边形路径
-    for (let i = 1; i < polygon.length; i++) {
-      const point = this.map_xy_to_app([polygon[i].x, polygon[i].y])
-      g.lineTo(point[0], point[1])
-    }
+    // 将多边形数据转换为drawPath需要的格式
+    const points = area.polygon.map((point) => [point.x, point.y])
 
-    // 设置样式并绘制
-    g.stroke({
-      color: '#ffff00',
-      width: 2,
-      pixelLine: false,
-      alpha: 0.7
+    // 使用drawPath方法绘制锁闭区
+    this.drawPath(
+      areaGraphics,
+      areaId,
+      points,
+      true, // 使用虚线
+      '#ff0000', // 红色边框
+      2, // 线宽
+      1, // 透明度
+    )
+
+    // 设置交互属性
+    areaGraphics.interactive = true
+    areaGraphics.cursor = 'pointer'
+
+    // 保存区域数据到图形对象
+    areaGraphics.areaData = area
+    areaGraphics.areaId = areaId
+
+    // 添加鼠标悬停事件处理，显示锁闭区信息
+    areaGraphics.on('pointerover', (e) => {
+      console.log('鼠标悬停在锁闭区上:', areaId)
+
+      // 高亮显示锁闭区
+      areaGraphics.tint = 0xffff00 // 黄色高亮
+
+      // 创建tooltip内容
+      const tooltipContent = `
+        <div style="font-weight: bold; margin-bottom: 4px;">Area Detail</div>
+        <div>name: ${area.name || areaId}</div>
+        <div>type: ${area.type || 'lock'}</div>
+        <div>sub-type: ${area.subtype || 'lock'}</div>
+        <div>create_by: ${area.created_by || 'unknown'}</div>
+        <div>desc: ${area.describe || '无'}</div>
+      `
+
+      // 显示tooltip
+      if (this.tooltip) {
+        this.tooltip.innerHTML = tooltipContent
+        this.tooltip.style.display = 'block'
+        this.tooltip.style.left = e.clientX + 15 + 'px'
+        this.tooltip.style.top = e.clientY + 10 + 'px'
+
+        // 跟随鼠标移动
+        const onMouseMove = (moveEvent) => {
+          this.tooltip.style.left = moveEvent.clientX + 15 + 'px'
+          this.tooltip.style.top = moveEvent.clientY + 10 + 'px'
+        }
+
+        // 鼠标离开时移除事件监听
+        const onPointerOut = () => {
+          console.log('鼠标离开锁闭区:', areaId)
+          document.removeEventListener('mousemove', onMouseMove)
+          this.tooltip.style.display = 'none'
+          areaGraphics.tint = 0xffffff // 恢复正常颜色
+          // 移除pointerout事件监听器，避免重复绑定
+          areaGraphics.off('pointerout', onPointerOut)
+        }
+
+        document.addEventListener('mousemove', onMouseMove)
+        areaGraphics.on('pointerout', onPointerOut)
+      }
     })
 
-    // // 添加半透明填充
-    // g.fill({
-    //   color: '#ff0000',
-    //   alpha: 0.1,
-    // })
+    // 将图形对象添加到主容器
+    this.mainContainer.addChild(areaGraphics)
+
+    // 存储到锁闭区对象中
+    this.lockAreas[areaId] = areaGraphics
+
+    console.log('锁闭区绘制完成:', areaId, '总数:', Object.keys(this.lockAreas).length)
   }
 
   demo_path_to_my(path) {
