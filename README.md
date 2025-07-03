@@ -3,6 +3,8 @@
 
 ## 开发指南
 
+项目前端在 `frontend` 目录
+
 ### 运行
 
 编写自己的环境变量文件，比如 `~/env_local`：
@@ -37,7 +39,7 @@ python3 -m pytest
 控制台中同样可以用下面的方式来应用你自己的环境变量：
 
 ```
-env $(cat ～/env_local | xargs) python3 -m pytest
+env $(cat ~/env_local | xargs) python3 -m pytest
 ```
 
 ### 构建镜像
