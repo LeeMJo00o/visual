@@ -1,11 +1,11 @@
-# scenario
+# pp-visual
 
 
 ## 开发指南
 
 ### 运行
 
-编写自己的环境变量文件，比如 `～/env_local`：
+编写自己的环境变量文件，比如 `~/env_local`：
 
 ```
 DEBUG=true
