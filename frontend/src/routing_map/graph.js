@@ -54,7 +54,7 @@ export class GraphicTools {
     const transformedPoints = points.map((point) => this.map_xy_to_app(point))
 
     if (dashed) {
-      this.draw_points_dashed(transformedPoints, graphics, 10, 10)
+      this.draw_points_dashed(transformedPoints, graphics, 7, 2)
       graphics.setStrokeStyle({ color: color, width: line_width, pixelLine: false })
       graphics.stroke()
     } else {

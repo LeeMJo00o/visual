@@ -1091,7 +1091,7 @@ export default class ApplicationManager extends GraphicTools {
       points,
       true, // 使用虚线
       '#ff0000', // 红色边框
-      2, // 线宽
+      1, // 线宽
       1, // 透明度
     )
 
