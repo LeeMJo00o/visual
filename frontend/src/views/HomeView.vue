@@ -7,6 +7,7 @@ import { useGlobalStore } from '../stores/globalStore'
 // import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import LockArea from '@/components/LockArea.vue'
 import AgentsManager from '@/components/AgentsManager.vue'
+import GlobalVehicleDialog from '@/components/GlobalVehicleDialog.vue'
 
 // 声明全局接口
 declare global {
@@ -176,7 +177,6 @@ const onAgentHide = () => {
               <div v-else>
                 <!-- <h3>请选择一个功能</h3> -->
               </div>
-
             </div>
           </div>
           <div class="divider"></div>
@@ -188,6 +188,9 @@ const onAgentHide = () => {
       </el-main>
     </el-container>
   </div>
+
+  <!-- 全局车辆管理对话框 -->
+  <GlobalVehicleDialog />
 </template>
 
 <style scoped>
