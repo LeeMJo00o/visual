@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { ApplicationManager } from '../routing_map/main'
+import ApplicationManager from '../routing_map/main'
 
 export type PositionType = 'click' | 'pointer' | string
 

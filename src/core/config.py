@@ -47,3 +47,5 @@ MAP_NAME: str = config("MAP_NAME", cast=str, default="xxxx.osm")
 DEMO_REDIS_URL: str = config(
     "DEMO_REDIS_URL", default="redis://127.0.0.1:6379/0"
 )
+
+PATH_REPORT_URL = config("PATH_REPORT_URL", cast=str, default="http://127.0.0.1:3000")
