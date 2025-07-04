@@ -21,6 +21,7 @@ import {
 import { mapCache } from './map_cache.js' // 导入缓存模块
 import { EventManager } from './event.js' // 导入事件管理器
 import Agent from './agent.js' // 导入 Agent 类
+import { DataRenderer } from './data_renderer.js' // 导入数据渲染管理器
 // import fontFile from '../assets/DejaVuSansMono-msdf.json?raw'
 
 // const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
@@ -82,6 +83,9 @@ export default class ApplicationManager extends GraphicTools {
     // 创建事件管理器实例
     this.eventManager = null
 
+    // 创建数据渲染管理器实例
+    this.dataRenderer = null
+
     // 存储锁闭区图形对象
     this.lockAreas = {}
   }
@@ -120,6 +124,11 @@ export default class ApplicationManager extends GraphicTools {
   // 清理所有资源（仅在页面完全关闭时调用）
   cleanup() {
     console.log('清理ApplicationManager资源...')
+
+    // 关闭所有WebSocket连接
+    if (this.dataRenderer) {
+      this.dataRenderer.close_all_websockets()
+    }
 
     // 重置全局单例实例
     clearGlobalInstance()
@@ -231,68 +240,13 @@ export default class ApplicationManager extends GraphicTools {
       this.eventManager = new EventManager(this.app, this)
       this.eventManager.setupEventListeners()
 
+      // 初始化数据渲染管理器
+      this.dataRenderer = new DataRenderer(this)
+      this.dataRenderer.init_websockets(this.mode)
+
       // 设置动画循环，更新所有车辆位置
       const tickerCallback = () => this.updateAgents()
       this.app.ticker.add(tickerCallback)
-
-      if (this.mode == 'test-demo') {
-        // // 义东 demo 用
-        // demo_get_traj(this.demo_update_path.bind(this), '/api/demo/get_traj');
-        // setInterval(() => {
-        //   demo_get_traj(this.demo_update_path.bind(this), '/api/demo/get_traj')
-        // }, 1000)
-
-        let ws_prefix = `ws://${window.location.hostname}:${window.location.port}`
-
-        const ws_long = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_path`, {
-          onMessage: (data) => {
-            this.demo_update_path_ws(data)
-          },
-        })
-        ws_long.connect()
-
-        const ws_short = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_short_path`, {
-          onMessage: (data) => {
-            this.demo_update_path_short_ws(data)
-          },
-        })
-        ws_short.connect()
-
-        this.long_path_width = 1
-        this.short_path_width = 4
-
-        const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
-          onMessage: (data) => {
-            this.pose_update(data)
-          },
-        })
-        ws_pose.connect()
-
-        const ws_areas = new WebSocketClient(`${ws_prefix}/api/ws/demo/lock_area`, {
-          onMessage: (data) => {
-            this.areas_update(data)
-          },
-        })
-        ws_areas.connect()
-      } else {
-        // 自己测试用
-        const ws = new WebSocketClient('ws://10.6.64.49:2030/api/ws/demo/route_info', {
-          onMessage: (data) => {
-            this.path_update(data)
-          },
-        })
-        ws.connect()
-
-        const ws_pose = new WebSocketClient('ws://10.6.64.49:2030/api/ws/demo/pose_info', {
-          onMessage: (data) => {
-            this.pose_update(data)
-          },
-        })
-        ws_pose.connect()
-
-        this.long_path_width = 2
-        this.short_path_width = 3
-      }
 
       // 页面卸载时清理资源
       window.addEventListener('beforeunload', () => {
@@ -401,36 +355,6 @@ export default class ApplicationManager extends GraphicTools {
     }
     g.interactive = true
     g.cursor = 'pointer'
-  }
-
-  // 生成类似你期望的格式
-  pointsToSvgPath(points, color = '#fff', strokeWidth = 0.5, pathId = null) {
-    if (!points || points.length < 2) return null
-
-    // 转换第一个点（绝对坐标）
-    let [x, y] = this.map_xy_to_app(points[0])
-    let pathData = `M${roundTo(x, 2)} ${roundTo(y, 2)}`
-
-    // 添加其余点（相对坐标），使用更简洁的格式
-    for (let i = 1; i < points.length; i++) {
-      let [prevX, prevY] = this.map_xy_to_app(points[i - 1])
-      let [currX, currY] = this.map_xy_to_app(points[i])
-
-      let dx = roundTo(currX - prevX, 2)
-      let dy = roundTo(currY - prevY, 2)
-
-      // 使用更简洁的相对坐标格式
-      pathData += `l${dx} ${dy}`
-    }
-
-    // 生成完整的 SVG 字符串
-    const svgString = `
-      <svg xmlns="http://www.w3.org/2000/svg">
-        <path d="${pathData}" id="${pathId || 'path'}" is_straight="false" style="fill:none;stroke:${color};stroke-width:${strokeWidth};" />
-      </svg>
-    `
-
-    return svgString
   }
 
   // 新增：绘制箭头的辅助方法
@@ -811,30 +735,6 @@ export default class ApplicationManager extends GraphicTools {
     return cons
   }
 
-  drawAgent(data) {
-    if (data.messageName == 'VehiclePositionInfo') {
-      this.drawOneAgent(data)
-    }
-  }
-
-  drawOneAgent(data) {
-    const { vehicleId, x, y, theta } = data
-    if (this.agents.hasOwnProperty(vehicleId)) {
-      this.agents[vehicleId].setPosition(x, -y, theta)
-    } else {
-      this.add_agent(vehicleId, x, -y, theta)
-    }
-  }
-  drawAllAgent(data) {
-    let _data = data[v]
-    const { vehicleId, x, y, theta } = _data
-    if (this.agents.hasOwnProperty(vehicleId)) {
-      this.agents[vehicleId].setPosition(x, -y, theta)
-    } else {
-      this.add_agent(vehicleId, x, -y, theta)
-    }
-  }
-
   graphics_sacle_move(e, scale_level_v) {
     const graphic = this.mainContainer
     let the_x = e.global.x - graphic.position.x
@@ -843,9 +743,6 @@ export default class ApplicationManager extends GraphicTools {
     // 缩放
     const scale_to = graphic.scale.x * scale_level_v
     graphic.scale.set(scale_to)
-
-    // 移除对agentTextContainer的缩放，因为文本现在不随地图缩放
-    // this.agentTextContainer.scale.set(scale_to)
 
     // 缩放以左上角为原点，为了看起来是在指针处缩放的，我们把原先指针所指的点移回指针位置
     // 考虑某个点坐标 x, 缩放之后位置会偏移 (x * scale_level_v) 的距离
@@ -884,320 +781,5 @@ export default class ApplicationManager extends GraphicTools {
 
   map_xy_to_app(point) {
     return [point[0], -point[1]]
-  }
-
-  get_lock_data_update(data) {
-    // console.log("get lock area backend data:", data);
-    const g = this.graphics_lock_area
-    g.clear()
-    for (const lock of data) {
-      // console.log("get lock area backend data:", lock.polygon.points);
-      let p0 = this.map_xy_to_app([
-        lock.polygon.points[0].longitude,
-        lock.polygon.points[0].latitude,
-      ])
-      g.moveTo(p0[0], p0[1])
-      for (const point of lock.polygon.points) {
-        let p = this.map_xy_to_app([point.longitude, point.latitude])
-        g.lineTo(p[0], p[1])
-      }
-      // 连到起点，形成封闭区域
-      // todo, 或许可以直接使用 g.poly
-      g.lineTo(p0[0], p[1])
-      let color = null
-      if (lock.owner === 'PP') {
-        color = '#cccc00'
-      } else {
-        color = '#ff0000'
-      }
-      g.stroke({ color: color, width: 1, pixelLine: false })
-    }
-  }
-
-  areas_update(data) {
-    const all_areas = data.data
-    console.log('收到锁闭区数据:', Object.keys(all_areas).length, '个区域')
-
-    // 清除之前的锁定区域显示
-    if (this.graphics_lock_area) {
-      this.graphics_lock_area.clear()
-    }
-
-    // 清理所有现有的锁闭区图形对象
-    Object.values(this.lockAreas).forEach((areaGraphics) => {
-      if (areaGraphics && areaGraphics.parent) {
-        areaGraphics.parent.removeChild(areaGraphics)
-      }
-    })
-    this.lockAreas = {}
-
-    // 绘制所有锁定区域
-    Object.entries(all_areas).forEach(([areaId, area]) => {
-      this.drawLockArea(areaId, area)
-    })
-
-    console.log('锁闭区更新完成，总共绘制了', Object.keys(this.lockAreas).length, '个区域')
-  }
-
-  // 绘制单个锁定区域
-  drawLockArea(areaId, area) {
-    if (!area.polygon || area.polygon.length < 3) {
-      console.log('跳过无效的锁闭区:', areaId, area)
-      return
-    }
-
-    console.log('绘制锁闭区:', areaId, area.name)
-
-    // 为每个锁闭区创建独立的图形对象
-    const areaGraphics = new Graphics()
-
-    // 将多边形数据转换为drawLine需要的格式
-    const points = area.polygon.map((point) => [point.x, point.y])
-
-    // 使用drawLine方法绘制锁闭区
-    this.drawLine(
-      areaGraphics,
-      areaId,
-      points,
-      true, // 使用虚线
-      '#ff0000', // 红色边框
-      1, // 线宽
-      1, // 透明度
-    )
-
-    // 设置交互属性
-    areaGraphics.interactive = true
-    areaGraphics.cursor = 'pointer'
-
-    // 保存区域数据到图形对象
-    areaGraphics.areaData = area
-    areaGraphics.areaId = areaId
-
-    // 添加鼠标悬停事件处理，显示锁闭区信息
-    areaGraphics.on('pointerover', (e) => {
-      console.log('鼠标悬停在锁闭区上:', areaId)
-
-      // 高亮显示锁闭区
-      areaGraphics.tint = 0xffff00 // 黄色高亮
-
-      // 创建tooltip内容
-      const tooltipContent = `
-        <div style="font-weight: bold; margin-bottom: 4px;">Area Detail</div>
-        <div>name: ${area.name || areaId}</div>
-        <div>type: ${area.type || 'lock'}</div>
-        <div>sub-type: ${area.subtype || 'lock'}</div>
-        <div>create_by: ${area.created_by || 'unknown'}</div>
-        <div>desc: ${area.describe || '无'}</div>
-      `
-
-      // 显示tooltip
-      if (this.tooltip) {
-        this.tooltip.innerHTML = tooltipContent
-        this.tooltip.style.display = 'block'
-        this.tooltip.style.left = e.clientX + 15 + 'px'
-        this.tooltip.style.top = e.clientY + 10 + 'px'
-
-        // 跟随鼠标移动
-        const onMouseMove = (moveEvent) => {
-          this.tooltip.style.left = moveEvent.clientX + 15 + 'px'
-          this.tooltip.style.top = moveEvent.clientY + 10 + 'px'
-        }
-
-        // 鼠标离开时移除事件监听
-        const onPointerOut = () => {
-          console.log('鼠标离开锁闭区:', areaId)
-          document.removeEventListener('mousemove', onMouseMove)
-          this.tooltip.style.display = 'none'
-          areaGraphics.tint = 0xffffff // 恢复正常颜色
-          // 移除pointerout事件监听器，避免重复绑定
-          areaGraphics.off('pointerout', onPointerOut)
-        }
-
-        document.addEventListener('mousemove', onMouseMove)
-        areaGraphics.on('pointerout', onPointerOut)
-      }
-    })
-
-    // 将图形对象添加到主容器
-    this.mainContainer.addChild(areaGraphics)
-
-    // 存储到锁闭区对象中
-    this.lockAreas[areaId] = areaGraphics
-
-    console.log('锁闭区绘制完成:', areaId, '总数:', Object.keys(this.lockAreas).length)
-  }
-
-  demo_path_to_my(path) {
-    // 缓存频繁访问的属性
-    const pathArray = path.path
-    const pathLength = pathArray.length
-    const startPose = path.start_pose
-    const endPose = path.end_pose
-    const mapPathInfo = this.map_path_info
-
-    // 预分配数组大小以提高性能
-    let path_t = []
-    path_t.push([startPose.x, startPose.y])
-
-    // 计算起始和结束索引
-    let start_index = startPose.index
-    if (!startPose.is_ahead) {
-      start_index += 1
-    }
-
-    let end_index = endPose.index
-    if (endPose.is_ahead) {
-      end_index -= 1
-    }
-
-    // 处理路径段
-    if (pathLength === 1) {
-      // 单路径段：只添加中间部分
-      if (start_index < end_index) {
-        const startLltId = pathArray[0]
-        const pathInfo = mapPathInfo[startLltId]
-        if (pathInfo && Array.isArray(pathInfo.points)) {
-          path_t.push(...pathInfo.points.slice(start_index, end_index))
-        }
-      }
-    } else {
-      // 多路径段：添加起始段、中间段、结束段
-      const startLltId = pathArray[0]
-      const endLltId = pathArray[pathLength - 1]
-
-      // 处理起始段
-      const startPathInfo = mapPathInfo[startLltId]
-      if (startPathInfo && Array.isArray(startPathInfo.points)) {
-        path_t.push(...startPathInfo.points.slice(start_index))
-      }
-
-      // 处理中间段 - 优化循环
-      for (let i = 1; i < pathLength - 1; i++) {
-        const lltId = pathArray[i]
-        const pathInfo = mapPathInfo[lltId]
-        if (pathInfo && Array.isArray(pathInfo.points)) {
-          path_t.push(...pathInfo.points)
-        }
-      }
-
-      // 处理结束段
-      const endPathInfo = mapPathInfo[endLltId]
-      if (endPathInfo && Array.isArray(endPathInfo.points)) {
-        path_t.push(...endPathInfo.points.slice(0, end_index))
-      }
-    }
-
-    // 添加结束点
-    path_t.push([endPose.x, endPose.y])
-    return path_t
-  }
-
-  demo_update_path_short(data, width) {
-    for (const [vehicleId, v] of Object.entries(data.data)) {
-      // console.log('path: ', v)
-      if (v === null) {
-        this.agents[vehicleId].graph_short_path.clear()
-        return
-      }
-      let path_t = this.demo_path_to_my(v)
-
-      // console.log("get path rs", path_t, end_index)
-
-      if (!this.agents.hasOwnProperty(vehicleId)) {
-        this.add_agent(vehicleId, 9999, 9999, 0)
-      }
-      this.agents[vehicleId].graph_short_path.clear()
-      this.drawLine(
-        this.agents[vehicleId].graph_short_path,
-        vehicleId,
-        path_t,
-        false,
-        this.agents[vehicleId].color,
-        width,
-        0.5,
-      )
-    }
-  }
-
-  demo_update_path_long(data, width) {
-    for (const [vehicleId, v] of Object.entries(data.data)) {
-      if (v === null) {
-        this.agents[vehicleId].graph_long_path.clear()
-        return
-      }
-      let path_t = this.demo_path_to_my(v)
-      // console.log("get path rs", path_t, end_index)
-      if (!this.agents.hasOwnProperty(vehicleId)) {
-        this.add_agent(vehicleId, 9999, 9999, 0)
-      }
-      this.agents[vehicleId].graph_long_path.clear()
-      // console.log("draw path: ", vehicleId, path_t)
-      this.drawLine(
-        this.agents[vehicleId].graph_long_path,
-        vehicleId,
-        path_t,
-        false,
-        this.agents[vehicleId].color,
-        width,
-        1,
-      )
-    }
-  }
-
-  demo_update_path_ws(data) {
-    // console.log('demo_update_path_ws: ', data)
-    this.demo_update_path_long(data, this.long_path_width)
-  }
-
-  demo_update_path_short_ws(data) {
-    // console.log('demo_update_short_path_ws: ', data)
-    this.demo_update_path_short(data, this.short_path_width)
-  }
-
-  path_update(data) {
-    // console.log("get pp backend data:", data);
-    if (data.type == 'long_path') {
-      let vehicleId = data.data.v
-      this.agents[vehicleId].graph_long_path.clear()
-      this.drawLine(
-        this.agents[vehicleId].graph_long_path,
-        vehicleId,
-        data.data.path,
-        false,
-        this.agents[vehicleId].color,
-        this.long_path_width,
-        0.7,
-      )
-    } else if (data.type == 'short_path') {
-      let vehicleId = data.data.v
-      this.agents[vehicleId].graph_short_path.clear()
-      this.drawLine(
-        this.agents[vehicleId].graph_short_path,
-        vehicleId,
-        data.data.path,
-        false,
-        this.agents[vehicleId].color,
-        this.short_path_width,
-        0.5,
-      )
-    }
-  }
-
-  pose_update(data) {
-    // console.log("get pose data ws:", data.data);
-    // data.data 是一个列表，刷新所有车zuobiao
-    for (const [id, v] of Object.entries(data.data)) {
-      // 如果禁用了平滑移动，则为每个Agent重置设置
-      if (!this.smoothMovementConfig.enabled && this.agents[id]) {
-        this.agents[id].isAnimating = false
-      }
-
-      this.drawOneAgent({
-        vehicleId: id,
-        x: v.x,
-        y: v.y,
-        theta: v.yaw,
-      })
-    }
   }
 }
