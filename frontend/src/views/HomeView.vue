@@ -6,6 +6,7 @@ import { ElMessage } from 'element-plus'
 import { useGlobalStore } from '../stores/globalStore'
 // import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import LockArea from '@/components/LockArea.vue'
+import LockAreaList from '@/components/LockAreaList.vue'
 import AgentsManager from '@/components/AgentsManager.vue'
 import VehicleList from '@/components/VehicleList.vue'
 
@@ -191,6 +192,9 @@ const onAgentHide = () => {
 
   <!-- 车辆列表对话框 -->
   <VehicleList />
+
+  <!-- 锁闭区列表对话框 -->
+  <LockAreaList />
 </template>
 
 <style scoped>

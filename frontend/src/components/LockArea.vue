@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import ApplicationManager from '../routing_map/main.ts'
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useLockAreaStore } from '../stores/lockAreaStore'
 
 const appManager = ref<ApplicationManager | null>(null)
 const isDrawingMode = ref(false)
 const drawingStartPoint = ref<{ x: number; y: number } | null>(null)
 const drawingEndPoint = ref<{ x: number; y: number } | null>(null)
 const drawingGraphics = ref<any>(null)
+const lockAreaStore = useLockAreaStore()
 
 onMounted(async () => {
   appManager.value = ApplicationManager.getInstance()
@@ -281,11 +283,18 @@ onUnmounted(() => {
 <template>
   <div class="lock-area-func">
     <el-button type="primary" plain @click="handleDrawBox">start draw</el-button>
+    <el-button type="success" plain @click="lockAreaStore.toggleLockAreaDialog"
+      >Lock Area List</el-button
+    >
   </div>
 </template>
 
 <style scoped>
 .lock-area-func {
-  display: block;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 </style>
