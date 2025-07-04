@@ -803,7 +803,7 @@ export default class ApplicationManager extends GraphicTools {
   draw_map_road(g, points, color, alpha = 0.5) {
     const width = 1
     g.clear()
-    this.drawPath(g, 'N/A', points, false, color, width, alpha)
+    this.drawLine(g, 'N/A', points, false, color, width, alpha)
     // 在路径中间点绘制箭头
     if (points.length >= 2) {
       let arrowPoint, angle
@@ -882,7 +882,7 @@ export default class ApplicationManager extends GraphicTools {
       let g = new Graphics()
       cons.addChild(g)
 
-      // 直接使用 drawPath 方法
+      // 直接使用 drawLine 方法
       this.draw_map_road(g, points, '#fff', 0.4)
 
       g.on('pointerover', (e) => {
@@ -1081,11 +1081,11 @@ export default class ApplicationManager extends GraphicTools {
     // 为每个锁闭区创建独立的图形对象
     const areaGraphics = new Graphics()
 
-    // 将多边形数据转换为drawPath需要的格式
+    // 将多边形数据转换为drawLine需要的格式
     const points = area.polygon.map((point) => [point.x, point.y])
 
-    // 使用drawPath方法绘制锁闭区
-    this.drawPath(
+    // 使用drawLine方法绘制锁闭区
+    this.drawLine(
       areaGraphics,
       areaId,
       points,
@@ -1237,7 +1237,7 @@ export default class ApplicationManager extends GraphicTools {
         this.add_agent(vehicleId, 9999, 9999, 0)
       }
       this.agents[vehicleId].graph_short_path.clear()
-      this.drawPath(
+      this.drawLine(
         this.agents[vehicleId].graph_short_path,
         vehicleId,
         path_t,
@@ -1262,7 +1262,7 @@ export default class ApplicationManager extends GraphicTools {
       }
       this.agents[vehicleId].graph_long_path.clear()
       // console.log("draw path: ", vehicleId, path_t)
-      this.drawPath(
+      this.drawLine(
         this.agents[vehicleId].graph_long_path,
         vehicleId,
         path_t,
@@ -1289,7 +1289,7 @@ export default class ApplicationManager extends GraphicTools {
     if (data.type == 'long_path') {
       let vehicleId = data.data.v
       this.agents[vehicleId].graph_long_path.clear()
-      this.drawPath(
+      this.drawLine(
         this.agents[vehicleId].graph_long_path,
         vehicleId,
         data.data.path,
@@ -1301,7 +1301,7 @@ export default class ApplicationManager extends GraphicTools {
     } else if (data.type == 'short_path') {
       let vehicleId = data.data.v
       this.agents[vehicleId].graph_short_path.clear()
-      this.drawPath(
+      this.drawLine(
         this.agents[vehicleId].graph_short_path,
         vehicleId,
         data.data.path,

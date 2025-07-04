@@ -47,7 +47,7 @@ export function unrotatePoint(x_rotated, y_rotated, theta) {
 }
 
 export class GraphicTools {
-  drawPath(graphics, id, points, dashed = false, color = 0x000000, line_width = 1, alpha = 1) {
+  drawLine(graphics, id, points, dashed = false, color = 0xff0000, line_width = 1, alpha = 1) {
     if (!points || points.length < 2) return
 
     // 对所有点进行坐标变换
