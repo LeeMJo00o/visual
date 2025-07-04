@@ -1,7 +1,7 @@
 <template>
   <!-- 车辆列表对话框 -->
   <CustomDialog
-    v-model:visible="globalStore.vehicleDialogVisible"
+    v-model:visible="vehicleStore.vehicleDialogVisible"
     title="Vehicle List"
     :width="600"
     :height="400"
@@ -16,17 +16,17 @@
       <h4>Vehicles ({{ ` ${vehicleCount} ` }})</h4>
     </div>
 
-    <div v-if="globalStore.vehicles.length === 0" class="no-vehicles">
+    <div v-if="vehicleStore.vehicles.length === 0" class="no-vehicles">
       <p>暂无车辆信息</p>
     </div>
 
     <el-table
       v-else
-      :data="globalStore.vehicles"
+      :data="vehicleStore.vehicles"
       size="small"
       stripe
       class="vehicle-table"
-      @row-click="globalStore.selectVehicle"
+      @row-click="vehicleStore.selectVehicle"
       @wheel="handleTableWheel"
     >
       <el-table-column prop="vehicle_id" label="Id" width="80" align="center">
@@ -55,7 +55,7 @@
             <el-switch
               v-model="row.isShow"
               size="small"
-              @change="globalStore.handleStatusChange(row)"
+              @change="vehicleStore.handleStatusChange(row)"
             />
             <span class="switch-text">{{ row.isShow ? '显示' : '隐藏' }}</span>
           </div>
@@ -67,13 +67,13 @@
 
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted } from 'vue'
-import { useGlobalStore } from '../stores/globalStore'
+import { useVehicleStore } from '../stores/vehicleStore'
 import CustomDialog from './CustomDialog.vue'
 
-const globalStore = useGlobalStore()
+const vehicleStore = useVehicleStore()
 
 // 车辆管理相关逻辑
-const vehicleCount = computed(() => globalStore.vehicles.length)
+const vehicleCount = computed(() => vehicleStore.vehicleCount)
 
 // 处理表格滚轮事件
 const handleTableWheel = (e: WheelEvent) => {
@@ -86,10 +86,10 @@ let updateInterval: number | null = null
 
 onMounted(() => {
   // 立即更新一次
-  globalStore.updateVehicleList()
+  vehicleStore.updateVehicleList()
 
   // 每秒更新一次车辆列表
-  updateInterval = setInterval(globalStore.updateVehicleList, 1000)
+  updateInterval = setInterval(vehicleStore.updateVehicleList, 1000)
 })
 
 onUnmounted(() => {

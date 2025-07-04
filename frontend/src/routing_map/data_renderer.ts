@@ -101,23 +101,32 @@ export class DataRenderer {
   private _init_demo_websockets(): void {
     const ws_prefix = `ws://${window.location.hostname}:${window.location.port}`
 
-    // 长路径WebSocket
-    const ws_long = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_path`, {
+    const ws_path = new WebSocketClient(`${ws_prefix}/api/ws/demo/path`, {
       onMessage: (data: PathUpdateData) => {
-        this.demo_update_path_long(data)
+        this.demo_update_path(data)
       },
     })
-    ws_long.connect()
-    this.websocket_clients['demo_long_path'] = ws_long
 
-    // 短路径WebSocket
-    const ws_short = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_short_path`, {
-      onMessage: (data: PathUpdateData) => {
-        this.demo_update_path_short(data)
-      },
-    })
-    ws_short.connect()
-    this.websocket_clients['demo_short_path'] = ws_short
+    ws_path.connect()
+    this.websocket_clients['demo_path'] = ws_path
+
+    // // 长路径WebSocket
+    // const ws_long = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_path`, {
+    //   onMessage: (data: PathUpdateData) => {
+    //     this.demo_update_path_long(data)
+    //   },
+    // })
+    // ws_long.connect()
+    // this.websocket_clients['demo_long_path'] = ws_long
+
+    // // 短路径WebSocket
+    // const ws_short = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_short_path`, {
+    //   onMessage: (data: PathUpdateData) => {
+    //     this.demo_update_path_short(data)
+    //   },
+    // })
+    // ws_short.connect()
+    // this.websocket_clients['demo_short_path'] = ws_short
 
     // 位置信息WebSocket
     const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
@@ -215,6 +224,34 @@ export class DataRenderer {
         this.short_path_width,
         0.5,
       )
+    }
+  }
+
+  demo_update_path(data) {
+    let path_type = data['type']
+    for (const [vehicleId, v] of Object.entries(data.data)) {
+      if (!this.manager.agents.hasOwnProperty(vehicleId)) {
+        this.manager.add_agent(vehicleId, 9999, 9999, 0)
+      }
+      let g = null
+      let path_width = null
+      let alpha = null
+      let vehicle = this.manager.agents[vehicleId]
+      if (path_type == 'short') {
+        g = vehicle.graph_short_path
+        path_width = this.short_path_width
+        alpha = 0.5
+      } else {
+        g = vehicle.graph_long_path
+        path_width = this.long_path_width
+        alpha = 1
+      }
+      g.clear()
+      if (v.path === null) {
+        return
+      }
+      const path_t = this.demo_path_to_my(v)
+      this.manager.drawLine(g, vehicleId, path_t, false, vehicle.color, path_width, alpha)
     }
   }
 

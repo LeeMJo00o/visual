@@ -4,7 +4,6 @@ import json
 import asyncio
 from src.core import config
 
-
 router = APIRouter()
 
 

@@ -10,6 +10,7 @@ from src.middlewares.redis_handler.connect import redis_cli
 from src.core.config import DEMO_REDIS_URL
 from src.core.log import logger
 import traceback
+from src.map_tools import g_roads
 
 router = APIRouter()
 _manager = ConnectionManager()
@@ -17,6 +18,7 @@ _manager_demo_path = ConnectionManager()
 _manager_demo_short_path = ConnectionManager()
 _manager_pose = ConnectionManager()
 _manager_lock_area = ConnectionManager()
+_manager_path = ConnectionManager()
 
 
 def str_to_json(s: dict) -> dict:
@@ -225,3 +227,22 @@ class AreaWsServer(MulLinkServerEndpoint):
             except Exception as e:
                 logger.error(f"publish_lock_area error: {repr(e)}")
             await asyncio.sleep(2)
+
+
+@router.websocket_route("/path", name="websocket for pushlish path (short + long)")
+class PathWsServer(MulLinkServerEndpoint):
+    ws_manager = _manager_path
+
+    @classmethod
+    async def on_mq_message(cls, mess):
+        a_path = json.loads(mess['data'])
+        if a_path["start_pose"] and a_path["path"]:
+            path_t = g_roads.trans_path(a_path)
+        else:
+            a_path["path"] = None
+            path_t = a_path
+        
+        await cls.ws_manager.broadcast_json({
+            "type": path_t["type"],
+            "data": {path_t["v"]: path_t}
+        })

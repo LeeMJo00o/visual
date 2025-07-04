@@ -48,3 +48,4 @@ class Mq():
 
 mq = Mq("pp:route_update")
 mq_route = Mq("__cpp_pp:path")
+mq_demo_path = Mq("pp4:path:path_mid")
