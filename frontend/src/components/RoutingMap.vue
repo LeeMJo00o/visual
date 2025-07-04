@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import ApplicationManager from '../routing_map/main.js'
+import ApplicationManager from '../routing_map/main.ts'
 
 const gameContainer = ref<HTMLDivElement | null>(null)
 let appManager: ApplicationManager | null = null

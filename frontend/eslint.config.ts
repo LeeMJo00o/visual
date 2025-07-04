@@ -13,6 +13,9 @@ export default defineConfigWithVueTs(
   {
     name: 'app/files-to-lint',
     files: ['**/*.{ts,mts,tsx,vue}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
   },
 
   {
@@ -22,11 +25,29 @@ export default defineConfigWithVueTs(
 
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
-  
+
   {
     ...pluginVitest.configs.recommended,
     files: ['src/**/__tests__/*'],
   },
   ...oxlint.configs['flat/recommended'],
   skipFormatting,
+  {
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      'prefer-const': 'off',
+    },
+  },
 )
+
+// export default defineConfigWithVueTs(
+//     {
+//       name: 'app/files-to-lint',
+//       rules: {}, // 明确关闭所有规则
+//     },
+//     {
+//       name: 'app/files-to-ignore',
+//       ignores: ['**/dist/**'],
+//     },
+//     // 不加载任何插件或预设（如 pluginVue、vueTsConfigs、pluginVitest、oxlint）
+// )

@@ -1,5 +1,5 @@
 import { Graphics, Text } from 'pixi.js'
-import { stringToUniqueColor } from './graph.js'
+import { stringToUniqueColor } from './graph.ts'
 
 const roundTo = (num, decimalPlaces) =>
   Math.round(num * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces)

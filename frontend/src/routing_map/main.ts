@@ -10,7 +10,7 @@ import {
   extensions,
   CullerPlugin,
 } from 'pixi.js'
-import { GraphicTools, stringToUniqueColor, unrotatePoint } from './graph.js'
+import { GraphicTools, stringToUniqueColor, unrotatePoint } from './graph.ts'
 import {
   WebSocketClient,
   demo_get_traj,
@@ -21,12 +21,44 @@ import {
 import { mapCache } from './map_cache.js' // 导入缓存模块
 import { EventManager } from './event.js' // 导入事件管理器
 import Agent from './agent.js' // 导入 Agent 类
-import { DataRenderer } from './data_renderer.js' // 导入数据渲染管理器
+import { DataRenderer } from './data_renderer.ts' // 导入数据渲染管理器
 // import fontFile from '../assets/DejaVuSansMono-msdf.json?raw'
 
 // const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
 // await Assets.load(fontDataUrl);
 // extensions.add(CullerPlugin);
+
+interface AgentMap {
+  [vehicleId: string]: Agent
+}
+
+interface LockAreasMap {
+  [areaId: string]: Graphics
+}
+
+interface MapPathInfo {
+  [pathId: string]: {
+    points: number[][]
+    attrs?: Record<string, any>
+  }
+}
+
+interface DrawingInfo {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+interface SmoothMovementConfig {
+  enabled: boolean
+}
+
+interface Position {
+  x: number
+  y: number
+  theta: number
+}
 
 const roundTo = (num, decimalPlaces) =>
   Math.round(num * Math.pow(10, decimalPlaces)) / Math.pow(10, decimalPlaces)
@@ -45,6 +77,9 @@ const clearGlobalInstance = () => {
 }
 
 export default class ApplicationManager extends GraphicTools {
+  public app: Application
+  public agents: AgentMap = {}
+
   constructor() {
     // 如果已经存在实例，返回现有实例
     const existingInstance = getGlobalInstance()
@@ -148,7 +183,7 @@ export default class ApplicationManager extends GraphicTools {
       backgroundColor: '#000',
       // preference: "webgpu" # webgl / webgpu
     })
-    let game_container = document.getElementById('map_main_container')
+    const game_container = document.getElementById('map_main_container')
     game_container.appendChild(this.app.canvas)
     this.mainContainer = new Container()
     this.agentContainer = new Container()
@@ -265,14 +300,14 @@ export default class ApplicationManager extends GraphicTools {
   // 逆运算即可算出原坐标
 
   raw_xy(x, y) {
-    let scale = this.mainContainer.scale.x
+    const scale = this.mainContainer.scale.x
 
-    let _x = x - this.mainContainer.position.x
-    let _y = y - this.mainContainer.position.y
+    const _x = x - this.mainContainer.position.x
+    const _y = y - this.mainContainer.position.y
 
-    let newPoint = unrotatePoint(_x, _y, this.g_rotation)
+    const newPoint = unrotatePoint(_x, _y, this.g_rotation)
 
-    let t_x = newPoint.x / scale
+    const t_x = newPoint.x / scale
     let t_y = newPoint.y / scale
     t_y = -t_y // 前端 y 的方向与原地图相反
     return [roundTo(t_x, 4), roundTo(t_y, 4)]
@@ -280,7 +315,7 @@ export default class ApplicationManager extends GraphicTools {
 
   add_agent(vehicle_id, x = 0, y = 0, theta = 0) {
     console.log('add agent:', vehicle_id, x, y, theta)
-    let v = new Agent(this, vehicle_id)
+    const v = new Agent(this, vehicle_id)
     // this.agent_graphics.push(v.graphics)
     v.graphics.interactive = true
     v.graphics.cursor = 'pointer'
@@ -677,7 +712,7 @@ export default class ApplicationManager extends GraphicTools {
       // console.log(path_id, one_path);
       const points = one_path['points']
 
-      let g = new Graphics()
+      const g = new Graphics()
       cons.addChild(g)
 
       // 直接使用 drawLine 方法
@@ -737,8 +772,8 @@ export default class ApplicationManager extends GraphicTools {
 
   graphics_sacle_move(e, scale_level_v) {
     const graphic = this.mainContainer
-    let the_x = e.global.x - graphic.position.x
-    let the_y = e.global.y - graphic.position.y
+    const the_x = e.global.x - graphic.position.x
+    const the_y = e.global.y - graphic.position.y
 
     // 缩放
     const scale_to = graphic.scale.x * scale_level_v

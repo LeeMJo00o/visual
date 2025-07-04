@@ -1,7 +1,7 @@
 import { useGlobalStore } from '../stores/globalStore'
 
 /**
- * @typedef {import('./main.js').default} ApplicationManager
+ * @typedef {import('./main.ts').default} ApplicationManager
  */
 
 export class EventManager {

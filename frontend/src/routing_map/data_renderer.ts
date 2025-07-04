@@ -1,14 +1,86 @@
 import { WebSocketClient } from './pp_backend.js'
+import { Graphics } from 'pixi.js'
+import ApplicationManager from './main.ts'
+
+// 类型定义
+interface Position {
+  x: number
+  y: number
+  theta: number
+}
+
+interface AgentData {
+  vehicleId: string
+  x: number
+  y: number
+  theta: number
+}
+
+interface PathData {
+  path: string[]
+  start_pose: {
+    x: number
+    y: number
+    index: number
+    is_ahead: boolean
+  }
+  end_pose: {
+    x: number
+    y: number
+    index: number
+    is_ahead: boolean
+  }
+}
+
+interface PathUpdateData {
+  data: Record<string, PathData | null>
+}
+
+interface PoseData {
+  x: number
+  y: number
+  yaw: number
+}
+
+interface PoseUpdateData {
+  data: Record<string, PoseData>
+}
+
+interface LockArea {
+  name?: string
+  type?: string
+  subtype?: string
+  created_by?: string
+  describe?: string
+  polygon: Array<{ x: number; y: number }>
+}
+
+interface LockAreaUpdateData {
+  data: Record<string, LockArea>
+}
+
+interface WebSocketClients {
+  [key: string]: WebSocketClient
+}
+
+interface LockAreas {
+  [key: string]: Graphics
+}
 
 /**
  * 数据渲染管理器
  * 负责处理WebSocket数据接收和图形绘制
  */
 export class DataRenderer {
+  private manager: ApplicationManager
+  private websocket_clients: WebSocketClients
+  private long_path_width: number
+  private short_path_width: number
+
   /**
-   * @param {any} manager - ApplicationManager实例
+   * @param manager - ApplicationManager实例
    */
-  constructor(manager) {
+  constructor(manager: ApplicationManager) {
     this.manager = manager
     this.websocket_clients = {}
     this.long_path_width = 1
@@ -17,20 +89,21 @@ export class DataRenderer {
 
   /**
    * 初始化WebSocket连接
-   * @param {string} mode - 运行模式 ('test-demo' 或 'production')
+   * @param mode - 运行模式 ('test-demo' 或 'production')
    */
-  init_websockets(mode) {
+  init_websockets(mode: string): void {
     this._init_demo_websockets()
   }
+
   /**
    * 初始化demo模式的WebSocket连接
    */
-  _init_demo_websockets() {
+  private _init_demo_websockets(): void {
     const ws_prefix = `ws://${window.location.hostname}:${window.location.port}`
 
     // 长路径WebSocket
     const ws_long = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_path`, {
-      onMessage: (data) => {
+      onMessage: (data: PathUpdateData) => {
         this.demo_update_path_long(data)
       },
     })
@@ -39,7 +112,7 @@ export class DataRenderer {
 
     // 短路径WebSocket
     const ws_short = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_short_path`, {
-      onMessage: (data) => {
+      onMessage: (data: PathUpdateData) => {
         this.demo_update_path_short(data)
       },
     })
@@ -48,7 +121,7 @@ export class DataRenderer {
 
     // 位置信息WebSocket
     const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
-      onMessage: (data) => {
+      onMessage: (data: PoseUpdateData) => {
         this.pose_update(data)
       },
     })
@@ -57,7 +130,7 @@ export class DataRenderer {
 
     // 锁闭区WebSocket
     const ws_areas = new WebSocketClient(`${ws_prefix}/api/ws/demo/lock_area`, {
-      onMessage: (data) => {
+      onMessage: (data: LockAreaUpdateData) => {
         this.areas_update(data)
       },
     })
@@ -72,7 +145,7 @@ export class DataRenderer {
   /**
    * 关闭所有WebSocket连接
    */
-  close_all_websockets() {
+  close_all_websockets(): void {
     Object.values(this.websocket_clients).forEach((client) => {
       if (client && typeof client.close === 'function') {
         client.close()
@@ -83,10 +156,9 @@ export class DataRenderer {
 
   /**
    * 更新长路径
-   * @param {Object} data - 路径数据
-   * @param {number} width - 路径宽度
+   * @param data - 路径数据
    */
-  demo_update_path_long(data) {
+  demo_update_path_long(data: PathUpdateData): void {
     for (const [vehicleId, v] of Object.entries(data.data)) {
       if (v === null) {
         if (this.manager.agents[vehicleId]) {
@@ -116,10 +188,9 @@ export class DataRenderer {
 
   /**
    * 更新短路径
-   * @param {Object} data - 路径数据
-   * @param {number} width - 路径宽度
+   * @param data - 路径数据
    */
-  demo_update_path_short(data, width) {
+  demo_update_path_short(data: PathUpdateData): void {
     for (const [vehicleId, v] of Object.entries(data.data)) {
       if (v === null) {
         if (this.manager.agents[vehicleId]) {
@@ -149,9 +220,9 @@ export class DataRenderer {
 
   /**
    * 处理位置信息更新
-   * @param {Object} data - 位置数据
+   * @param data - 位置数据
    */
-  pose_update(data) {
+  pose_update(data: PoseUpdateData): void {
     for (const [id, v] of Object.entries(data.data)) {
       // 如果禁用了平滑移动，则为每个Agent重置设置
       if (!this.manager.smoothMovementConfig.enabled && this.manager.agents[id]) {
@@ -169,9 +240,9 @@ export class DataRenderer {
 
   /**
    * 处理锁闭区数据更新
-   * @param {Object} data - 锁闭区数据
+   * @param data - 锁闭区数据
    */
-  async areas_update(data) {
+  async areas_update(data: LockAreaUpdateData): Promise<void> {
     const all_areas = data.data
     console.log('收到锁闭区数据:', Object.keys(all_areas).length, '个区域')
 
@@ -198,10 +269,10 @@ export class DataRenderer {
 
   /**
    * 绘制单个锁闭区
-   * @param {string} areaId - 区域ID
-   * @param {Object} area - 区域数据
+   * @param areaId - 区域ID
+   * @param area - 区域数据
    */
-  async draw_lock_area(areaId, area) {
+  private async draw_lock_area(areaId: string, area: LockArea): Promise<void> {
     if (!area.polygon || area.polygon.length < 3) {
       console.log('跳过无效的锁闭区:', areaId, area)
       return
@@ -210,7 +281,6 @@ export class DataRenderer {
     console.log('绘制锁闭区:', areaId, area.name)
 
     // 为每个锁闭区创建独立的图形对象
-    const { Graphics } = await import('pixi.js')
     const areaGraphics = new Graphics()
 
     // 将多边形数据转换为drawLine需要的格式
@@ -232,11 +302,11 @@ export class DataRenderer {
     areaGraphics.cursor = 'pointer'
 
     // 保存区域数据到图形对象
-    areaGraphics.areaData = area
-    areaGraphics.areaId = areaId
+    ;(areaGraphics as any).areaData = area
+    ;(areaGraphics as any).areaId = areaId
 
     // 添加鼠标悬停事件处理，显示锁闭区信息
-    areaGraphics.on('pointerover', (e) => {
+    areaGraphics.on('pointerover', (e: any) => {
       console.log('鼠标悬停在锁闭区上:', areaId)
 
       // 高亮显示锁闭区
@@ -260,16 +330,20 @@ export class DataRenderer {
         this.manager.tooltip.style.top = e.clientY + 10 + 'px'
 
         // 跟随鼠标移动
-        const onMouseMove = (moveEvent) => {
-          this.manager.tooltip.style.left = moveEvent.clientX + 15 + 'px'
-          this.manager.tooltip.style.top = moveEvent.clientY + 10 + 'px'
+        const onMouseMove = (moveEvent: MouseEvent) => {
+          if (this.manager.tooltip) {
+            this.manager.tooltip.style.left = moveEvent.clientX + 15 + 'px'
+            this.manager.tooltip.style.top = moveEvent.clientY + 10 + 'px'
+          }
         }
 
         // 鼠标离开时移除事件监听
         const onPointerOut = () => {
           console.log('鼠标离开锁闭区:', areaId)
           document.removeEventListener('mousemove', onMouseMove)
-          this.manager.tooltip.style.display = 'none'
+          if (this.manager.tooltip) {
+            this.manager.tooltip.style.display = 'none'
+          }
           areaGraphics.tint = 0xffffff // 恢复正常颜色
           // 移除pointerout事件监听器，避免重复绑定
           areaGraphics.off('pointerout', onPointerOut)
@@ -291,9 +365,9 @@ export class DataRenderer {
 
   /**
    * 绘制单个车辆
-   * @param {Object} data - 车辆数据
+   * @param data - 车辆数据
    */
-  draw_one_agent(data) {
+  draw_one_agent(data: AgentData): void {
     const { vehicleId, x, y, theta } = data
     if (this.manager.agents.hasOwnProperty(vehicleId)) {
       this.manager.agents[vehicleId].setPosition(x, -y, theta)
@@ -304,10 +378,10 @@ export class DataRenderer {
 
   /**
    * 将demo路径数据转换为内部格式
-   * @param {Object} path - 路径数据
-   * @returns {Array} 转换后的路径点数组
+   * @param path - 路径数据
+   * @returns 转换后的路径点数组
    */
-  demo_path_to_my(path) {
+  private demo_path_to_my(path: PathData): number[][] {
     // 缓存频繁访问的属性
     const pathArray = path.path
     const pathLength = pathArray.length
@@ -316,7 +390,7 @@ export class DataRenderer {
     const mapPathInfo = this.manager.map_path_info
 
     // 预分配数组大小以提高性能
-    let path_t = []
+    const path_t: number[][] = []
     path_t.push([startPose.x, startPose.y])
 
     // 计算起始和结束索引
