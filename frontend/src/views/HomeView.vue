@@ -176,6 +176,7 @@ const onAgentHide = () => {
               <div v-else>
                 <!-- <h3>请选择一个功能</h3> -->
               </div>
+
             </div>
           </div>
           <div class="divider"></div>
@@ -345,5 +346,14 @@ const onAgentHide = () => {
   width: 100%;
   overflow: hidden;
   transition: width 0.3s ease;
+}
+
+/* 车辆控制按钮包装器样式 */
+.vehicle-controls-wrapper {
+  margin-top: 10px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
 }
 </style>

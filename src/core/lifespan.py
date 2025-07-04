@@ -38,7 +38,8 @@ async def start():
 
 
 async def exit():
-    await grpc_manager.server.stop(0)
+    if grpc_manager.server:
+        await grpc_manager.server.stop(0)
     pass
 
 

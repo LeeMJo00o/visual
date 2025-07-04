@@ -1,5 +1,5 @@
 run:
-  dotenv -f envs/env_demo run bash run.sh
+  dotenv -f envs/env_local run bash run.sh
 
 run-demo:
   dotenv -f envs/env_demo run bash run.sh
