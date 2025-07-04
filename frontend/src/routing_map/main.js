@@ -79,15 +79,6 @@ export default class ApplicationManager extends GraphicTools {
       enabled: true, // 是否启用平滑移动
     }
 
-    // 存储所有需要清理的资源
-    this.cleanupTasks = {
-      intervals: [], // 存储所有setInterval的ID
-      timeouts: [], // 存储所有setTimeout的ID
-      eventListeners: [], // 存储所有事件监听器
-      tickerCallbacks: [], // 存储所有ticker回调
-      websockets: [], // 存储所有WebSocket连接
-    }
-
     // 创建事件管理器实例
     this.eventManager = null
 
@@ -126,114 +117,12 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  // 添加需要清理的资源
-  addCleanupTask(type, task) {
-    if (this.cleanupTasks[type]) {
-      this.cleanupTasks[type].push(task)
-    }
-  }
-
-  // 清理所有资源
+  // 清理所有资源（仅在页面完全关闭时调用）
   cleanup() {
-    console.log('开始清理资源...')
-
-    // 清理所有定时器
-    this.cleanupTasks.intervals.forEach((id) => {
-      clearInterval(id)
-    })
-    this.cleanupTasks.timeouts.forEach((id) => {
-      clearTimeout(id)
-    })
-
-    // 清理所有事件监听器
-    this.cleanupTasks.eventListeners.forEach(({ target, type, listener }) => {
-      if (target && target.removeEventListener) {
-        target.removeEventListener(type, listener)
-      }
-    })
-
-    // 清理所有ticker回调
-    this.cleanupTasks.tickerCallbacks.forEach((callback) => {
-      if (this.app && this.app.ticker) {
-        this.app.ticker.remove(callback)
-      }
-    })
-
-    // 关闭所有WebSocket连接
-    this.cleanupTasks.websockets.forEach((ws) => {
-      if (ws && ws.readyState !== WebSocket.CLOSED) {
-        ws.close()
-      }
-    })
-
-    // 清理所有agents
-    Object.values(this.agents).forEach((agent) => {
-      if (agent.graphics) {
-        agent.graphics.destroy({ children: true })
-      }
-      if (agent.text) {
-        agent.text.destroy()
-      }
-      if (agent.graph_short_path) {
-        agent.graph_short_path.destroy()
-      }
-      if (agent.graph_long_path) {
-        agent.graph_long_path.destroy()
-      }
-    })
-    this.agents = {}
-
-    // 清理所有图形对象
-    if (this.graphics_path_short) {
-      this.graphics_path_short.destroy()
-    }
-    if (this.graphics_path_long) {
-      this.graphics_path_long.destroy()
-    }
-    if (this.graphics_path_apply_area) {
-      this.graphics_path_apply_area.destroy()
-    }
-    if (this.graphics_lock_area) {
-      this.graphics_lock_area.destroy()
-    }
-
-    // 清理所有锁闭区图形对象
-    Object.values(this.lockAreas).forEach((areaGraphics) => {
-      if (areaGraphics) {
-        areaGraphics.destroy({ children: true })
-      }
-    })
-    this.lockAreas = {}
-
-    // 清理地图容器
-    if (this.map_container) {
-      this.map_container.destroy({ children: true })
-    }
-
-    // 清理主容器
-    if (this.mainContainer) {
-      this.mainContainer.destroy({ children: true })
-    }
-
-    // 清理PIXI应用
-    if (this.app) {
-      this.app.destroy(true, { children: true })
-    }
-
-    // 清理tooltip
-    if (this.tooltip && this.tooltip.parentNode) {
-      this.tooltip.parentNode.removeChild(this.tooltip)
-    }
-
-    // 清空清理任务列表
-    Object.keys(this.cleanupTasks).forEach((key) => {
-      this.cleanupTasks[key] = []
-    })
+    console.log('清理ApplicationManager资源...')
 
     // 重置全局单例实例
     clearGlobalInstance()
-
-    // mapCache.close()
 
     console.log('资源清理完成')
   }
@@ -345,7 +234,6 @@ export default class ApplicationManager extends GraphicTools {
       // 设置动画循环，更新所有车辆位置
       const tickerCallback = () => this.updateAgents()
       this.app.ticker.add(tickerCallback)
-      this.addCleanupTask('tickerCallbacks', tickerCallback)
 
       if (this.mode == 'test-demo') {
         // // 义东 demo 用
@@ -362,7 +250,6 @@ export default class ApplicationManager extends GraphicTools {
           },
         })
         ws_long.connect()
-        this.addCleanupTask('websockets', ws_long)
 
         const ws_short = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_short_path`, {
           onMessage: (data) => {
@@ -370,7 +257,6 @@ export default class ApplicationManager extends GraphicTools {
           },
         })
         ws_short.connect()
-        this.addCleanupTask('websockets', ws_short)
 
         this.long_path_width = 1
         this.short_path_width = 4
@@ -388,9 +274,6 @@ export default class ApplicationManager extends GraphicTools {
           },
         })
         ws_areas.connect()
-        this.addCleanupTask('websockets', ws_areas)
-
-        this.addCleanupTask('websockets', ws_pose)
       } else {
         // 自己测试用
         const ws = new WebSocketClient('ws://10.6.64.49:2030/api/ws/demo/route_info', {
@@ -399,7 +282,6 @@ export default class ApplicationManager extends GraphicTools {
           },
         })
         ws.connect()
-        this.addCleanupTask('websockets', ws)
 
         const ws_pose = new WebSocketClient('ws://10.6.64.49:2030/api/ws/demo/pose_info', {
           onMessage: (data) => {
@@ -407,23 +289,15 @@ export default class ApplicationManager extends GraphicTools {
           },
         })
         ws_pose.connect()
-        this.addCleanupTask('websockets', ws_pose)
 
         this.long_path_width = 2
         this.short_path_width = 3
       }
 
-      // 添加页面卸载事件监听器
-      const beforeUnloadHandler = () => {
-        // 页面重载时不调用cleanup，保持单例实例
-        // 只有在页面完全关闭时才清理资源
-        console.log('页面卸载，但不清理ApplicationManager单例')
-      }
-      window.addEventListener('beforeunload', beforeUnloadHandler)
-      this.addCleanupTask('eventListeners', {
-        target: window,
-        type: 'beforeunload',
-        listener: beforeUnloadHandler,
+      // 页面卸载时清理资源
+      window.addEventListener('beforeunload', () => {
+        console.log('页面卸载，清理ApplicationManager资源')
+        this.cleanup()
       })
     } catch (error) {
       console.error('初始化失败:', error)
@@ -1050,13 +924,9 @@ export default class ApplicationManager extends GraphicTools {
     }
 
     // 清理所有现有的锁闭区图形对象
-    console.log('清理现有锁闭区图形对象:', Object.keys(this.lockAreas).length, '个')
     Object.values(this.lockAreas).forEach((areaGraphics) => {
       if (areaGraphics && areaGraphics.parent) {
         areaGraphics.parent.removeChild(areaGraphics)
-      }
-      if (areaGraphics) {
-        areaGraphics.destroy({ children: true })
       }
     })
     this.lockAreas = {}

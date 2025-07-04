@@ -42,33 +42,6 @@ export class EventManager {
 
     // 设置UI控件事件监听器
     this.setupUIControls()
-
-    // 记录所有事件监听器用于清理
-    this.manager.addCleanupTask('eventListeners', {
-      target: this.app.stage,
-      type: 'pointerdown',
-      listener: pointerDownHandler,
-    })
-    this.manager.addCleanupTask('eventListeners', {
-      target: this.app.stage,
-      type: 'pointermove',
-      listener: pointerMoveHandler,
-    })
-    this.manager.addCleanupTask('eventListeners', {
-      target: this.app.stage,
-      type: 'pointerup',
-      listener: pointerUpHandler,
-    })
-    this.manager.addCleanupTask('eventListeners', {
-      target: this.app.stage,
-      type: 'pointerupoutside',
-      listener: pointerUpOutsideHandler,
-    })
-    this.manager.addCleanupTask('eventListeners', {
-      target: this.app.stage,
-      type: 'wheel',
-      listener: wheelHandler,
-    })
   }
 
   handlePointerDown(e) {

@@ -7,7 +7,7 @@ import { useGlobalStore } from '../stores/globalStore'
 // import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import LockArea from '@/components/LockArea.vue'
 import AgentsManager from '@/components/AgentsManager.vue'
-import GlobalVehicleDialog from '@/components/GlobalVehicleDialog.vue'
+import VehicleList from '@/components/VehicleList.vue'
 
 // 声明全局接口
 declare global {
@@ -189,8 +189,8 @@ const onAgentHide = () => {
     </el-container>
   </div>
 
-  <!-- 全局车辆管理对话框 -->
-  <GlobalVehicleDialog />
+  <!-- 车辆列表对话框 -->
+  <VehicleList />
 </template>
 
 <style scoped>
