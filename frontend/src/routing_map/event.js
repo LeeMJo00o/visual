@@ -54,8 +54,8 @@ export class EventManager {
       let raw_pos = this.manager.raw_xy(e.global.x, e.global.y)
       // 使用Pinia store更新
       this.globalStore.setPosition('click', raw_pos[0], raw_pos[1])
-    } else if (this.manager.mouse_func === 'draw') {
-      this.manager.handleDrawingMouseDown(e)
+    } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {
+      this.manager.drawingHandlers.handleDrawingMouseDown(e)
     }
   }
 
@@ -77,8 +77,8 @@ export class EventManager {
           this.rafId = null
         })
       }
-    } else if (this.manager.mouse_func === 'draw') {
-      this.manager.handleDrawingMouseMove(e)
+    } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {
+      this.manager.drawingHandlers.handleDrawingMouseMove(e)
     }
   }
 
@@ -105,8 +105,8 @@ export class EventManager {
     // 只在默认模式下执行拖拽功能
     if (this.manager.mouse_func === 'default') {
       this.isDragging = false
-    } else if (this.manager.mouse_func === 'draw') {
-      this.manager.handleDrawingMouseUp(e)
+    } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {
+      this.manager.drawingHandlers.handleDrawingMouseUp(e)
     }
   }
 
@@ -114,8 +114,8 @@ export class EventManager {
     // 只在默认模式下执行拖拽功能
     if (this.manager.mouse_func === 'default') {
       this.isDragging = false
-    } else if (this.manager.mouse_func === 'draw') {
-      this.manager.handleDrawingMouseUp(e)
+    } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {
+      this.manager.drawingHandlers.handleDrawingMouseUp(e)
     }
   }
 

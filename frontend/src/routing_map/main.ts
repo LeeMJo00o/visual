@@ -43,13 +43,6 @@ interface MapPathInfo {
   }
 }
 
-interface DrawingInfo {
-  left: number
-  top: number
-  width: number
-  height: number
-}
-
 interface SmoothMovementConfig {
   enabled: boolean
 }
@@ -109,6 +102,7 @@ export default class ApplicationManager extends GraphicTools {
     this.mainContainer = null
     this.g_rotation = 0
     this.mode = 'test-demo'
+    this.mouse_func = 'default' // 保留鼠标功能模式，供事件管理器使用
 
     // 车辆平滑移动的配置
     this.smoothMovementConfig = {
@@ -123,6 +117,9 @@ export default class ApplicationManager extends GraphicTools {
 
     // 存储锁闭区图形对象
     this.lockAreas = {}
+
+    // 存储画框处理方法（由LockArea.vue设置）
+    this.drawingHandlers = null
   }
 
   // 获取单例实例
@@ -190,11 +187,6 @@ export default class ApplicationManager extends GraphicTools {
     this.longPathContainer = new Container()
     this.shortPathContainer = new Container()
     this.agentTextContainer = new Container()
-
-    this.mouse_func = 'default'
-    this.drawingStartPoint = null
-    this.drawingEndPoint = null
-    this.drawingGraphics = null
 
     // 创建全局tooltip元素
     this.tooltip = document.createElement('div')
@@ -265,9 +257,6 @@ export default class ApplicationManager extends GraphicTools {
       this.add_graphics(this.graphics_path_apply_area)
       this.add_graphics(this.graphics_lock_area)
       this.mainContainer.addChild(this.agentContainer)
-
-      this.drawingGraphics = new Graphics()
-      this.app.stage.addChild(this.drawingGraphics)
 
       this.graphics_path_apply_area.alpha = 0.5
 
@@ -415,222 +404,6 @@ export default class ApplicationManager extends GraphicTools {
   // 新增：计算两点之间的角度
   calculateAngle(x1, y1, x2, y2) {
     return Math.atan2(y2 - y1, x2 - x1)
-  }
-
-  // 设置鼠标功能
-  setMouseFunction(func) {
-    this.mouse_func = func
-    if (func === 'draw') {
-      // 设置鼠标为十字光标
-      if (this.app && this.app.canvas) {
-        this.app.canvas.style.cursor = 'crosshair'
-      }
-      // 禁用mainContainer的交互
-      if (this.mainContainer) {
-        this.mainContainer.interactive = false
-        this.mainContainer.eventMode = 'none'
-      }
-      console.log('进入画框模式')
-    } else {
-      // 恢复默认光标
-      if (this.app && this.app.canvas) {
-        this.app.canvas.style.cursor = 'default'
-      }
-      // 恢复mainContainer的交互
-      if (this.mainContainer) {
-        this.mainContainer.interactive = true
-        this.mainContainer.eventMode = 'static'
-      }
-      console.log('退出画框模式')
-    }
-  }
-
-  // 处理画框相关的鼠标事件
-  handleDrawingMouseDown(e) {
-    if (this.mouse_func !== 'draw') return
-
-    const point = e.global
-    this.drawingStartPoint = { x: point.x, y: point.y }
-
-    console.log('开始画框:', this.drawingStartPoint)
-    this.drawingGraphics.clear()
-  }
-
-  handleDrawingMouseMove(e) {
-    if (this.mouse_func !== 'draw' || !this.drawingStartPoint || !this.drawingGraphics) return
-
-    const point = e.global
-    this.drawingEndPoint = { x: point.x, y: point.y }
-
-    // 清除之前的绘制
-    this.drawingGraphics.clear()
-
-    // 计算矩形的实际位置和尺寸，支持任意方向拖动
-    const left = Math.min(this.drawingStartPoint.x, this.drawingEndPoint.x)
-    const top = Math.min(this.drawingStartPoint.y, this.drawingEndPoint.y)
-    const width = Math.abs(this.drawingEndPoint.x - this.drawingStartPoint.x)
-    const height = Math.abs(this.drawingEndPoint.y - this.drawingStartPoint.y)
-
-    this.drawingGraphics.rect(left, top, width, height).stroke({ color: '#ff0000', width: 2 })
-  }
-
-  handleDrawingMouseUp(e) {
-    if (this.mouse_func !== 'draw' || !this.drawingStartPoint || !this.drawingGraphics) return
-
-    const point = e.global
-    this.drawingEndPoint = { x: point.x, y: point.y }
-
-    // 完成画框
-    console.log('完成画框:', this.drawingStartPoint, this.drawingEndPoint)
-
-    // 计算矩形的实际位置和尺寸
-    const left = Math.min(this.drawingStartPoint.x, this.drawingEndPoint.x)
-    const top = Math.min(this.drawingStartPoint.y, this.drawingEndPoint.y)
-    const width = Math.abs(this.drawingEndPoint.x - this.drawingStartPoint.x)
-    const height = Math.abs(this.drawingEndPoint.y - this.drawingStartPoint.y)
-
-    // 保存画框信息，但不立即清除
-    this.currentDrawingInfo = {
-      left: left,
-      top: top,
-      width: width,
-      height: height,
-    }
-
-    // 重置状态
-    this.drawingStartPoint = null
-    this.drawingEndPoint = null
-
-    // 恢复默认鼠标功能
-    this.setMouseFunction('default')
-
-    // 显示确认对话框
-    this.showDrawingConfirmDialog(left, top, width, height)
-  }
-
-  // 显示画框确认对话框
-  showDrawingConfirmDialog(left, top, width, height) {
-    // 计算四个顶点的屏幕坐标
-    const screenVertices = [
-      { x: left, y: top }, // 左上角
-      { x: left + width, y: top }, // 右上角
-      { x: left + width, y: top + height }, // 右下角
-      { x: left, y: top + height }, // 左下角
-    ]
-
-    // 转换为地图坐标用于显示
-    const mapVertices = screenVertices.map((vertex) => {
-      const [mapX, mapY] = this.raw_xy(vertex.x, vertex.y)
-      return { x: mapX, y: mapY }
-    })
-
-    const verticesText = mapVertices
-      .map((v, i) => `[${v.x.toFixed(2)}, ${v.y.toFixed(2)}]`)
-      .join('<br>')
-
-    // 导入Element Plus的ElMessageBox
-    import('element-plus')
-      .then(({ ElMessageBox }) => {
-        ElMessageBox.confirm(`${verticesText}`, '画框确认', {
-          confirmButtonText: '确认',
-          cancelButtonText: '取消',
-          type: 'success',
-          dangerouslyUseHTMLString: true,
-        })
-          .then(() => {
-            // 用户点击确认，发送HTTP请求
-            this.sendDrawingRequest(left, top, width, height)
-          })
-          .catch(() => {
-            // 用户点击取消，什么都不做
-            console.log('用户取消了画框操作')
-          })
-          .finally(() => {
-            // 无论用户选择什么，都清除画框
-            this.clearCurrentDrawing()
-          })
-      })
-      .catch((error) => {
-        console.error('加载Element Plus组件失败:', error)
-        // 降级处理：使用原生confirm
-        const confirmed = confirm(
-          `确认要处理这个区域吗？\n\n${verticesText}\n\n尺寸: ${width.toFixed(2)} x ${height.toFixed(2)}`,
-        )
-        if (confirmed) {
-          this.sendDrawingRequest(left, top, width, height)
-        }
-        // 无论用户选择什么，都清除画框
-        this.clearCurrentDrawing()
-      })
-  }
-
-  // 清除当前画框
-  clearCurrentDrawing() {
-    if (this.drawingGraphics) {
-      this.drawingGraphics.clear()
-    }
-    // 清除保存的画框信息
-    this.currentDrawingInfo = null
-  }
-
-  // 发送画框请求
-  async sendDrawingRequest(left, top, width, height) {
-    try {
-      // 导入axios
-      const { default: axios } = await import('axios')
-
-      // 计算四个顶点的屏幕坐标
-      const screenVertices = [
-        { x: left, y: top }, // 左上角
-        { x: left + width, y: top }, // 右上角
-        { x: left + width, y: top + height }, // 右下角
-        { x: left, y: top + height }, // 左下角
-      ]
-
-      // 转换为地图坐标
-      const mapVertices = screenVertices.map((vertex) => {
-        const [mapX, mapY] = this.raw_xy(vertex.x, vertex.y)
-        return { x: mapX, y: mapY }
-      })
-
-      // 创建闭合多边形（添加第一个点作为最后一个点）
-      const polygon = [...mapVertices, mapVertices[0]]
-
-      const requestData = {
-        name: 'lock_area_' + Date.now(), // 生成唯一名称
-        subtype: 'lock',
-        type: 'lock',
-        created_by: 'pp-visual',
-        describe: '',
-        polygon: polygon,
-      }
-
-      console.log('发送画框请求:', requestData)
-
-      // 发送HTTP请求到后端
-      const response = await axios.post('/api/map/add_lock_area', requestData, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      console.log('画框请求成功:', response.data)
-
-      // 导入Element Plus的ElMessage显示成功消息
-      const { ElMessage } = await import('element-plus')
-      ElMessage.success('画框处理成功')
-    } catch (error) {
-      console.error('画框请求失败:', error)
-
-      // 显示错误消息
-      try {
-        const { ElMessage } = await import('element-plus')
-        ElMessage.error('画框处理失败: ' + (error.response?.data?.message || error.message))
-      } catch (importError) {
-        console.error('无法加载Element Plus消息组件:', importError)
-        alert('画框处理失败: ' + (error.response?.data?.message || error.message))
-      }
-    }
   }
 
   draw_map_road(g, points, color, alpha = 0.5) {
@@ -816,5 +589,10 @@ export default class ApplicationManager extends GraphicTools {
 
   map_xy_to_app(point) {
     return [point[0], -point[1]]
+  }
+
+  // 设置画框处理器（由LockArea.vue调用）
+  setDrawingHandlers(handlers) {
+    this.drawingHandlers = handlers
   }
 }
