@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { ApplicationManager } from '../routing_map/main'
 
 export type PositionType = 'click' | 'pointer' | string
 
@@ -19,24 +20,6 @@ export interface Vehicle {
   isAnimating: boolean
   color: string
   isShow: boolean
-}
-
-// 定义ApplicationManager接口
-export interface ApplicationManager {
-  agents: Record<
-    string,
-    {
-      vehicle_id: string
-      position: { x: number; y: number; theta: number }
-      targetPosition: { x: number; y: number; theta: number }
-      isAnimating: boolean
-      color: string
-      graphics?: { visible: boolean }
-      graph_short_path?: { visible: boolean }
-      graph_long_path?: { visible: boolean }
-      text?: { visible: boolean }
-    }
-  >
 }
 
 export const useGlobalStore = defineStore('global', () => {
