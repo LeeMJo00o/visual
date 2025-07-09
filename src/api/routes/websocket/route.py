@@ -21,15 +21,6 @@ _manager_lock_area = ConnectionManager()
 _manager_path = ConnectionManager()
 
 
-def str_to_json(s: dict) -> dict:
-    rs = {}
-    for key, value in s.items():
-        value_t = json.loads(value)
-        if key:
-            rs[key] = value_t
-    return rs
-
-
 @router.websocket_route("/route_info", name="websocket for pushlish route info")
 class RouteWsServer(MulLinkServerEndpoint):
     ws_manager = _manager
@@ -89,101 +80,6 @@ class PoseWsServer(MulLinkServerEndpoint):
             except Exception as e:
                 logger.error(f"publish_pose error: {repr(e)}")
             await asyncio.sleep(0.3)
-
-
-class BasePathWs(MulLinkServerEndpoint):
-    ws_manager = None
-    path_kv_key = None
-
-    async def on_receive_json(self, mess: dict):
-        print(f"I receive mess: {mess}")
-
-        # send message to the connection
-        await self.websocket.send_json({
-            "msg": "this is a mesage for the one connection"
-        })
-
-        # braodcast message to all connections
-        await self.broadcast_json({
-            "msg_all": "this is a mesage for the all connections"
-        })
-
-    @classmethod
-    async def get_traj_demo_from_redis_raw(cls) -> dict:
-        from chain_redis.aio_connect import get_single
-        ext_config = {
-            "socket_timeout": 30,
-        }
-        try:
-            redis_t = get_single(DEMO_REDIS_URL, ext_config=ext_config)
-            traj = await redis_t.hgetall(cls.path_kv_key)
-            return str_to_json(traj)
-        finally:
-            await redis_t.aclose()
-
-    @classmethod
-    async def get_traj_demo(cls):
-        rs_t = {}
-        from src.map_tools import g_roads
-        all_long_path = await cls.get_traj_demo_from_redis_raw()
-        # print(f"path count: {len(all_long_path)}")
-        # all_long_path = dict(list(all_long_path.items())[:200])
-        for vehicle_id, a_path in all_long_path.items():
-            try:
-                if a_path["start_pose"] and a_path["path"]:
-                    rs_t[vehicle_id] = g_roads.trans_path(a_path)
-                else:
-                    rs_t[vehicle_id] = None
-            except Exception as ex:
-                print(f"error for {vehicle_id}: {a_path}")
-                raise ex
-
-        return rs_t
-
-    @classmethod
-    async def publish_demo_path(cls):
-        # cycle_time = (all_number / batch_number) * sleep_time
-        cycle_time, sleep_time = 3, 0.1
-        just_use = 100000
-        while True:
-            try:
-                all_v_pose_t = await cls.get_traj_demo()
-                all_v_pose_t = dict(list(all_v_pose_t.items())[:just_use])
-                all_number = len(all_v_pose_t)
-                if all_number <= 0:
-                    await asyncio.sleep(0.5)
-                    continue
-                batch_number = math.ceil(all_number / (cycle_time / sleep_time))
-                vehicle_ids = list(all_v_pose_t.keys())
-                # random.shuffle(vehicle_ids)  # 打乱车辆顺序
-                _t1 = time.perf_counter()
-                for i in range(0, len(vehicle_ids), batch_number):
-                    batch_vehicles = vehicle_ids[i:i + batch_number]
-                    batch_data = {vid: all_v_pose_t[vid] for vid in batch_vehicles}
-                    await cls.ws_manager.broadcast_json({
-                        "type": "long_path",
-                        "data": batch_data
-                    })
-                    await asyncio.sleep(sleep_time)
-                _t2 = time.perf_counter()
-                if (_t := _t2 - _t1) < cycle_time:
-                    await asyncio.sleep(cycle_time - _t)
-            except Exception as e:
-                logger.error(f"publish path error: {traceback.format_exc()}")
-                await asyncio.sleep(1)
-            await asyncio.sleep(0.1)
-
-
-@router.websocket_route("/demo_path", name="websocket for pushlish demo path")
-class DemoPathWsServer(BasePathWs):
-    path_kv_key = "pp4:path:long"
-    ws_manager = _manager_demo_path
-
-
-@router.websocket_route("/demo_short_path", name="websocket for pushlish demo path (short)")
-class DemoPathWsServerShort(BasePathWs):
-    path_kv_key = "pp4:path:short"
-    ws_manager = _manager_demo_short_path
 
 
 @router.websocket_route("/lock_area", name="websocket for lock area")

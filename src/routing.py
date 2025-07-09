@@ -16,9 +16,6 @@ from shapely.geometry import Polygon, MultiPolygon
 import json
 from dataclasses import dataclass
 
-# 延迟导入，避免循环导入
-# from .map_tools import export_osm_path_info
-
 class Pose():
     def __init__(self, x, y, yaw, tx=None, ty=None, tyaw=None):
         self.x = x

@@ -29,3 +29,12 @@ def kv_hash_to_json(s: dict) -> dict:
         if key:
             rs[key] = value_t
     return rs
+
+
+def str_to_json(s: dict) -> dict:
+    rs = {}
+    for key, value in s.items():
+        value_t = json.loads(value)
+        if key:
+            rs[key] = value_t
+    return rs

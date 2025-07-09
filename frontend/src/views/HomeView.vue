@@ -45,7 +45,7 @@ const handleMenuSelect = (index: string) => {
 const handleSliderChange = async (value: number) => {
   try {
     // 发送 HTTP 请求，将滑块值传递给服务器
-    const response = await axios.post('/api/demo/change_weight', {
+    const response = await axios.post('/api/map/change_weight', {
       value: value,
     })
     ElMessage({ message: `set global sequece weight to ${value} ok`, type: 'success' })

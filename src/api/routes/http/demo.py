@@ -21,15 +21,3 @@ class NewDbRecord(BaseModel):
     name: str
 
 
-@router.post("/change_weight")
-async def change_weight(req: dict = Body()) -> StdRes:
-    url = f"{PATH_REPORT_URL}/api/chain/execute-chain"
-    req = {
-        "id": "wf_update_routing_weight",
-        "req_data": {
-            "weight": float(req["value"])
-        }
-    }
-    res = await aio_http.post(url, json=req, timeout=5)
-    logger.info(f"weight change: {req} => {res.status, res.text}")
-    return StdRes()
