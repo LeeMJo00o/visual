@@ -1,6 +1,6 @@
 <template>
   <div class="vehicle-controls">
-    <el-button type="primary" plain @click="vehicleStore.toggleVehicleDialog">
+    <el-button type="success" plain @click="vehicleStore.toggleVehicleDialog">
       Vehicle List
     </el-button>
     <div class="switch-container">

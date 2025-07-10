@@ -282,10 +282,11 @@ onUnmounted(() => {
 
 <template>
   <div class="lock-area-func">
-    <el-button type="primary" plain @click="handleDrawBox">start draw</el-button>
     <el-button type="success" plain @click="lockAreaStore.toggleLockAreaDialog"
-      >Lock Area List</el-button
+      >Area List</el-button
     >
+    <el-button type="primary" plain @click="handleDrawBox">start draw</el-button>
+
   </div>
 </template>
 
