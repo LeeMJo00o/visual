@@ -65,11 +65,17 @@ export const useLockAreaStore = defineStore('lockArea', () => {
       console.log('删除锁闭区:', areaId)
 
       // 发送删除请求到后端
-      const response = await axios.delete(`/api/map/delete_lock_area/${areaId}`, {
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await axios.post(
+        '/api/map/del_lock_area',
+        {
+          area_id: areaId,
         },
-      })
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
 
       console.log('删除锁闭区成功:', response.data)
 

@@ -78,6 +78,13 @@ async def get_path_info(req: dict = Body()):
     await redis_cli.hset(key_simweb_lock, name, json.dumps(req))
     return StdRes()
 
+@router.post('/del_lock_area')
+async def get_path_info(req: dict = Body()):
+    area_id = req["area_id"]
+    key_simweb_lock = "pp4:lock_area:simweb"
+    await redis_cli.hdel(key_simweb_lock, area_id)
+    return StdRes()
+
 
 @router.post("/change_weight")
 async def change_weight(req: dict = Body()) -> StdRes:

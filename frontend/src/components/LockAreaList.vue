@@ -38,6 +38,7 @@
         <template #default="{ row }">
           <el-button
             type="danger"
+            plain
             size="small"
             :loading="lockAreaStore.isLoading"
             @click="handleDelete(row)"

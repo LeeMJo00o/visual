@@ -315,7 +315,7 @@ const onAgentHide = () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 1000;
+  z-index: 400;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: none;
   pointer-events: auto;

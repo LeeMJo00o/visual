@@ -155,9 +155,13 @@ const handleWheel = (e: WheelEvent) => {
 }
 
 const handleDialogMouseDown = () => {
-  // 确保对话框在最前面
+  // 确保对话框在最前面，但不超过Element Plus组件的层级
   if (dialogRef.value) {
-    dialogRef.value.style.zIndex = String(getHighestZIndex() + 1)
+    const currentZIndex = parseInt(window.getComputedStyle(dialogRef.value).zIndex) || 500
+    const highestZIndex = getHighestZIndex()
+    // 只设置到最高层级，但不超过2000（Element Plus组件的层级）
+    const newZIndex = Math.min(highestZIndex + 1, 1999)
+    dialogRef.value.style.zIndex = String(newZIndex)
   }
 }
 
@@ -342,7 +346,7 @@ watch(
   flex-direction: column;
   min-width: 300px;
   min-height: 200px;
-  z-index: 1000;
+  z-index: 500;
   border: 1px solid #e4e7ed;
 }
 
@@ -402,7 +406,7 @@ watch(
 .resize-handle {
   position: absolute;
   background: transparent;
-  z-index: 1000;
+  z-index: 500;
 }
 
 .resize-handle-left {
