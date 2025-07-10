@@ -1,3 +1,4 @@
+
 <template>
   <Teleport to="body">
     <Transition name="dialog-fade">
@@ -7,6 +8,8 @@
         class="custom-dialog"
         :style="dialogStyle"
         @mousedown="handleDialogMouseDown"
+        @pointerover="handleDialogMouseOver"
+        @pointerleave="handleDialogMouseLeave"
         @wheel="handleWheel"
       >
         <!-- 标题栏 -->
@@ -60,6 +63,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import ApplicationManager from '../routing_map/main.ts'
 
 interface Props {
   visible: boolean
@@ -163,6 +167,16 @@ const handleDialogMouseDown = () => {
     const newZIndex = Math.min(highestZIndex + 1, 1999)
     dialogRef.value.style.zIndex = String(newZIndex)
   }
+}
+
+const handleDialogMouseOver = (e: MouseEvent) => {
+const ins = ApplicationManager.getInstance()
+ins.mainContainer.eventMode = 'none'
+}
+
+const handleDialogMouseLeave = (e: MouseEvent) => {
+const ins = ApplicationManager.getInstance()
+ins.mainContainer.eventMode = 'static'
 }
 
 // 获取最高z-index
