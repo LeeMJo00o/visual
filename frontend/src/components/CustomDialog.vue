@@ -1,4 +1,3 @@
-
 <template>
   <Teleport to="body">
     <Transition name="dialog-fade">
@@ -170,13 +169,13 @@ const handleDialogMouseDown = () => {
 }
 
 const handleDialogMouseOver = (e: MouseEvent) => {
-const ins = ApplicationManager.getInstance()
-ins.mainContainer.eventMode = 'none'
+  const ins = ApplicationManager.getInstance()
+  ins.mainContainer.eventMode = 'none'
 }
 
 const handleDialogMouseLeave = (e: MouseEvent) => {
-const ins = ApplicationManager.getInstance()
-ins.mainContainer.eventMode = 'static'
+  const ins = ApplicationManager.getInstance()
+  ins.mainContainer.eventMode = 'static'
 }
 
 // 获取最高z-index
