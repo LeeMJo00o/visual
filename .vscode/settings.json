@@ -1,31 +1,30 @@
 {
-    "python.testing.pytestArgs": [
-        "tests"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-    "python.analysis.ignore": [
-        "src/services/grpc/protos"
-    ],
-    "python.analysis.diagnosticSeverityOverrides": {
-        "reportAttributeAccessIssue":"warning"
-    },
-    "explorer.fileNesting.enabled": true,
-    "explorer.fileNesting.patterns": {
-      "tsconfig.json": "tsconfig.*.json, env.d.ts",
-      "vite.config.*": "jsconfig*, vitest.config.*, cypress.config.*, playwright.config.*",
-      "package.json": "package-lock.json, pnpm*, .yarnrc*, yarn*, .eslint*, eslint*, .prettier*, prettier*, .editorconfig"
-    },
-    "editor.codeActionsOnSave": {
-      "source.fixAll": "explicit"
-    },
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "[javascript]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[vue]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "typescript.validate.enable": false,
+  "python.testing.pytestArgs": ["tests"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.analysis.ignore": ["src/services/grpc/protos"],
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportAttributeAccessIssue": "warning"
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "tsconfig.json": "tsconfig.*.json, env.d.ts",
+    "vite.config.*": "jsconfig*, vitest.config.*, cypress.config.*, playwright.config.*",
+    "package.json": "package-lock.json, pnpm*, .yarnrc*, yarn*, .eslint*, eslint*, .prettier*, prettier*, .editorconfig"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "typescript.validate.enable": false,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.autopep8"
+  }
 }

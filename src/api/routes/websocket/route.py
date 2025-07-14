@@ -3,6 +3,7 @@ import random
 import math
 import time
 from fastapi import APIRouter
+from fastapi import WebSocket
 from chain_websocket.server import ConnectionManager, MulLinkServerEndpoint
 from src.middlewares.mq import mq_route
 import json
@@ -11,6 +12,7 @@ from src.core.config import DEMO_REDIS_URL
 from src.core.log import logger
 import traceback
 from src.map_tools import g_roads
+from src.utils.tools import str_to_json
 
 router = APIRouter()
 _manager = ConnectionManager()
@@ -106,7 +108,7 @@ class AreaWsServer(MulLinkServerEndpoint):
                 "type": key,
                 "data": json.loads(value)
             })
-    
+
     @classmethod
     async def publish_lock_area(cls):
         while True:
@@ -129,6 +131,10 @@ class AreaWsServer(MulLinkServerEndpoint):
 class PathWsServer(MulLinkServerEndpoint):
     ws_manager = _manager_path
 
+    async def on_connect(self, websocket: WebSocket) -> None:
+        await self.ws_manager.connect(websocket)
+        await self.init_pub(websocket)
+
     @classmethod
     async def on_mq_message(cls, mess):
         a_path = json.loads(mess['data'])
@@ -137,8 +143,27 @@ class PathWsServer(MulLinkServerEndpoint):
         else:
             a_path["path"] = None
             path_t = a_path
-        
+
         await cls.ws_manager.broadcast_json({
             "type": path_t["type"],
             "data": {path_t["v"]: path_t}
         })
+
+    async def init_pub(self, websocket: WebSocket):
+        _key_short = "pp4:path:short"
+        _key_long = "pp4:path:long"
+
+        data_long = await redis_cli.hgetall(_key_long)
+        data_short = await redis_cli.hgetall(_key_short)
+
+        for k, v in data_long.items():
+            await websocket.send_json({
+                "type": "long",
+                "data": json.loads(v)
+            })
+        
+        for k, v in data_short.items():
+            await websocket.send_json({
+                "type": "short",
+                "data": json.loads(v)
+            })
