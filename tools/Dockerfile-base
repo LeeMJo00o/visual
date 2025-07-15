@@ -3,10 +3,19 @@ FROM uhub.service.ucloud.cn/westwell_devops/python:3.13.3-slim
 RUN sed -i s/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
     && apt-get install -y --no-install-recommends curl gnupg \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs tzdata iputils-ping net-tools vim less curl netbase procps \
-    && echo "set number\nset backspace=indent,eol,start\nset mouse=\nset hlsearch\nsyntax on" > /root/.vimrc \
+    && { \
+        echo "set number"; \
+        echo "set backspace=indent,eol,start"; \
+        echo "set mouse="; \
+        echo "set hlsearch"; \
+        echo "set encoding=utf-8"; \
+        echo "set fileencoding=utf-8"; \
+        echo "set fileencodings=utf-8,ucs-bom,gb18030,gbk,gb2312,cp936"; \
+        echo "syntax on"; \
+    } > /root/.vimrc \
     && npm config set registry https://registry.npmmirror.com/
 
 COPY ./requirements.txt /tmp/requirements.txt

@@ -1,4 +1,4 @@
-FROM uhub.service.ucloud.cn/westwell_devops/chain_boot/pp-visual-base:2025-06-25-19-08-36
+FROM uhub.service.ucloud.cn/westwell_devops/chain_boot/pp-visual-base:2025-07-15-11-53-18
 
 WORKDIR /opt/app/
 COPY . ./

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import ApplicationManager from '../routing_map/main'
+import axios from 'axios'
 
 // 定义锁闭区接口
 export interface LockArea {
@@ -58,9 +59,6 @@ export const useLockAreaStore = defineStore('lockArea', () => {
 
     try {
       isLoading.value = true
-
-      // 导入axios
-      const { default: axios } = await import('axios')
 
       console.log('删除锁闭区:', areaId)
 

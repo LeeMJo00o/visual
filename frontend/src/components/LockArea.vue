@@ -2,6 +2,8 @@
 import ApplicationManager from '../routing_map/main.ts'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useLockAreaStore } from '../stores/lockAreaStore'
+import { Graphics } from 'pixi.js'
+import axios from 'axios'
 
 const appManager = ref<ApplicationManager | null>(null)
 const isDrawingMode = ref(false)
@@ -32,7 +34,6 @@ const setupDrawingGraphics = async () => {
   if (!appManager.value) return
 
   // 创建绘制图形对象
-  const { Graphics } = await import('pixi.js')
   drawingGraphics.value = new Graphics()
   appManager.value.app.stage.addChild(drawingGraphics.value)
 }
@@ -217,9 +218,6 @@ const sendDrawingRequest = async (left: number, top: number, width: number, heig
   if (!appManager.value) return
 
   try {
-    // 导入axios
-    const { default: axios } = await import('axios')
-
     // 计算四个顶点的屏幕坐标
     const screenVertices = [
       { x: left, y: top }, // 左上角
@@ -286,7 +284,6 @@ onUnmounted(() => {
       >Area List</el-button
     >
     <el-button type="primary" plain @click="handleDrawBox">start draw</el-button>
-
   </div>
 </template>
 

@@ -38,4 +38,16 @@ export default defineConfig({
     },
     cors: false,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-pixi': ['pixi.js'],
+          'vendor-element': ['element-plus'],
+        }
+      }
+    },
+    // 提高chunk大小警告阈值到1MB
+    chunkSizeWarningLimit: 2000
+  },
 })

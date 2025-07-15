@@ -22,7 +22,6 @@ import { mapCache } from './map_cache.js' // 导入缓存模块
 import { EventManager } from './event.js' // 导入事件管理器
 import Agent from './agent.js' // 导入 Agent 类
 import { DataRenderer } from './data_renderer.ts' // 导入数据渲染管理器
-// import fontFile from '../assets/DejaVuSansMono-msdf.json?raw'
 
 // const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
 // await Assets.load(fontDataUrl);
