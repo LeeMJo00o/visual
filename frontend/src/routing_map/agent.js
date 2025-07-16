@@ -6,7 +6,8 @@ const roundTo = (num, decimalPlaces) =>
 
 export default class Agent {
   constructor(manager, vehicle_id) {
-    this.graphics = new Graphics()
+    this.head = new Graphics()
+    this.trailer = new Graphics()
     this.manager = manager
     this.w = 16
     this.h = 3.5
@@ -112,27 +113,23 @@ export default class Agent {
     if (dTheta > Math.PI) dTheta -= 2 * Math.PI
     if (dTheta < -Math.PI) dTheta += 2 * Math.PI
 
-    // 检查是否已经足够接近目标
+    // 计算距离
+    const distance = Math.sqrt(dx * dx + dy * dy)
+
+    // 检查是否太近或太远（超过15米）
     if (
-      Math.abs(dx) < this.positionThreshold &&
-      Math.abs(dy) < this.positionThreshold &&
-      Math.abs(dTheta) < this.positionThreshold
+      (distance < this.positionThreshold && Math.abs(dTheta) < this.positionThreshold) ||
+      distance > 15
     ) {
-      // 如果很接近，直接设置到目标位置
+      // 如果很接近或距离太远，直接设置到目标位置
       this.position = { ...this.targetPosition }
       this._updateGraphics()
       this.isAnimating = false
       return
     }
 
-    // 否则，向目标位置移动一小步
-    // this.position.x += dx * this.animationSpeed
-    // this.position.y += dy * this.animationSpeed
-    // this.position.theta += dTheta * this.animationSpeed
-
     this.position.x += dx * this.animationSpeed
     this.position.y += dy * this.animationSpeed
-
     this.position.theta += dTheta * this.animationSpeed
 
     // 更新图形
@@ -169,7 +166,7 @@ export default class Agent {
 
   // 新方法：更新图形显示
   _updateGraphics() {
-    this.graphics.clear()
+    this.head.clear()
 
     let mid_v = 3 / 4
     let x_t = -this.w * mid_v
@@ -180,22 +177,22 @@ export default class Agent {
     let _x = this.position.x //+ this.manager.mainContainer.position.x
     let _y = this.position.y //+ this.manager.mainContainer.position.y
 
-    this.graphics.pivot.set(_x, _y)
-    this.graphics.position.set(_x, _y)
+    this.head.pivot.set(_x, _y)
+    this.head.position.set(_x, _y)
 
-    this.graphics.rect(x_t, y_t, this.w, this.h)
-    this.graphics.stroke({ color: this.color, width: 1 })
+    this.head.rect(x_t, y_t, this.w, this.h)
+    this.head.stroke({ color: this.color, width: 1 })
 
-    this.graphics.moveTo(0, -this.h / 2)
-    this.graphics.lineTo(0, this.h / 2)
+    this.head.moveTo(0, -this.h / 2)
+    this.head.lineTo(0, this.h / 2)
 
     // this.graphics.moveTo(this.w * (1 - mid_v), -this.h / 2)
     // this.graphics.lineTo(this.w * (1 - mid_v), this.h / 2)
 
-    this.graphics.stroke({ color: this.color_head, width: 1 })
-    this.graphics.rotation = -this.position.theta
+    this.head.stroke({ color: this.color_head, width: 1 })
+    this.head.rotation = -this.position.theta
 
-    this.graphics.pivot.set(0, 0)
+    this.head.pivot.set(0, 0)
 
     // console.log("update pos:", this.vehicle_id, this.position.x, this.position.y);
   }

@@ -88,8 +88,8 @@ onMounted(() => {
   // 立即更新一次
   vehicleStore.updateVehicleList()
 
-  // 每秒更新一次车辆列表
-  updateInterval = setInterval(vehicleStore.updateVehicleList, 1000)
+  // 每3秒更新一次车辆列表
+  updateInterval = setInterval(vehicleStore.updateVehicleList, 3000)
 })
 
 onUnmounted(() => {

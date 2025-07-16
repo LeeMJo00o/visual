@@ -304,17 +304,17 @@ export default class ApplicationManager extends GraphicTools {
   add_agent(vehicle_id, x = 0, y = 0, theta = 0) {
     console.log('add agent:', vehicle_id, x, y, theta)
     const v = new Agent(this, vehicle_id)
-    // this.agent_graphics.push(v.graphics)
-    v.graphics.interactive = true
-    v.graphics.cursor = 'pointer'
+    // this.agent_graphics.push(v.head)
+    v.head.interactive = true
+    v.head.cursor = 'pointer'
 
     this.agents[vehicle_id] = v
     this.agents[vehicle_id].setPosition(x, y, theta)
 
     // 添加鼠标悬停事件处理，显示车辆信息
-    v.graphics.on('pointerover', (e) => {
+    v.head.on('pointerover', (e) => {
       // 高亮显示车辆
-      v.graphics.tint = 0xffffff // 亮白色
+      v.head.tint = 0xffffff // 亮白色
 
       // 创建tooltip内容
       const agent = this.agents[vehicle_id]
@@ -341,20 +341,20 @@ export default class ApplicationManager extends GraphicTools {
         const onPointerOut = () => {
           document.removeEventListener('mousemove', onMouseMove)
           this.tooltip.style.display = 'none'
-          v.graphics.tint = 0xffffff // 恢复正常颜色
+          v.head.tint = 0xffffff // 恢复正常颜色
           // 移除pointerout事件监听器，避免重复绑定
-          v.graphics.off('pointerout', onPointerOut)
+          v.head.off('pointerout', onPointerOut)
         }
 
         document.addEventListener('mousemove', onMouseMove)
-        v.graphics.on('pointerout', onPointerOut)
+        v.head.on('pointerout', onPointerOut)
       }
     })
 
     console.log('add graphics1: ', v)
     console.log('add graphics2: ', v.graph_long_path)
 
-    this.agentContainer.addChild(v.graphics)
+    this.agentContainer.addChild(v.head)
     this.longPathContainer.addChild(v.graph_long_path)
     this.shortPathContainer.addChild(v.graph_short_path)
 

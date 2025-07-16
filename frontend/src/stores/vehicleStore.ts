@@ -54,8 +54,13 @@ export const useVehicleStore = defineStore('vehicle', () => {
     if (manager && manager.agents) {
       vehicles.value = Object.values(manager.agents)
         .map((agent) => {
-          // 检查车辆是否可见（通过检查graphics的visible属性）
-          const isVisible = agent.graphics ? agent.graphics.visible : true
+          // 查找现有的车辆状态，保持isShow设置
+          const existingVehicle = vehicles.value.find((v) => v.vehicle_id === agent.vehicle_id)
+          const isVisible = existingVehicle
+            ? existingVehicle.isShow
+            : agent.head
+              ? agent.head.visible
+              : true
 
           return {
             vehicle_id: agent.vehicle_id,
@@ -85,8 +90,8 @@ export const useVehicleStore = defineStore('vehicle', () => {
       const agent = manager.agents[vehicle.vehicle_id]
 
       // 控制车辆及其相关元素的显示/隐藏
-      if (agent.graphics) {
-        agent.graphics.visible = vehicle.isShow
+      if (agent.head) {
+        agent.head.visible = vehicle.isShow
       }
       if (agent.graph_short_path) {
         // 短路径的显示状态 = 车辆显示状态 AND 全局短路径开关状态
@@ -115,8 +120,8 @@ export const useVehicleStore = defineStore('vehicle', () => {
     const manager = getApplicationManager()
     if (manager && manager.agents) {
       Object.values(manager.agents).forEach((agent) => {
-        if (agent.graphics) {
-          agent.graphics.visible = true
+        if (agent.head) {
+          agent.head.visible = true
         }
         if (agent.graph_short_path) {
           // 短路径的显示状态 = 车辆显示状态 AND 全局短路径开关状态
@@ -145,8 +150,8 @@ export const useVehicleStore = defineStore('vehicle', () => {
     const manager = getApplicationManager()
     if (manager && manager.agents) {
       Object.values(manager.agents).forEach((agent) => {
-        if (agent.graphics) {
-          agent.graphics.visible = false
+        if (agent.head) {
+          agent.head.visible = false
         }
         if (agent.graph_short_path) {
           // 当车辆隐藏时，路径也必须隐藏
@@ -177,7 +182,7 @@ export const useVehicleStore = defineStore('vehicle', () => {
       Object.values(manager.agents).forEach((agent) => {
         if (agent.graph_short_path) {
           // 只有当车辆本身显示时，才显示短路径
-          agent.graph_short_path.visible = agent.graphics ? agent.graphics.visible : true
+          agent.graph_short_path.visible = agent.head ? agent.head.visible : true
         }
       })
     }
@@ -206,7 +211,7 @@ export const useVehicleStore = defineStore('vehicle', () => {
       Object.values(manager.agents).forEach((agent) => {
         if (agent.graph_long_path) {
           // 只有当车辆本身显示时，才显示长路径
-          agent.graph_long_path.visible = agent.graphics ? agent.graphics.visible : true
+          agent.graph_long_path.visible = agent.head ? agent.head.visible : true
         }
       })
     }
