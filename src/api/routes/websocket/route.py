@@ -71,10 +71,19 @@ class PoseWsServer(MulLinkServerEndpoint):
         while True:
             all_v_pose_t = {}
             try:
-                all_v_pose = await redis_cli.hgetall("pp4:vehicle:pose")
+                # 使用管道一次性获取所有数据
+                pipe = redis_cli.pipeline()
+                pipe.hgetall("pp4:vehicle:pose")
+                pipe.hgetall("scenario:arbiter:blameAT")
+                pipe.hgetall("scenario:arbiter:atBlame")
+                all_v_pose, all_v_be_blame, all_v_blame = await pipe.execute()
+
                 for v_id, pose in all_v_pose.items():
                     pose_data = json.loads(pose)
                     all_v_pose_t[v_id] = pose_data
+                    all_v_pose_t[v_id]["blocked_by"] = all_v_be_blame.get(v_id, "")
+                    all_v_pose_t[v_id]["block"] = all_v_blame.get(v_id, "")
+                
                 await cls.ws_manager.broadcast_json({
                     "type": "pose",
                     "data": all_v_pose_t

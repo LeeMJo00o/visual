@@ -301,20 +301,18 @@ export default class ApplicationManager extends GraphicTools {
     return [roundTo(t_x, 4), roundTo(t_y, 4)]
   }
 
-  add_agent(vehicle_id, x = 0, y = 0, theta = 0) {
-    console.log('add agent:', vehicle_id, x, y, theta)
+  add_agent(vehicle_id) {
     const v = new Agent(this, vehicle_id)
-    // this.agent_graphics.push(v.head)
-    v.head.interactive = true
-    v.head.cursor = 'pointer'
+    // this.agent_graphics.push(v.graphics)
+    v.graphics.interactive = true
+    v.graphics.cursor = 'pointer'
 
     this.agents[vehicle_id] = v
-    this.agents[vehicle_id].setPosition(x, y, theta)
 
     // 添加鼠标悬停事件处理，显示车辆信息
-    v.head.on('pointerover', (e) => {
+    v.graphics.on('pointerover', (e) => {
       // 高亮显示车辆
-      v.head.tint = 0xffffff // 亮白色
+      v.graphics.tint = 0xffffff // 亮白色
 
       // 创建tooltip内容
       const agent = this.agents[vehicle_id]
@@ -322,6 +320,8 @@ export default class ApplicationManager extends GraphicTools {
         <div style="font-weight: bold; margin-bottom: 4px;">Vehicle Info</div>
         <div>id: ${agent.vehicle_id}</div>
         <div>pose: ${agent.position.x.toFixed(3)}, ${-agent.position.y.toFixed(3)}, ${agent.position.theta.toFixed(3)}</div>
+        <div>blocked_by: ${agent.v_info.blocked_by}</div>
+        <div>block: ${agent.v_info.block}</div>
       `
 
       // 显示tooltip
@@ -341,20 +341,20 @@ export default class ApplicationManager extends GraphicTools {
         const onPointerOut = () => {
           document.removeEventListener('mousemove', onMouseMove)
           this.tooltip.style.display = 'none'
-          v.head.tint = 0xffffff // 恢复正常颜色
+          v.graphics.tint = 0xffffff // 恢复正常颜色
           // 移除pointerout事件监听器，避免重复绑定
-          v.head.off('pointerout', onPointerOut)
+          v.graphics.off('pointerout', onPointerOut)
         }
 
         document.addEventListener('mousemove', onMouseMove)
-        v.head.on('pointerout', onPointerOut)
+        v.graphics.on('pointerout', onPointerOut)
       }
     })
 
     console.log('add graphics1: ', v)
     console.log('add graphics2: ', v.graph_long_path)
 
-    this.agentContainer.addChild(v.head)
+    this.agentContainer.addChild(v.graphics)
     this.longPathContainer.addChild(v.graph_long_path)
     this.shortPathContainer.addChild(v.graph_short_path)
 
@@ -581,8 +581,6 @@ export default class ApplicationManager extends GraphicTools {
     // 遍历所有车辆，调用更新方法
     for (const agent of Object.values(this.agents)) {
       agent.update()
-      // 在动画更新后同步文本位置
-      agent.sync_text_pos(agent.position.x, agent.position.y)
     }
   }
 

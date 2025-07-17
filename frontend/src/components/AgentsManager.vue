@@ -15,14 +15,21 @@
       <span class="switch-label">Long Paths</span>
       <el-switch v-model="allLongPathsVisible" @change="toggleAllLongPaths" size="default" />
     </div>
+    <div class="switch-container">
+      <span class="switch-label">Vehicle IDs</span>
+      <el-switch v-model="allVehicleIdsVisible" @change="toggleAllVehicleIds" size="default" />
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useVehicleStore } from '../stores/vehicleStore'
 
 const vehicleStore = useVehicleStore()
+
+// 车辆号码显示状态
+const allVehicleIdsVisible = ref(true)
 
 // 计算所有车辆是否都可见
 const allVehiclesVisible = computed({
@@ -72,6 +79,15 @@ const toggleAllLongPaths = (value: boolean) => {
     vehicleStore.showAllLongPaths()
   } else {
     vehicleStore.hideAllLongPaths()
+  }
+}
+
+// 切换所有车辆号码的显示状态
+const toggleAllVehicleIds = (value: boolean) => {
+  const manager = vehicleStore.getApplicationManager()
+  if (manager && manager.agentTextContainer) {
+    manager.agentTextContainer.visible = value
+    console.log(`车辆号码 ${value ? '显示' : '隐藏'}`)
   }
 }
 </script>

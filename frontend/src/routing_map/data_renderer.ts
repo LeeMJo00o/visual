@@ -14,6 +14,8 @@ interface AgentData {
   x: number
   y: number
   theta: number
+  block: string,
+  blocked_by: string
 }
 
 interface PathData {
@@ -173,13 +175,13 @@ export class DataRenderer {
         if (this.manager.agents[vehicleId]) {
           this.manager.agents[vehicleId].graph_long_path.clear()
         }
-        return
+        this.manager.add_agent(vehicleId)
       }
 
       const path_t = this.demo_path_to_my(v)
 
       if (!this.manager.agents.hasOwnProperty(vehicleId)) {
-        this.manager.add_agent(vehicleId, 9999, 9999, 0)
+        return
       }
 
       this.manager.agents[vehicleId].graph_long_path.clear()
@@ -211,7 +213,7 @@ export class DataRenderer {
       const path_t = this.demo_path_to_my(v)
 
       if (!this.manager.agents.hasOwnProperty(vehicleId)) {
-        this.manager.add_agent(vehicleId, 9999, 9999, 0)
+        this.manager.add_agent(vehicleId)
       }
 
       this.manager.agents[vehicleId].graph_short_path.clear()
@@ -231,7 +233,7 @@ export class DataRenderer {
     let path_type = data['type']
     for (const [vehicleId, v] of Object.entries(data.data)) {
       if (!this.manager.agents.hasOwnProperty(vehicleId)) {
-        this.manager.add_agent(vehicleId, 9999, 9999, 0)
+        this.manager.add_agent(vehicleId)
       }
       let g = null
       let path_width = null
@@ -271,6 +273,11 @@ export class DataRenderer {
         x: v.x,
         y: v.y,
         theta: v.yaw,
+        tx: v.tx,
+        ty: v.ty,
+        t_theta: v.tyaw,
+        block: v.block,
+        blocked_by: v.blocked_by
       })
     }
   }
@@ -405,12 +412,13 @@ export class DataRenderer {
    * @param data - 车辆数据
    */
   draw_one_agent(data: AgentData): void {
-    const { vehicleId, x, y, theta } = data
-    if (this.manager.agents.hasOwnProperty(vehicleId)) {
-      this.manager.agents[vehicleId].setPosition(x, -y, theta)
-    } else {
-      this.manager.add_agent(vehicleId, x, -y, theta)
+    const { vehicleId, x, y, theta, tx, ty, t_theta } = data
+    if (!this.manager.agents.hasOwnProperty(vehicleId)) {
+      this.manager.add_agent(vehicleId, x, -y, theta, theta, tx, -ty, t_theta)
     }
+    this.manager.agents[vehicleId].setPosition(x, -y, theta, tx, -ty, t_theta)
+    this.manager.agents[vehicleId].v_info.block = data.block
+    this.manager.agents[vehicleId].v_info.blocked_by = data.blocked_by
   }
 
   /**
