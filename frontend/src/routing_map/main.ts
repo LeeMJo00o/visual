@@ -186,6 +186,8 @@ export default class ApplicationManager extends GraphicTools {
     this.longPathContainer = new Container()
     this.shortPathContainer = new Container()
     this.agentTextContainer = new Container()
+    // 设置文本容器不响应鼠标事件，避免干扰车辆图形的交互
+    this.agentTextContainer.eventMode = 'none'
 
     // 创建全局tooltip元素
     this.tooltip = document.createElement('div')

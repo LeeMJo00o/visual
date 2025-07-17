@@ -26,8 +26,8 @@ export default class Agent {
     this.vehicle_id = vehicle_id
 
     this.v_info = {
-      "block": "",
-      "blocked_by": ""
+      block: '',
+      blocked_by: '',
     }
 
     // 添加位置信息属性，用于tooltip显示
@@ -65,6 +65,9 @@ export default class Agent {
         fill: '#fff',
       },
     })
+
+    // 设置文本不响应鼠标事件，避免干扰车辆图形的交互
+    this.text.eventMode = 'none'
 
     // 添加字体缩放相关的属性
     this.lastScale = 1.0
