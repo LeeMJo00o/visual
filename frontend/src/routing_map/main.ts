@@ -9,6 +9,7 @@ import {
   Container,
   extensions,
   CullerPlugin,
+  SCALE_MODES,
 } from 'pixi.js'
 import { GraphicTools, stringToUniqueColor, unrotatePoint } from './graph.ts'
 import {
@@ -212,10 +213,14 @@ export default class ApplicationManager extends GraphicTools {
       try {
         const config = await get_map_config()
         console.log('config: ', config)
+        this.map_config = config
         this.g_rotation = config.rotation
         this.mainContainer.rotation = this.g_rotation
-        this.mainContainer.scale.set(config.scale)
-        this.mainContainer.position.set(config.offset[0], config.offset[1])
+        // this.mainContainer.scale.set(config.scale)
+        // this.mainContainer.position.set(config.offset[0], config.offset[1])
+        // 1716.7136138375986
+        this.mainContainer.scale.set( 2.2584302747185125   )
+        this.mainContainer.position.set(-345.22941818453216, 1113.0702658798236)
         this.mode = config.mode
 
         // 设置缓存版本, 不清理旧缓存
@@ -242,17 +247,50 @@ export default class ApplicationManager extends GraphicTools {
           throw error
         }
       }
+
+      // 添加背景图片作为地图底图
+      // 加载背景图片
+      const backgroundTexture = await Assets.load('/map/taiguo.png') // 替换为你的图片路径
+      const backgroundSprite = new Sprite(backgroundTexture)
+
+      // 设置背景图片的位置和大小
+      // 根据你的地图坐标系统调整这些值
+      backgroundSprite.position.set(this.map_config.offset_back_image[0], this.map_config.offset_back_image[1]) // 调整位置
+      backgroundSprite.scale.set(0.25, 0.25) // 调整缩放比例
+      backgroundSprite.alpha = 1 // 设置透明度，让路径更容易看到
+      // 4.489853987835742
+
+      // 设置图片的纹理过滤模式，改善小尺寸下的渲染质量
+      // 尝试不同的过滤模式来解决线条虚线问题
+      // backgroundTexture.source.scaleMode = "linear"
+      backgroundSprite.rotation = - this.mainContainer.rotation
+      backgroundSprite.eventMode = "none"
+      // 将背景图片添加到容器的最底层
+      this.mainContainer.addChildAt(backgroundSprite, 0)
+      console.log('背景图片加载成功')
+
+      this.base_line_g = await this.initMap()
+      this.base_line_g.rotation = this.g_rotation
+      this.base_line_g.position.set(300, 800)
+      this.base_line_g.scale = 2
+
+
+      this.mainContainer.addChild(this.longPathContainer)
+
       // 等待initMap完成
-      this.map_container = await this.initMap()
+      // this.map_container = await this.initMap()
 
       this.app.stage.addChild(this.mainContainer)
+
+      this.app.stage.addChild(this.base_line_g) // tmp
 
       this.app.stage.addChild(this.agentTextContainer)
 
       this.graphics_path_apply_area = new Graphics()
       this.graphics_lock_area = new Graphics()
 
-      this.add_graphics(this.map_container)
+      // this.add_graphics(this.map_container)
+
       this.mainContainer.addChild(this.longPathContainer)
       this.mainContainer.addChild(this.shortPathContainer)
       this.add_graphics(this.graphics_path_apply_area)
@@ -466,6 +504,8 @@ export default class ApplicationManager extends GraphicTools {
     const cons = new Container({
       isRenderGroup: true,
     })
+
+
 
     this.path_tooltip = document.createElement('div')
     this.path_tooltip.style.cssText = `

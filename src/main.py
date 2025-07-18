@@ -53,6 +53,9 @@ def get_application() -> FastAPI:
     else:
         logger.info(f"frontend dist: {frontend_dist_path} no exists, it's normal in dev")
 
+    map_path = "map"
+    application.mount("/map/", StaticFiles(directory=map_path), name="map")
+
     return application
 
 

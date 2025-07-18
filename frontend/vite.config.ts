@@ -22,6 +22,12 @@ export default defineConfig({
         ws: true,
         // rewrite: (path) => path.replace(/^\/api/, '')  // 替换路径
       },
+      // 代理图片路径
+      '/map': {
+        target: 'http://127.0.0.1:2030', // 目标服务器地址
+        changeOrigin: true, // 允许跨域
+        secure: false,
+      },
     },
     cors: false,
   },
@@ -35,6 +41,12 @@ export default defineConfig({
         ws: true,
         // rewrite: (path) => path.replace(/^\/api/, '')  // 替换路径
       },
+      // 代理图片路径
+      '/map': {
+        target: 'http://127.0.0.1:2030', // 目标服务器地址
+        changeOrigin: true, // 允许跨域
+        secure: false,
+      },
     },
     cors: false,
   },
@@ -44,10 +56,10 @@ export default defineConfig({
         manualChunks: {
           'vendor-pixi': ['pixi.js'],
           'vendor-element': ['element-plus'],
-        }
-      }
+        },
+      },
     },
     // 提高chunk大小警告阈值到1MB
-    chunkSizeWarningLimit: 2000
+    chunkSizeWarningLimit: 2000,
   },
 })

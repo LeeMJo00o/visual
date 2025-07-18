@@ -82,12 +82,12 @@ export class EventManager {
     }
   }
 
-  handleWheel(e) {
+  handleWheel1(e) {
     console.log('zoom in/out', e.deltaY)
     console.log(e.clientX, e.clientY)
     console.log('position')
 
-    let scale_level = 1.3
+    let scale_level = 1.002
     let scale_level_v = scale_level
 
     if (e.deltaY < 0) {
@@ -100,7 +100,24 @@ export class EventManager {
     this.manager.graphics_sacle_move(e, scale_level_v)
     console.log('now scale', this.manager.mainContainer.scale.x)
   }
+  handleWheel(e) {
+    console.log('zoom in/out', e.deltaY)
+    console.log(e.clientX, e.clientY)
+    console.log('position')
 
+    let scale_level = 1.001
+    let scale_level_v = scale_level
+
+    if (e.deltaY < 0) {
+      // zoom in
+    } else {
+      // zoom out
+      scale_level_v = 1 / scale_level
+    }
+
+    this.manager.graphics_sacle_move(e, scale_level_v)
+    console.log('now scale', this.manager.mainContainer.scale.x)
+  }
   handlePointerUp(e) {
     // 只在默认模式下执行拖拽功能
     if (this.manager.mouse_func === 'default') {

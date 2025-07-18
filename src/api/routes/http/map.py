@@ -24,27 +24,31 @@ async def get_config():
         "Abuzhabi_QP_VPB": {
             "rotation": -2.471,
             "offset": [450, 330],
+            "offset_back_image": [0, 0],
             "scale": 1.0,
             "mode": "test-my-pp",
             "version": MAP_NAME
         },
         "MapSingapore": {
             "rotation": -2.112,
-            "offset": [989.9776968593537, 198.52708238507054],
+            "offset": [990, 198],
+            "offset_back_image": [0, 0],
             "scale": 0.355166,
             "mode": "test-demo",
             "version": MAP_NAME
         },
         "fangzhen": {
             "rotation": -2.112,
-            "offset": [989.9776968593537, 198.52708238507054],
+            "offset": [990, 198],
+            "offset_back_image": [0, 0],
             "scale": 0.355166,
             "mode": "test-demo",
             "version": MAP_NAME
         },
         "taiguo": {
-            "rotation": 0.29,
+            "rotation": 0.292,
             "offset": [768, 695],
+            "offset_back_image": [-768, -395],
             "scale": 1.319,
             "mode": "test-demo",
             "version": MAP_NAME
