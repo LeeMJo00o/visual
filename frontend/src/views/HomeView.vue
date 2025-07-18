@@ -63,6 +63,10 @@ const onMapHide = () => {
 const onAgentHide = () => {
   window.dispatchEvent(new CustomEvent('agent-hide-click'))
 }
+
+const onImageHide = () => {
+  window.dispatchEvent(new CustomEvent('image-hide-click'))
+}
 </script>
 
 <template>
@@ -122,6 +126,9 @@ const onAgentHide = () => {
                   <div class="label-and-buttons">
                     <el-button type="primary" plain id="map_hide" @click="onMapHide"
                       >map show</el-button
+                    >
+                    <el-button type="primary" plain id="image_hide" @click="onImageHide"
+                      >image show</el-button
                     >
                     <el-button type="primary" plain id="agent_hide" @click="onAgentHide"
                       >agent show</el-button

@@ -14,7 +14,7 @@ interface AgentData {
   x: number
   y: number
   theta: number
-  block: string,
+  block: string
   blocked_by: string
 }
 
@@ -277,7 +277,7 @@ export class DataRenderer {
         ty: v.ty,
         t_theta: v.tyaw,
         block: v.block,
-        blocked_by: v.blocked_by
+        blocked_by: v.blocked_by,
       })
     }
   }

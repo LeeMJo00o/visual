@@ -25,6 +25,7 @@ async def get_config():
             "rotation": -2.471,
             "offset": [450, 330],
             "offset_back_image": [0, 0],
+            "scale_back": 1,
             "scale": 1.0,
             "mode": "test-my-pp",
             "version": MAP_NAME
@@ -33,6 +34,7 @@ async def get_config():
             "rotation": -2.112,
             "offset": [990, 198],
             "offset_back_image": [0, 0],
+            "scale_back": 1,
             "scale": 0.355166,
             "mode": "test-demo",
             "version": MAP_NAME
@@ -41,19 +43,24 @@ async def get_config():
             "rotation": -2.112,
             "offset": [990, 198],
             "offset_back_image": [0, 0],
+            "scale_back": 1,
             "scale": 0.355166,
             "mode": "test-demo",
             "version": MAP_NAME
         },
         "taiguo": {
             "rotation": 0.292,
-            "offset": [1368, 695],
-            "offset_back_image": [-1213.22941818453216, -81.9297341201764],
-            "scale": 1,
+            "offset": [761, 612],
+            "use_back_image": True,
+            "offset_back_image": [-1131.5, -203.5],
+            "scale_back": 0.28230378433981407,
+            "back_image_file": "taiguo.png", 
+            "scale": 1.31,
             "mode": "test-demo",
             "version": MAP_NAME
         }
     }
+
     return get_config_by_prefix(config_map, MAP_NAME)
 
 

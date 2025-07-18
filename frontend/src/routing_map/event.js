@@ -151,5 +151,8 @@ export class EventManager {
         if (agent.text) agent.text.visible = !agent.text.visible
       })
     })
+    window.addEventListener('image-hide-click', () => {
+      this.manager.toggleBackgroundImage()
+    })
   }
 }

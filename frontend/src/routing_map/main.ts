@@ -109,6 +109,11 @@ export default class ApplicationManager extends GraphicTools {
       enabled: true, // 是否启用平滑移动
     }
 
+    // 背景图片显示配置
+    this.backgroundImageConfig = {
+      visible: true, // 是否显示背景图片
+    }
+
     // 创建事件管理器实例
     this.eventManager = null
 
@@ -120,6 +125,9 @@ export default class ApplicationManager extends GraphicTools {
 
     // 存储画框处理方法（由LockArea.vue设置）
     this.drawingHandlers = null
+
+    // 存储背景图片精灵对象
+    this.backgroundSprite = null
   }
 
   // 获取单例实例
@@ -216,16 +224,8 @@ export default class ApplicationManager extends GraphicTools {
         this.map_config = config
         this.g_rotation = config.rotation
         this.mainContainer.rotation = this.g_rotation
-        // this.mainContainer.scale.set(config.scale)
+        this.mainContainer.scale.set(config.scale)
         this.mainContainer.position.set(config.offset[0], config.offset[1])
-
-        // this.mainContainer.rotation = 0
-        // this.mainContainer.scale.set(1)
-        // this.mainContainer.position.set(0, 0)
-
-        // 1716.7136138375986
-        // this.mainContainer.scale.set( 2.2584302747185125   )
-        // this.mainContainer.position.set(-345.22941818453216, 1113.0702658798236)
         this.mode = config.mode
 
         // 设置缓存版本, 不清理旧缓存
@@ -253,50 +253,54 @@ export default class ApplicationManager extends GraphicTools {
         }
       }
 
-      // 添加背景图片作为地图底图
-      // 加载背景图片
-      const backgroundTexture = await Assets.load('/map/taiguo.png') // 替换为你的图片路径
-      const backgroundSprite = new Sprite(backgroundTexture)
+      // 检查是否启用背景图片
+      if (this.map_config.use_back_image === true) {
+        // 添加背景图片作为地图底图
+        // 加载背景图片
+        const backgroundTexture = await Assets.load(`/map/${this.map_config.back_image_file}`)
+        this.backgroundSprite = new Sprite(backgroundTexture)
 
-      // 设置背景图片的位置和大小
-      // 根据你的地图坐标系统调整这些值
-      backgroundSprite.position.set((-1983 + 20 - 300) / 2, (372 + 21 - 800) / 2) // 调整位置
-      backgroundSprite.scale.set(0.25 * 2.2584302747185125 / 2 , 0.25 * 2.2584302747185125 / 2) // 调整缩放比例
-      backgroundSprite.rotation = -0.292
-      backgroundSprite.alpha = 1 // 设置透明度，让路径更容易看到
-      // 4.489853987835742
+        // 设置背景图片的位置和大小
+        // 根据你的地图坐标系统调整这些值
+        this.backgroundSprite.position.set(
+          this.map_config.offset_back_image[0],
+          this.map_config.offset_back_image[1],
+        )
+        this.backgroundSprite.scale.set(
+          (0.25 * 2.2584302747185125) / 2,
+          (0.25 * 2.2584302747185125) / 2,
+        )
+        this.backgroundSprite.rotation = -0.292
+        this.backgroundSprite.alpha = 1 // 设置透明度，让路径更容易看到
+        // 4.489853987835742
 
-      // 设置图片的纹理过滤模式，改善小尺寸下的渲染质量
-      // 尝试不同的过滤模式来解决线条虚线问题
-      // backgroundTexture.source.scaleMode = "linear"
-      backgroundSprite.eventMode = "none"
-      // 将背景图片添加到容器的最底层
-      this.mainContainer.addChildAt(backgroundSprite, 0)
-      console.log('背景图片加载成功')
+        // 设置图片的纹理过滤模式，改善小尺寸下的渲染质量
+        // 尝试不同的过滤模式来解决线条虚线问题
+        // backgroundTexture.source.scaleMode = "linear"
+        this.backgroundSprite.eventMode = 'none'
 
-      // this.base_line_g = await this.initMap()
-      // this.base_line_g.rotation = this.g_rotation
-      // this.base_line_g.position.set(300, 800)
-      // this.base_line_g.scale = 2
+        // 根据配置设置背景图片的可见性
+        this.backgroundSprite.visible = this.backgroundImageConfig.visible
 
+        // 将背景图片添加到容器的最底层
+        this.mainContainer.addChildAt(this.backgroundSprite, 0)
+        console.log('背景图片加载成功')
+      } else {
+        console.log('背景图片未启用或配置中缺少use_back_image字段')
+      }
 
       this.mainContainer.addChild(this.longPathContainer)
 
       // 等待initMap完成
       this.map_container = await this.initMap()
-      this.map_container.scale = 1
-      this.map_container.position.set(0, 0)
-
       this.app.stage.addChild(this.mainContainer)
-
-      // this.app.stage.addChild(this.base_line_g) // tmp
 
       this.app.stage.addChild(this.agentTextContainer)
 
       this.graphics_path_apply_area = new Graphics()
       this.graphics_lock_area = new Graphics()
 
-      // this.add_graphics(this.map_container)
+      this.add_graphics(this.map_container)
 
       this.mainContainer.addChild(this.longPathContainer)
       this.mainContainer.addChild(this.shortPathContainer)
@@ -512,8 +516,6 @@ export default class ApplicationManager extends GraphicTools {
       isRenderGroup: true,
     })
 
-
-
     this.path_tooltip = document.createElement('div')
     this.path_tooltip.style.cssText = `
       position: fixed;
@@ -640,5 +642,19 @@ export default class ApplicationManager extends GraphicTools {
   // 设置画框处理器（由LockArea.vue调用）
   setDrawingHandlers(handlers) {
     this.drawingHandlers = handlers
+  }
+
+  // 切换背景图片显示状态
+  toggleBackgroundImage() {
+    if (this.backgroundSprite) {
+      this.backgroundImageConfig.visible = !this.backgroundImageConfig.visible
+      this.backgroundSprite.visible = this.backgroundImageConfig.visible
+      console.log('背景图片显示状态:', this.backgroundImageConfig.visible ? '显示' : '隐藏')
+    }
+  }
+
+  // 获取背景图片显示状态
+  getBackgroundImageVisible() {
+    return this.backgroundImageConfig.visible
   }
 }
