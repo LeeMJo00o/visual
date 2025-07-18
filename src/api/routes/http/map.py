@@ -46,10 +46,10 @@ async def get_config():
             "version": MAP_NAME
         },
         "taiguo": {
-            "rotation": 0.292,
-            "offset": [768, 695],
-            "offset_back_image": [-768, -395],
-            "scale": 1.319,
+            "rotation": 0,
+            "offset": [1368, 695],
+            "offset_back_image": [-1213.22941818453216, -81.9297341201764],
+            "scale": 1,
             "mode": "test-demo",
             "version": MAP_NAME
         }

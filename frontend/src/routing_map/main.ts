@@ -216,11 +216,11 @@ export default class ApplicationManager extends GraphicTools {
         this.map_config = config
         this.g_rotation = config.rotation
         this.mainContainer.rotation = this.g_rotation
-        // this.mainContainer.scale.set(config.scale)
-        // this.mainContainer.position.set(config.offset[0], config.offset[1])
+        this.mainContainer.scale.set(config.scale)
+        this.mainContainer.position.set(config.offset[0], config.offset[1])
         // 1716.7136138375986
-        this.mainContainer.scale.set( 2.2584302747185125   )
-        this.mainContainer.position.set(-345.22941818453216, 1113.0702658798236)
+        // this.mainContainer.scale.set( 2.2584302747185125   )
+        // this.mainContainer.position.set(-345.22941818453216, 1113.0702658798236)
         this.mode = config.mode
 
         // 设置缓存版本, 不清理旧缓存
@@ -256,40 +256,40 @@ export default class ApplicationManager extends GraphicTools {
       // 设置背景图片的位置和大小
       // 根据你的地图坐标系统调整这些值
       backgroundSprite.position.set(this.map_config.offset_back_image[0], this.map_config.offset_back_image[1]) // 调整位置
-      backgroundSprite.scale.set(0.25, 0.25) // 调整缩放比例
+      backgroundSprite.scale.set(0.28230378433981407, 0.28230378433981407) // 调整缩放比例
       backgroundSprite.alpha = 1 // 设置透明度，让路径更容易看到
       // 4.489853987835742
 
       // 设置图片的纹理过滤模式，改善小尺寸下的渲染质量
       // 尝试不同的过滤模式来解决线条虚线问题
       // backgroundTexture.source.scaleMode = "linear"
-      backgroundSprite.rotation = - this.mainContainer.rotation
+      backgroundSprite.rotation = - 0.292
       backgroundSprite.eventMode = "none"
       // 将背景图片添加到容器的最底层
       this.mainContainer.addChildAt(backgroundSprite, 0)
       console.log('背景图片加载成功')
 
-      this.base_line_g = await this.initMap()
-      this.base_line_g.rotation = this.g_rotation
-      this.base_line_g.position.set(300, 800)
-      this.base_line_g.scale = 2
+      // this.base_line_g = await this.initMap()
+      // this.base_line_g.rotation = this.g_rotation
+      // this.base_line_g.position.set(300, 800)
+      // this.base_line_g.scale = 2
 
 
       this.mainContainer.addChild(this.longPathContainer)
 
       // 等待initMap完成
-      // this.map_container = await this.initMap()
+      this.map_container = await this.initMap()
 
       this.app.stage.addChild(this.mainContainer)
 
-      this.app.stage.addChild(this.base_line_g) // tmp
+      // this.app.stage.addChild(this.base_line_g) // tmp
 
       this.app.stage.addChild(this.agentTextContainer)
 
       this.graphics_path_apply_area = new Graphics()
       this.graphics_lock_area = new Graphics()
 
-      // this.add_graphics(this.map_container)
+      this.add_graphics(this.map_container)
 
       this.mainContainer.addChild(this.longPathContainer)
       this.mainContainer.addChild(this.shortPathContainer)

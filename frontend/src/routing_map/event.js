@@ -82,12 +82,12 @@ export class EventManager {
     }
   }
 
-  handleWheel1(e) {
+  handleWheel(e) {
     console.log('zoom in/out', e.deltaY)
     console.log(e.clientX, e.clientY)
     console.log('position')
 
-    let scale_level = 1.002
+    let scale_level = 1.3
     let scale_level_v = scale_level
 
     if (e.deltaY < 0) {
@@ -100,7 +100,7 @@ export class EventManager {
     this.manager.graphics_sacle_move(e, scale_level_v)
     console.log('now scale', this.manager.mainContainer.scale.x)
   }
-  handleWheel(e) {
+  handleWheel2(e) {
     console.log('zoom in/out', e.deltaY)
     console.log(e.clientX, e.clientY)
     console.log('position')
