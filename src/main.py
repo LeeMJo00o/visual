@@ -44,6 +44,14 @@ def get_application() -> FastAPI:
     # /api 在静态文件之前添加
     application.include_router(api_router, prefix="/api")
 
+    # 挂载地图静态文件目录 - 必须在前端静态文件之前
+    map_path = "map"
+    if os.path.exists(map_path):
+        application.mount("/map/", StaticFiles(directory=map_path), name="map")
+        logger.info(f"地图静态文件已挂载: {map_path}")
+    else:
+        logger.warning(f"地图目录不存在: {map_path}")
+
     # 挂载静态文件目录
     # 注意,这是给生产环境用的, 本地 debug 请单独运行前端, 不要混淆了
     # 不要在项目根目录创建 frontend_dist
@@ -52,9 +60,6 @@ def get_application() -> FastAPI:
         application.mount("/", StaticFiles(directory=frontend_dist_path, html=True), name="frontend")
     else:
         logger.info(f"frontend dist: {frontend_dist_path} no exists, it's normal in dev")
-
-    map_path = "map"
-    application.mount("/map/", StaticFiles(directory=map_path), name="map")
 
     return application
 

@@ -260,7 +260,7 @@ export default class ApplicationManager extends GraphicTools {
 
       // 设置背景图片的位置和大小
       // 根据你的地图坐标系统调整这些值
-      backgroundSprite.position.set((-1983 - 300) / 2, (372 - 800) / 2) // 调整位置
+      backgroundSprite.position.set((-1983 + 20 - 300) / 2, (372 + 21 - 800) / 2) // 调整位置
       backgroundSprite.scale.set(0.25 * 2.2584302747185125 / 2 , 0.25 * 2.2584302747185125 / 2) // 调整缩放比例
       backgroundSprite.rotation = -0.292
       backgroundSprite.alpha = 1 // 设置透明度，让路径更容易看到
