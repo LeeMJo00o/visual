@@ -255,43 +255,24 @@ export default class ApplicationManager extends GraphicTools {
 
       // 检查是否启用背景图片
       if (this.map_config.use_back_image === true) {
-        // 添加背景图片作为地图底图
-        // 加载背景图片
         const backgroundTexture = await Assets.load(`/map/${this.map_config.back_image_file}`)
         this.backgroundSprite = new Sprite(backgroundTexture)
 
-        // 设置背景图片的位置和大小
-        // 根据你的地图坐标系统调整这些值
         this.backgroundSprite.position.set(
           this.map_config.offset_back_image[0],
           this.map_config.offset_back_image[1],
         )
-        this.backgroundSprite.scale.set(
-          (0.25 * 2.2584302747185125) / 2,
-          (0.25 * 2.2584302747185125) / 2,
-        )
-        this.backgroundSprite.rotation = -0.292
-        this.backgroundSprite.alpha = 1 // 设置透明度，让路径更容易看到
-        // 4.489853987835742
-
-        // 设置图片的纹理过滤模式，改善小尺寸下的渲染质量
-        // 尝试不同的过滤模式来解决线条虚线问题
-        // backgroundTexture.source.scaleMode = "linear"
+        this.backgroundSprite.scale = this.map_config.scale_back
+        this.backgroundSprite.rotation = -this.g_rotation
         this.backgroundSprite.eventMode = 'none'
 
-        // 根据配置设置背景图片的可见性
         this.backgroundSprite.visible = this.backgroundImageConfig.visible
 
-        // 将背景图片添加到容器的最底层
         this.mainContainer.addChildAt(this.backgroundSprite, 0)
-        console.log('背景图片加载成功')
-      } else {
-        console.log('背景图片未启用或配置中缺少use_back_image字段')
       }
 
       this.mainContainer.addChild(this.longPathContainer)
 
-      // 等待initMap完成
       this.map_container = await this.initMap()
       this.app.stage.addChild(this.mainContainer)
 
