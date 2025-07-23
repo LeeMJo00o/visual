@@ -128,6 +128,12 @@ export default class ApplicationManager extends GraphicTools {
 
     // 存储背景图片精灵对象
     this.backgroundSprite = null
+
+    // 时间显示文本对象
+    this.timeText = null
+
+    // 时间更新定时器
+    this.timeUpdateInterval = null
   }
 
   // 获取单例实例
@@ -170,6 +176,12 @@ export default class ApplicationManager extends GraphicTools {
       this.dataRenderer.close_all_websockets()
     }
 
+    // 清理时间更新定时器
+    if (this.timeUpdateInterval) {
+      clearInterval(this.timeUpdateInterval)
+      this.timeUpdateInterval = null
+    }
+
     // 重置全局单例实例
     clearGlobalInstance()
 
@@ -197,6 +209,19 @@ export default class ApplicationManager extends GraphicTools {
     this.agentTextContainer = new Container()
     // 设置文本容器不响应鼠标事件，避免干扰车辆图形的交互
     this.agentTextContainer.eventMode = 'none'
+
+    // 创建时间显示文本
+    this.timeText = new Text('', {
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 20,
+      fill: 0xffffff,
+      stroke: 0x000000,
+      strokeThickness: 2,
+      align: 'center',
+    })
+    this.timeText.anchor.set(0.5, 0) // 水平居中，垂直顶部对齐
+    this.timeText.position.set(750, 20) // 位置在顶部中间偏左，距离顶部20像素
+    this.timeText.eventMode = 'none' // 不响应鼠标事件
 
     // 创建全局tooltip元素
     this.tooltip = document.createElement('div')
@@ -274,9 +299,14 @@ export default class ApplicationManager extends GraphicTools {
       this.mainContainer.addChild(this.longPathContainer)
 
       this.map_container = await this.initMap()
+      // 默认关闭地图显示
+      this.map_container.visible = false
       this.app.stage.addChild(this.mainContainer)
 
       this.app.stage.addChild(this.agentTextContainer)
+
+      // 添加时间文本到舞台，确保显示在最上层
+      this.app.stage.addChild(this.timeText)
 
       this.graphics_path_apply_area = new Graphics()
       this.graphics_lock_area = new Graphics()
@@ -302,6 +332,14 @@ export default class ApplicationManager extends GraphicTools {
       // 设置动画循环，更新所有车辆位置
       const tickerCallback = () => this.updateAgents()
       this.app.ticker.add(tickerCallback)
+
+      // 设置时间显示更新定时器，每秒更新一次
+      this.timeUpdateInterval = setInterval(() => {
+        this.updateTimeDisplay()
+      }, 1000)
+
+      // 立即显示当前时间，不等待1秒
+      this.updateTimeDisplay()
 
       // 页面卸载时清理资源
       window.addEventListener('beforeunload', () => {
@@ -637,5 +675,20 @@ export default class ApplicationManager extends GraphicTools {
   // 获取背景图片显示状态
   getBackgroundImageVisible() {
     return this.backgroundImageConfig.visible
+  }
+
+  // 更新时间显示
+  updateTimeDisplay() {
+    if (this.timeText) {
+      const now = new Date()
+      const dateString = now.toISOString().split('T')[0] // 获取日期部分 YYYY-MM-DD
+      const timeString = now.toLocaleTimeString('zh-CN', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+      this.timeText.text = `${dateString} ${timeString}`
+    }
   }
 }
