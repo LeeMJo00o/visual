@@ -231,6 +231,11 @@ export class DataRenderer {
 
   demo_update_path(data) {
     let path_type = data['type']
+    if (path_type == 'reload_window') {
+      // reload all window
+      window.location.reload()
+      return
+    }
     for (const [vehicleId, v] of Object.entries(data.data)) {
       if (!this.manager.agents.hasOwnProperty(vehicleId)) {
         this.manager.add_agent(vehicleId)
@@ -243,10 +248,12 @@ export class DataRenderer {
         g = vehicle.graph_short_path
         path_width = this.short_path_width
         alpha = 0.5
-      } else {
+      } else if (path_type == 'long'){
         g = vehicle.graph_long_path
         path_width = this.long_path_width
         alpha = 1
+      } else {
+
       }
       g.clear()
       if (v.path === null) {

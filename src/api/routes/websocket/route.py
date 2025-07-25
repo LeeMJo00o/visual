@@ -185,3 +185,10 @@ class PathWsServer(MulLinkServerEndpoint):
                     k: self.path_add_extra_info(json.loads(v))
                 }
             })
+
+    @classmethod
+    async def clear_display(cls):
+        await cls.ws_manager.broadcast_json({
+            "type": "reload_window",
+            "data": None
+        })

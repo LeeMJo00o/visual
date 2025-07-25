@@ -8,6 +8,7 @@ from src.middlewares.redis_handler.connect import redis_cli
 from src.core.config import PATH_REPORT_URL
 from src.core.log import logger
 from chain_http import aio_http
+from src.api.routes.websocket.route import PathWsServer
 
 router = APIRouter()
 
@@ -108,4 +109,10 @@ async def change_weight(req: dict = Body()) -> StdRes:
     }
     res = await aio_http.post(url, json=req, timeout=5)
     logger.info(f"weight change: {req} => {res.status, res.text}")
+    return StdRes()
+
+
+@router.post("/reload_window")
+async def reload_window(req: dict = Body()) -> StdRes:
+    await PathWsServer.clear_display()
     return StdRes()
