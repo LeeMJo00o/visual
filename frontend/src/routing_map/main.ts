@@ -421,8 +421,8 @@ export default class ApplicationManager extends GraphicTools {
       }
     })
 
-    console.log('add graphics1: ', v)
-    console.log('add graphics2: ', v.graph_long_path)
+    // console.log('add graphics1: ', v)
+    // console.log('add graphics2: ', v.graph_long_path)
 
     this.agentContainer.addChild(v.graphics)
     this.longPathContainer.addChild(v.graph_long_path)

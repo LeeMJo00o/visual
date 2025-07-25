@@ -18,8 +18,16 @@ interface AgentData {
   blocked_by: string
 }
 
+interface OneLane {
+  lane_id: string
+  lcp_point?: {
+    x: number
+    y: number
+  }
+}
+
 interface PathData {
-  path: string[]
+  path: OneLane[]
   start_pose: {
     x: number
     y: number
@@ -112,24 +120,6 @@ export class DataRenderer {
     ws_path.connect()
     this.websocket_clients['demo_path'] = ws_path
 
-    // // 长路径WebSocket
-    // const ws_long = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_path`, {
-    //   onMessage: (data: PathUpdateData) => {
-    //     this.demo_update_path_long(data)
-    //   },
-    // })
-    // ws_long.connect()
-    // this.websocket_clients['demo_long_path'] = ws_long
-
-    // // 短路径WebSocket
-    // const ws_short = new WebSocketClient(`${ws_prefix}/api/ws/demo/demo_short_path`, {
-    //   onMessage: (data: PathUpdateData) => {
-    //     this.demo_update_path_short(data)
-    //   },
-    // })
-    // ws_short.connect()
-    // this.websocket_clients['demo_short_path'] = ws_short
-
     // 位置信息WebSocket
     const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
       onMessage: (data: PoseUpdateData) => {
@@ -165,70 +155,6 @@ export class DataRenderer {
     this.websocket_clients = {}
   }
 
-  /**
-   * 更新长路径
-   * @param data - 路径数据
-   */
-  demo_update_path_long(data: PathUpdateData): void {
-    for (const [vehicleId, v] of Object.entries(data.data)) {
-      if (v === null) {
-        if (this.manager.agents[vehicleId]) {
-          this.manager.agents[vehicleId].graph_long_path.clear()
-        }
-        this.manager.add_agent(vehicleId)
-      }
-
-      const path_t = this.demo_path_to_my(v)
-
-      if (!this.manager.agents.hasOwnProperty(vehicleId)) {
-        return
-      }
-
-      this.manager.agents[vehicleId].graph_long_path.clear()
-      this.manager.drawLine(
-        this.manager.agents[vehicleId].graph_long_path,
-        vehicleId,
-        path_t,
-        false,
-        this.manager.agents[vehicleId].color,
-        this.long_path_width,
-        1,
-      )
-    }
-  }
-
-  /**
-   * 更新短路径
-   * @param data - 路径数据
-   */
-  demo_update_path_short(data: PathUpdateData): void {
-    for (const [vehicleId, v] of Object.entries(data.data)) {
-      if (v === null) {
-        if (this.manager.agents[vehicleId]) {
-          this.manager.agents[vehicleId].graph_short_path.clear()
-        }
-        return
-      }
-
-      const path_t = this.demo_path_to_my(v)
-
-      if (!this.manager.agents.hasOwnProperty(vehicleId)) {
-        this.manager.add_agent(vehicleId)
-      }
-
-      this.manager.agents[vehicleId].graph_short_path.clear()
-      this.manager.drawLine(
-        this.manager.agents[vehicleId].graph_short_path,
-        vehicleId,
-        path_t,
-        false,
-        this.manager.agents[vehicleId].color,
-        this.short_path_width,
-        0.5,
-      )
-    }
-  }
-
   demo_update_path(data) {
     let path_type = data['type']
     if (path_type == 'reload_window') {
@@ -248,19 +174,20 @@ export class DataRenderer {
         g = vehicle.graph_short_path
         path_width = this.short_path_width
         alpha = 0.5
-      } else if (path_type == 'long'){
+      } else if (path_type == 'long') {
         g = vehicle.graph_long_path
         path_width = this.long_path_width
         alpha = 1
       } else {
-
       }
       g.clear()
       if (v.path === null) {
         return
       }
-      const path_t = this.demo_path_to_my(v)
-      this.manager.drawLine(g, vehicleId, path_t, false, vehicle.color, path_width, alpha)
+      const all_path_t = this.demo_path_to_my(v)
+      for (const a_road_path of all_path_t) {
+        this.manager.drawLine(g, vehicleId, a_road_path, false, vehicle.color, path_width, alpha)
+      }
     }
   }
 
@@ -428,22 +355,12 @@ export class DataRenderer {
     this.manager.agents[vehicleId].v_info.blocked_by = data.blocked_by
   }
 
-  /**
-   * 将demo路径数据转换为内部格式
-   * @param path - 路径数据
-   * @returns 转换后的路径点数组
-   */
   private demo_path_to_my(path: PathData): number[][] {
-    // 缓存频繁访问的属性
     const pathArray = path.path
     const pathLength = pathArray.length
     const startPose = path.start_pose
     const endPose = path.end_pose
     const mapPathInfo = this.manager.map_path_info
-
-    // 预分配数组大小以提高性能
-    const path_t: number[][] = []
-    path_t.push([startPose.x, startPose.y])
 
     // 计算起始和结束索引
     let start_index = startPose.index
@@ -456,45 +373,40 @@ export class DataRenderer {
       end_index -= 1
     }
 
-    // 处理路径段
-    if (pathLength === 1) {
-      // 单路径段：只添加中间部分
-      if (start_index < end_index) {
-        const startLltId = pathArray[0]
-        const pathInfo = mapPathInfo[startLltId]
-        if (pathInfo && Array.isArray(pathInfo.points)) {
-          path_t.push(...pathInfo.points.slice(start_index, end_index))
+    const all_path_t: number[][][] = []
+    for (let i = 0; i < pathLength; i++) {
+      const path_t: number[][] = []
+      const node = pathArray[i]
+      const llt_id = node['lane_id']
+      const the_road_path = mapPathInfo[llt_id]
+      if (i == 0) {
+        path_t.push([startPose.x, startPose.y])
+        if (pathLength > 1) {
+          if (node.hasOwnProperty("lcp_point")){
+            path_t.push(the_road_path.points[start_index])
+            path_t.push([node["lcp_point"]["x"], node["lcp_point"]["y"]])
+          }else{
+            path_t.push(...the_road_path.points.slice(start_index))
+          }
+        } else {
+          path_t.push(...the_road_path.points.slice(start_index, end_index))
+          path_t.push([endPose.x, endPose.y])
+        }
+
+      } else if (i == pathLength - 1) {
+        path_t.push(...the_road_path.points.slice(0, 1))
+        path_t.push(...the_road_path.points.slice(1, end_index))
+        path_t.push([endPose.x, endPose.y])
+      } else {
+        if (node.hasOwnProperty("lcp_point")){
+          path_t.push(the_road_path.points[0])
+          path_t.push([node["lcp_point"]["x"], node["lcp_point"]["y"]])
+        }else{
+          path_t.push(...the_road_path.points)
         }
       }
-    } else {
-      // 多路径段：添加起始段、中间段、结束段
-      const startLltId = pathArray[0]
-      const endLltId = pathArray[pathLength - 1]
-
-      // 处理起始段
-      const startPathInfo = mapPathInfo[startLltId]
-      if (startPathInfo && Array.isArray(startPathInfo.points)) {
-        path_t.push(...startPathInfo.points.slice(start_index))
-      }
-
-      // 处理中间段 - 优化循环
-      for (let i = 1; i < pathLength - 1; i++) {
-        const lltId = pathArray[i]
-        const pathInfo = mapPathInfo[lltId]
-        if (pathInfo && Array.isArray(pathInfo.points)) {
-          path_t.push(...pathInfo.points)
-        }
-      }
-
-      // 处理结束段
-      const endPathInfo = mapPathInfo[endLltId]
-      if (endPathInfo && Array.isArray(endPathInfo.points)) {
-        path_t.push(...endPathInfo.points.slice(0, end_index))
-      }
+      all_path_t.push(path_t)
     }
-
-    // 添加结束点
-    path_t.push([endPose.x, endPose.y])
-    return path_t
+    return all_path_t
   }
 }
