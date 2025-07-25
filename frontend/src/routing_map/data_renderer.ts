@@ -383,7 +383,7 @@ export class DataRenderer {
         path_t.push([startPose.x, startPose.y])
         if (pathLength > 1) {
           if (node.hasOwnProperty("lcp_point")){
-            path_t.push(the_road_path.points[start_index])
+            // path_t.push(the_road_path.points[start_index])
             path_t.push([node["lcp_point"]["x"], node["lcp_point"]["y"]])
           }else{
             path_t.push(...the_road_path.points.slice(start_index))
