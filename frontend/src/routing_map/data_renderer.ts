@@ -1,6 +1,8 @@
 import { WebSocketClient } from './pp_backend.js'
 import { Graphics } from 'pixi.js'
 import ApplicationManager from './main.ts'
+import { PointProjection, type Point } from './project.ts'
+
 
 // 类型定义
 interface Position {
@@ -355,7 +357,7 @@ export class DataRenderer {
     this.manager.agents[vehicleId].v_info.blocked_by = data.blocked_by
   }
 
-  private demo_path_to_my(path: PathData): number[][] {
+  private demo_path_to_my(path: PathData): number[][][] {
     const pathArray = path.path
     const pathLength = pathArray.length
     const startPose = path.start_pose
@@ -374,37 +376,65 @@ export class DataRenderer {
     }
 
     const all_path_t: number[][][] = []
+    let last_lcp_point: number[] = []  // 最后一个LCP点
     for (let i = 0; i < pathLength; i++) {
       const path_t: number[][] = []
       const node = pathArray[i]
       const llt_id = node['lane_id']
       const the_road_path = mapPathInfo[llt_id]
-      if (i == 0) {
-        path_t.push([startPose.x, startPose.y])
-        if (pathLength > 1) {
-          if (node.hasOwnProperty("lcp_point")){
-            // path_t.push(the_road_path.points[start_index])
-            path_t.push([node["lcp_point"]["x"], node["lcp_point"]["y"]])
-          }else{
-            path_t.push(...the_road_path.points.slice(start_index))
-          }
-        } else {
-          path_t.push(...the_road_path.points.slice(start_index, end_index))
-          path_t.push([endPose.x, endPose.y])
-        }
-
-      } else if (i == pathLength - 1) {
-        path_t.push(...the_road_path.points.slice(0, 1))
-        path_t.push(...the_road_path.points.slice(1, end_index))
-        path_t.push([endPose.x, endPose.y])
-      } else {
-        if (node.hasOwnProperty("lcp_point")){
-          path_t.push(the_road_path.points[0])
-          path_t.push([node["lcp_point"]["x"], node["lcp_point"]["y"]])
-        }else{
-          path_t.push(...the_road_path.points)
-        }
+      const points = the_road_path.points
+      // 如果只有一个节点，则直接使用start index 与end index截取即可
+      if(i == 0 && pathLength == 1) {
+        const projector = new PointProjection(points as Point[])
+        const result = projector.getPointsBetweenProjections([startPose.x, startPose.y], [endPose.x, endPose.y])
+        path_t.push(...result)
       }
+      // 第一个节点，需要根据start行截取
+      else if(i == 0) {
+        const projector = new PointProjection(points as Point[])
+        let p = [startPose.x, startPose.y]
+        const result = projector.processPointProjection(p as Point)
+        path_t.push(...(result.splitParts?.secondPart || []))
+      }
+      // 最后一个节点，需要根据end进行截取
+      else if(i == pathLength - 1) {
+        const projector = new PointProjection(points as Point[])
+        let p = [endPose.x, endPose.y]
+        const result = projector.processPointProjection(p as Point)
+        path_t.length = 0  //清空现有的数据
+        path_t.push(...(result.splitParts?.firstPart || []))
+      }
+      // 中间节点则直接使用完整的points
+      else{
+        path_t.push(...points)
+      }
+
+      // 处理前一个节点有lcp point的情况
+      if(last_lcp_point && last_lcp_point.length > 0) {
+        // 如果当前是第二个节点（车辆在第一个节点并且有lcp），那么使用车辆位置进行投影，否则使用lcp进行投影
+        // lcp/vehicle pose 往当前的path_t进行投影，并保留后面的部分
+        const projector = new PointProjection(path_t as Point[])
+        let p = i === 1 ? [startPose.x, startPose.y]: last_lcp_point
+        const result = projector.processPointProjection(p as Point)
+        path_t.length = 0  //清空现有的数据
+        path_t.push(...(result.splitParts?.secondPart || []))
+      }
+
+      // 处理当前节点有lcp point的情况
+      if (node.hasOwnProperty("lcp_point") && node.lcp_point){
+        // 明确告诉 TS lcp_point 存在且非 undefined
+        const lcp = node.lcp_point as { x: number; y: number };
+        last_lcp_point = [lcp.x, lcp.y];
+        // lcp 往当前的path_t进行投影，并保留前面的部分
+        const projector = new PointProjection(path_t as Point[])
+        const result = projector.processPointProjection(last_lcp_point as Point)
+        path_t.length = 0  //清空现有的数据
+        path_t.push(...(result.splitParts?.firstPart || []))
+      }else{
+        // 重置lcp point即可
+        last_lcp_point = []
+      }
+
       all_path_t.push(path_t)
     }
     return all_path_t
