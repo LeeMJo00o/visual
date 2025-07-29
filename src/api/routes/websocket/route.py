@@ -20,6 +20,7 @@ _manager_demo_path = ConnectionManager()
 _manager_demo_short_path = ConnectionManager()
 _manager_pose = ConnectionManager()
 _manager_lock_area = ConnectionManager()
+_manager_limit_area = ConnectionManager()
 _manager_path = ConnectionManager()
 
 
@@ -96,6 +97,7 @@ class PoseWsServer(MulLinkServerEndpoint):
 @router.websocket_route("/lock_area", name="websocket for lock area")
 class AreaWsServer(MulLinkServerEndpoint):
     ws_manager = _manager_lock_area
+    key = "pp4:lock_area:simweb"
 
     async def on_receive_json(self, mess: dict):
         print(f"I receive mess: {mess}")
@@ -123,7 +125,7 @@ class AreaWsServer(MulLinkServerEndpoint):
         while True:
             all_areas_t = {}
             try:
-                all_lock_areas = await redis_cli.hgetall("pp4:lock_area:simweb")
+                all_lock_areas = await redis_cli.hgetall(cls.key)
                 for v_id, area in all_lock_areas.items():
                     pose_data = json.loads(area)
                     all_areas_t[v_id] = pose_data
@@ -135,6 +137,11 @@ class AreaWsServer(MulLinkServerEndpoint):
                 logger.error(f"publish_lock_area error: {repr(e)}")
             await asyncio.sleep(2)
 
+
+@router.websocket_route("/limit_area", name="websocket for limit area")
+class LimitAreaWsServer(AreaWsServer):
+    ws_manager = _manager_limit_area
+    key = "pp4:limit_area:simweb"
 
 @router.websocket_route("/path", name="websocket for pushlish path (short + long)")
 class PathWsServer(MulLinkServerEndpoint):

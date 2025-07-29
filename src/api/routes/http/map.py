@@ -80,23 +80,6 @@ async def get_path_info():
         path_info = json.load(f)
     return path_info
 
-# {"name":"lock_area_1751455131293","subtype":"lock","type":"lock","created_by":"pp-visual","describe":"","polygon":[{"x":1449.7863,"y":1769.692},{"x":712.9327,"y":543.7826},{"x":198.9195,"y":852.739},{"x":935.7731,"y":2078.6483},{"x":1449.7863,"y":1769.692}]}
-
-
-@router.post('/add_lock_area')
-async def get_path_info(req: dict = Body()):
-    key_simweb_lock = "pp4:lock_area:simweb"
-    name = req["name"]
-    await redis_cli.hset(key_simweb_lock, name, json.dumps(req))
-    return StdRes()
-
-@router.post('/del_lock_area')
-async def get_path_info(req: dict = Body()):
-    area_id = req["area_id"]
-    key_simweb_lock = "pp4:lock_area:simweb"
-    await redis_cli.hdel(key_simweb_lock, area_id)
-    return StdRes()
-
 
 @router.post("/change_weight")
 async def change_weight(req: dict = Body()) -> StdRes:

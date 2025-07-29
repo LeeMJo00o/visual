@@ -1,16 +1,47 @@
 <script setup lang="ts">
 import ApplicationManager from '../routing_map/main.ts'
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useLockAreaStore } from '../stores/lockAreaStore'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useLockAreaStore, useLimitAreaStore } from '../stores/lockAreaStore'
 import { Graphics } from 'pixi.js'
-import axios from 'axios'
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+
+// area类型
+const props = defineProps<{ type: string, text: string }>();
 
 const appManager = ref<ApplicationManager | null>(null)
 const isDrawingMode = ref(false)
 const drawingStartPoint = ref<{ x: number; y: number } | null>(null)
 const drawingEndPoint = ref<{ x: number; y: number } | null>(null)
 const drawingGraphics = ref<any>(null)
-const lockAreaStore = useLockAreaStore()
+const areaStore = props.type == "lock" ? useLockAreaStore() : useLimitAreaStore()
+// 弹窗
+const dialogFormLoading = ref(false)
+const dialogFormVisible = ref(false)
+const verticesText = ref("")  // 坐标
+const rect = ref({left: 0, top: 0, width: 0, height: 0})
+const limit_num = ref(5)  // 流量限制区域数量
+
+// 填充颜色
+const fillColorMapping = {
+  lock: '#ff0000',
+  limit: '#FDFD96',
+} as const
+
+//边框颜色
+const borderColorMapping = {
+  lock: '#ff0000',
+  limit: '#FFFF00',
+} as const
+
+// 计算填充颜色
+const fillColor = computed(() => {
+  return fillColorMapping[props.type as keyof typeof fillColorMapping] ?? '#ff0000';
+});
+// 边框颜色
+const borderColor = computed(() => {
+  return borderColorMapping[props.type as keyof typeof borderColorMapping] ?? '#ff0000';
+});
 
 onMounted(async () => {
   appManager.value = ApplicationManager.getInstance()
@@ -117,7 +148,13 @@ const handleDrawingMouseMove = (e: any) => {
   const width = Math.abs(drawingEndPoint.value.x - drawingStartPoint.value.x)
   const height = Math.abs(drawingEndPoint.value.y - drawingStartPoint.value.y)
 
-  drawingGraphics.value.rect(left, top, width, height).stroke({ color: '#ff0000', width: 2 })
+  // 开始填充
+  drawingGraphics.value.beginFill(fillColor.value, 0.1);
+
+  drawingGraphics.value.rect(left, top, width, height).stroke({ color: borderColor.value, width: 2 })
+
+  // 结束填充
+  drawingGraphics.value.endFill();
 }
 
 const handleDrawingMouseUp = (e: any) => {
@@ -141,22 +178,9 @@ const handleDrawingMouseUp = (e: any) => {
   const width = Math.abs(drawingEndPoint.value.x - drawingStartPoint.value.x)
   const height = Math.abs(drawingEndPoint.value.y - drawingStartPoint.value.y)
 
-  // 重置状态
-  drawingStartPoint.value = null
-  drawingEndPoint.value = null
+  rect.value = { left, top, width, height }
 
-  // 恢复默认鼠标功能
-  setMouseFunction('default')
-  isDrawingMode.value = false
-
-  // 显示确认对话框
-  showDrawingConfirmDialog(left, top, width, height)
-}
-
-const showDrawingConfirmDialog = (left: number, top: number, width: number, height: number) => {
-  if (!appManager.value) return
-
-  // 计算四个顶点的屏幕坐标
+   // 计算四个顶点的屏幕坐标
   const screenVertices = [
     { x: left, y: top }, // 左上角
     { x: left + width, y: top }, // 右上角
@@ -169,43 +193,35 @@ const showDrawingConfirmDialog = (left: number, top: number, width: number, heig
     const [mapX, mapY] = appManager.value!.raw_xy(vertex.x, vertex.y)
     return { x: mapX, y: mapY }
   })
+  verticesText.value = mapVertices.map((v) => `[${v.x.toFixed(2)}, ${v.y.toFixed(2)}]`).join('\n')
 
-  const verticesText = mapVertices.map((v) => `[${v.x.toFixed(2)}, ${v.y.toFixed(2)}]`).join('<br>')
+  // 重置状态
+  drawingStartPoint.value = null
+  drawingEndPoint.value = null
 
-  // 导入Element Plus的ElMessageBox
-  import('element-plus')
-    .then(({ ElMessageBox }) => {
-      ElMessageBox.confirm(`${verticesText}`, '画框确认', {
-        confirmButtonText: '确认',
-        cancelButtonText: '取消',
-        type: 'success',
-        dangerouslyUseHTMLString: true,
-      })
-        .then(() => {
-          // 用户点击确认，发送HTTP请求
-          sendDrawingRequest(left, top, width, height)
-        })
-        .catch(() => {
-          // 用户点击取消，什么都不做
-          console.log('用户取消了画框操作')
-        })
-        .finally(() => {
-          // 无论用户选择什么，都清除画框
-          clearCurrentDrawing()
-        })
-    })
-    .catch((error) => {
-      console.error('加载Element Plus组件失败:', error)
-      // 降级处理：使用原生confirm
-      const confirmed = confirm(
-        `确认要处理这个区域吗？\n\n${verticesText}\n\n尺寸: ${width.toFixed(2)} x ${height.toFixed(2)}`,
-      )
-      if (confirmed) {
-        sendDrawingRequest(left, top, width, height)
-      }
-      // 无论用户选择什么，都清除画框
-      clearCurrentDrawing()
-    })
+  // 恢复默认鼠标功能
+  setMouseFunction('default')
+  isDrawingMode.value = false
+
+  // 显示确认对话框
+  // showDrawingConfirmDialog(left, top, width, height)
+  dialogFormVisible.value = true
+}
+
+// 弹窗取消
+const handleCancel = () => {
+  // 清除画框
+  clearCurrentDrawing()
+}
+
+// 弹窗确认
+const handleConfirm = () => {
+  dialogFormLoading.value = true
+  sendDrawingRequest(rect.value?.left, rect.value?.top, rect.value?.width, rect.value?.height, limit_num.value)
+  // 清除画框
+  clearCurrentDrawing()
+  dialogFormLoading.value = false
+  dialogFormVisible.value = false
 }
 
 const clearCurrentDrawing = () => {
@@ -214,7 +230,8 @@ const clearCurrentDrawing = () => {
   }
 }
 
-const sendDrawingRequest = async (left: number, top: number, width: number, height: number) => {
+const sendDrawingRequest = async (left: number, top: number, width: number, height: number,
+        limit_num: number = 0) => {
   if (!appManager.value) return
 
   try {
@@ -236,24 +253,19 @@ const sendDrawingRequest = async (left: number, top: number, width: number, heig
     const polygon = [...mapVertices, mapVertices[0]]
 
     const requestData = {
-      name: 'lock_area_' + Date.now(), // 生成唯一名称
-      subtype: 'lock',
-      type: 'lock',
+      name: props.type + '_area_' + Date.now(), // 生成唯一名称
+      subtype: props.type,
+      type: props.type,
       created_by: 'pp-visual',
       describe: '',
       polygon: polygon,
+      limit: limit_num,
     }
 
     console.log('发送画框请求:', requestData)
 
     // 发送HTTP请求到后端
-    const response = await axios.post('/api/map/add_lock_area', requestData, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-
-    console.log('画框请求成功:', response.data)
+    await areaStore.addOrUpdateLockArea(requestData)
 
     // 导入Element Plus的ElMessage显示成功消息
     const { ElMessage } = await import('element-plus')
@@ -280,11 +292,38 @@ onUnmounted(() => {
 
 <template>
   <div class="lock-area-func">
-    <el-button type="success" plain @click="lockAreaStore.toggleLockAreaDialog"
-      >Area List</el-button
-    >
+    <span>{{ text }}</span>
+    <el-button type="success" plain @click="areaStore.toggleLockAreaDialog">Area List</el-button>
     <el-button type="primary" plain @click="handleDrawBox">start draw</el-button>
   </div>
+  <el-dialog v-model="dialogFormVisible" 
+      title="确认绘制区域？" 
+      width="500" 
+      :close-on-click-modal="false"
+      :append-to-body="true">
+    <el-form>
+      <!-- 多边形顶点坐标 -->
+      <el-form-item label="polygon" label-width="140px">
+        <el-input v-model="verticesText" 
+              type="textarea" 
+              :rows="6"
+              readonly
+              autocomplete="off" />
+      </el-form-item>
+      <!-- 流量控制区域控制车辆数 -->
+      <el-form-item label="limit" label-width="140px" v-if="type === 'limit'">
+        <el-input-number v-model="limit_num" :min="0" :max="1000" :precision="0"/>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="handleCancel">取消</el-button>
+        <el-button type="primary" @click="handleConfirm" :loading="dialogFormLoading">
+          确认
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>

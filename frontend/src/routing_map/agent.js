@@ -247,7 +247,7 @@ export default class Agent {
     
     g.rect(-this.head_back, -this.width / 2, this.head_back + this.head_front, this.width)
 
-    // 结束填充（添加这行）
+    // 结束填充
     g.endFill();
 
     g.stroke({ color: this.color, width: 0.5 })

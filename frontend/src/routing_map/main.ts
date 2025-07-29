@@ -123,6 +123,9 @@ export default class ApplicationManager extends GraphicTools {
     // 存储锁闭区图形对象
     this.lockAreas = {}
 
+    // 存储流量控制区域图形对象
+    this.limitAreas = {}
+
     // 存储画框处理方法（由LockArea.vue设置）
     this.drawingHandlers = null
 
@@ -209,6 +212,10 @@ export default class ApplicationManager extends GraphicTools {
     this.agentTextContainer = new Container()
     // 设置文本容器不响应鼠标事件，避免干扰车辆图形的交互
     this.agentTextContainer.eventMode = 'none'
+    // limit area 显示文本容器
+    this.limitAreaTextContainer = new Container()
+    this.limitAreaTextContainer.eventMode = 'none'
+
 
     // 创建时间显示文本
     this.timeText = new Text('', {
@@ -304,12 +311,15 @@ export default class ApplicationManager extends GraphicTools {
       this.app.stage.addChild(this.mainContainer)
 
       this.app.stage.addChild(this.agentTextContainer)
+      
+      this.app.stage.addChild(this.limitAreaTextContainer)
 
       // 添加时间文本到舞台，确保显示在最上层
       this.app.stage.addChild(this.timeText)
 
       this.graphics_path_apply_area = new Graphics()
-      this.graphics_lock_area = new Graphics()
+      this.graphics_lock_area = new Graphics()          // 锁闭区域
+      this.graphics_limit_area = new Graphics()   // 流量控制区域
 
       this.add_graphics(this.map_container)
 
@@ -317,6 +327,7 @@ export default class ApplicationManager extends GraphicTools {
       this.mainContainer.addChild(this.shortPathContainer)
       this.add_graphics(this.graphics_path_apply_area)
       this.add_graphics(this.graphics_lock_area)
+      this.add_graphics(this.graphics_limit_area)
       this.mainContainer.addChild(this.agentContainer)
 
       this.graphics_path_apply_area.alpha = 0.5
@@ -690,5 +701,34 @@ export default class ApplicationManager extends GraphicTools {
       })
       this.timeText.text = `${dateString} ${timeString}`
     }
+  }
+
+  // 坐标转换 - 用于绘制text
+  transform_xy(p: [number, number]): [number, number] {
+    let [x, y] = p
+    const scale = this.mainContainer.scale.x
+    const rotation = this.g_rotation
+    const offsetX = this.mainContainer.position.x
+    const offsetY = this.mainContainer.position.y
+
+    // 加一个偏移量
+    x += 5
+    y -= 5
+
+    y = -y  // 坐标系翻转
+    // 1. 先缩放
+    let screenX = x * scale
+    let screenY = y * scale  
+
+    // 2. 再旋转
+    const cos = Math.cos(rotation)
+    const sin = Math.sin(rotation)
+    const rotatedX = screenX * cos - screenY * sin
+    const rotatedY = screenX * sin + screenY * cos
+
+    // 3. 最后平移
+    screenX = rotatedX + offsetX
+    screenY = rotatedY + offsetY
+    return [screenX, screenY]
   }
 }

@@ -1,8 +1,8 @@
 <template>
   <!-- 锁闭区列表对话框 -->
   <CustomDialog
-    v-model:visible="lockAreaStore.lockAreaDialogVisible"
-    title="Lock Area List"
+    v-model:visible="areaStore.lockAreaDialogVisible"
+    :title="'Area List('+type+')'"
     :width="500"
     :height="400"
     :min-width="400"
@@ -16,13 +16,13 @@
       <h4>Lock Areas ({{ ` ${lockAreaCount} ` }})</h4>
     </div>
 
-    <div v-if="lockAreaStore.lockAreas.length === 0" class="no-lock-areas">
-      <p>暂无锁闭区信息</p>
+    <div v-if="areaStore.lockAreas.length === 0" class="no-lock-areas">
+      <p>暂无数据</p>
     </div>
 
     <el-table
       v-else
-      :data="lockAreaStore.lockAreas"
+      :data="areaStore.lockAreas"
       size="small"
       stripe
       class="lock-area-table"
@@ -40,7 +40,7 @@
             type="danger"
             plain
             size="small"
-            :loading="lockAreaStore.isLoading"
+            :loading="areaStore.isLoading"
             @click="handleDelete(row)"
           >
             删除
@@ -53,13 +53,16 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue'
-import { useLockAreaStore } from '../stores/lockAreaStore'
+import { useLockAreaStore, useLimitAreaStore } from '../stores/lockAreaStore'
 import CustomDialog from './CustomDialog.vue'
 
-const lockAreaStore = useLockAreaStore()
+// area类型
+const props = defineProps<{ type: string }>();
+
+const areaStore = props.type == "lock" ? useLockAreaStore() : useLimitAreaStore()
 
 // 锁闭区管理相关逻辑
-const lockAreaCount = computed(() => lockAreaStore.lockAreaCount)
+const lockAreaCount = computed(() => areaStore.lockAreaCount)
 
 // 处理表格滚轮事件
 const handleTableWheel = (e: WheelEvent) => {
@@ -79,7 +82,7 @@ const handleDelete = async (row: any) => {
     })
 
     // 用户确认删除
-    await lockAreaStore.deleteLockArea(row.id)
+    await areaStore.deleteLockArea(row.id)
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除确认对话框错误:', error)
