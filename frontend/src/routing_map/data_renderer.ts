@@ -18,6 +18,7 @@ interface AgentData {
   theta: number
   block: string
   blocked_by: string
+  task: object | null
 }
 
 interface OneLane {
@@ -224,6 +225,7 @@ export class DataRenderer {
         t_theta: v.tyaw,
         block: v.block,
         blocked_by: v.blocked_by,
+        task: v.task,
       })
     }
   }
@@ -359,7 +361,9 @@ export class DataRenderer {
     // 绘制流量控制区域的约束数量
     if(type == "limit") {
       const p = this.manager.transform_xy(points[0])
-      const textObj = this.manager.createText(area?.limit, p)
+      // [7/12]
+      const content = '[' + (area?.count || '') + '/' + (area?.limit || '') + ']'
+      const textObj = this.manager.createText(content, p)
       // 将text对象添加到容器中
       this.manager.limitAreaTextContainer.addChild(textObj)
     }
@@ -385,6 +389,7 @@ export class DataRenderer {
     this.manager.agents[vehicleId].setPosition(x, -y, theta, tx, -ty, t_theta)
     this.manager.agents[vehicleId].v_info.block = data.block
     this.manager.agents[vehicleId].v_info.blocked_by = data.blocked_by
+    this.manager.agents[vehicleId].v_info.task = data.task
   }
 
   private demo_path_to_my(path: PathData): number[][][] {

@@ -28,6 +28,7 @@ export default class Agent {
     this.v_info = {
       block: '',
       blocked_by: '',
+      task: null,
     }
 
     // 添加位置信息属性，用于tooltip显示
@@ -262,8 +263,16 @@ export default class Agent {
     let _y = this.position.ty
     g.pivot.set(_x, _y)
     g.position.set(_x, _y)
+
+    let fillColor = this.color
+    let fillV = 0.3
+    if(!this.v_info.task) {
+      fillColor = "#00ff00"
+      fillV = 1.0
+    }
+
     // 开始填充 0xD3D3D3
-    g.beginFill(this.color, 0.3);
+    g.beginFill(fillColor, fillV);
 
     g.rect(-this.trailer_back, -this.width / 2, this.trailer_back + this.trailer_front, this.width)
     // 结束填充（添加这行）

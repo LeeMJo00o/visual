@@ -80,6 +80,8 @@ const createLockAreaStore = (storeId: string, manager_key: string, type: string)
         console.log('更新锁闭区请求成功:', type, response.data)
       }catch (error) {
         console.error('增加/更新锁闭区失败:', error)
+      }finally{
+        isLoading.value = false
       }
     }
 

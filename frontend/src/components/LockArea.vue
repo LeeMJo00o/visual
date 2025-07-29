@@ -212,6 +212,7 @@ const handleDrawingMouseUp = (e: any) => {
 const handleCancel = () => {
   // 清除画框
   clearCurrentDrawing()
+  dialogFormVisible.value = false
 }
 
 // 弹窗确认

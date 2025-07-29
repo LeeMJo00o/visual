@@ -3,7 +3,7 @@
   <CustomDialog
     v-model:visible="areaStore.lockAreaDialogVisible"
     :title="'Area List('+type+')'"
-    :width="500"
+    :width="580"
     :height="400"
     :min-width="400"
     :min-height="300"
@@ -34,7 +34,19 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="Action" width="120" align="center">
+      <el-table-column prop="area" label="Limit" min-width="70" v-if="type=='limit'">
+        <template #default="{ row }">
+          <span class="lock-area-name">{{ row.area.limit }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="area" label="Count" min-width="70" v-if="type=='limit'">
+        <template #default="{ row }">
+          <span class="lock-area-name">{{ row.area.count }}</span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="Action" width="200" align="center">
         <template #default="{ row }">
           <el-button
             type="danger"
@@ -45,16 +57,53 @@
           >
             删除
           </el-button>
+          <el-button
+            type="primary"
+            plain
+            size="small"
+            :loading="areaStore.isLoading"
+            @click="handleEdit(row)"
+            v-if="type=='limit'"
+          >
+            编辑
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
   </CustomDialog>
+
+  <!-- 编辑流量控制区域的对话框 -->
+    <el-dialog v-model="editDialogVisible" 
+      title="编辑流量控制值？" 
+      width="500" 
+      :close-on-click-modal="false"
+      :append-to-body="true">
+    <el-form>
+      <!-- 流量控制区域控制车辆数 -->
+      <el-form-item label="limit" label-width="140px" v-if="type === 'limit'">
+        <el-input-number v-if="currentRow" v-model="currentRow.area.limit" :min="0" :max="1000" :precision="0"/>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="editDialogVisible=false">取消</el-button>
+        <el-button type="primary" @click="handleConfirm" :loading="dialogFormLoading">
+          确认
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useLockAreaStore, useLimitAreaStore } from '../stores/lockAreaStore'
 import CustomDialog from './CustomDialog.vue'
+
+//编辑对话框
+const currentRow = ref(null); //当前编辑的行数据
+const editDialogVisible = ref(false); //编辑弹窗是否显示
+const dialogFormLoading = ref(false); // loading
 
 // area类型
 const props = defineProps<{ type: string }>();
@@ -88,6 +137,26 @@ const handleDelete = async (row: any) => {
       console.error('删除确认对话框错误:', error)
     }
   }
+}
+
+// 处理编辑，弹窗显示修改limit值
+const handleEdit = (row: any) => {
+  currentRow.value = row
+  editDialogVisible.value = true
+}
+
+// 确认保存
+const handleConfirm = async () => {
+  try{
+    dialogFormLoading.value = true
+    await areaStore.addOrUpdateLockArea(currentRow.value.area)
+    editDialogVisible.value = false
+  }catch(error){
+    console.error('保存错误:', error)
+  }finally{
+    dialogFormLoading.value = false
+  }
+  
 }
 </script>
 

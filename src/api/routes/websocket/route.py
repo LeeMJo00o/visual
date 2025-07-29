@@ -77,14 +77,16 @@ class PoseWsServer(MulLinkServerEndpoint):
                 pipe.hgetall("pp4:vehicle:pose")
                 pipe.hgetall("scenario:arbiter:blameAT")
                 pipe.hgetall("scenario:arbiter:atBlame")
-                all_v_pose, all_v_be_blame, all_v_blame = await pipe.execute()
+                pipe.hgetall("scenario:long_path:req_task")
+                all_v_pose, all_v_be_blame, all_v_blame, all_v_task = await pipe.execute()
 
                 for v_id, pose in all_v_pose.items():
                     pose_data = json.loads(pose)
                     all_v_pose_t[v_id] = pose_data
                     all_v_pose_t[v_id]["blocked_by"] = all_v_be_blame.get(v_id, "")
                     all_v_pose_t[v_id]["block"] = all_v_blame.get(v_id, "")
-                
+                    all_v_pose_t[v_id]["task"] = True if all_v_task.get(v_id, None) else False
+
                 await cls.ws_manager.broadcast_json({
                     "type": "pose",
                     "data": all_v_pose_t
@@ -98,6 +100,7 @@ class PoseWsServer(MulLinkServerEndpoint):
 class AreaWsServer(MulLinkServerEndpoint):
     ws_manager = _manager_lock_area
     key = "pp4:lock_area:simweb"
+    type = "lock"
 
     async def on_receive_json(self, mess: dict):
         print(f"I receive mess: {mess}")
@@ -121,13 +124,28 @@ class AreaWsServer(MulLinkServerEndpoint):
             })
 
     @classmethod
+    async def get_traffic_data(cls):
+        if cls.type != "limit":
+            return {}
+        data_num = {}
+        if (data := await redis_cli.hgetall("scenario:traffic_control_area")):
+            for v_id, s in data.items():
+                try:
+                    data_num[v_id] = len(json.loads(s))
+                except:
+                    pass
+        return data_num
+
+    @classmethod
     async def publish_lock_area(cls):
         while True:
             all_areas_t = {}
             try:
                 all_lock_areas = await redis_cli.hgetall(cls.key)
+                traffic_num = await cls.get_traffic_data()
                 for v_id, area in all_lock_areas.items():
                     pose_data = json.loads(area)
+                    pose_data["count"] = traffic_num.get(v_id, 0)
                     all_areas_t[v_id] = pose_data
                 await cls.ws_manager.broadcast_json({
                     "type": "areas",
@@ -142,6 +160,7 @@ class AreaWsServer(MulLinkServerEndpoint):
 class LimitAreaWsServer(AreaWsServer):
     ws_manager = _manager_limit_area
     key = "pp4:limit_area:simweb"
+    type = "limit"
 
 @router.websocket_route("/path", name="websocket for pushlish path (short + long)")
 class PathWsServer(MulLinkServerEndpoint):
