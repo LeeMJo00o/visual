@@ -1,6 +1,8 @@
 import { WebSocketClient } from './pp_backend.js'
 import { Graphics } from 'pixi.js'
 import ApplicationManager from './main.ts'
+import { PointProjection, type Point } from './project.ts'
+
 
 // 类型定义
 interface Position {
@@ -16,6 +18,7 @@ interface AgentData {
   theta: number
   block: string
   blocked_by: string
+  task: object | null
 }
 
 interface OneLane {
@@ -62,7 +65,8 @@ interface LockArea {
   subtype?: string
   created_by?: string
   describe?: string
-  polygon: Array<{ x: number; y: number }>
+  polygon: Array<{ x: number; y: number }>,
+  limit: number,
 }
 
 interface LockAreaUpdateData {
@@ -132,11 +136,20 @@ export class DataRenderer {
     // 锁闭区WebSocket
     const ws_areas = new WebSocketClient(`${ws_prefix}/api/ws/demo/lock_area`, {
       onMessage: (data: LockAreaUpdateData) => {
-        this.areas_update(data)
+        this.areas_update(data, "lock")
       },
     })
     ws_areas.connect()
     this.websocket_clients['demo_areas'] = ws_areas
+
+    // 流量控制区域WebSocket
+    const ws_limit_areas = new WebSocketClient(`${ws_prefix}/api/ws/demo/limit_area`, {
+      onMessage: (data: LockAreaUpdateData) => {
+        this.areas_update(data, "limit")
+      },
+    })
+    ws_limit_areas.connect()
+    this.websocket_clients['demo_areas_limit'] = ws_limit_areas
 
     // 设置路径宽度
     this.long_path_width = 1
@@ -212,6 +225,7 @@ export class DataRenderer {
         t_theta: v.tyaw,
         block: v.block,
         blocked_by: v.blocked_by,
+        task: v.task,
       })
     }
   }
@@ -220,29 +234,39 @@ export class DataRenderer {
    * 处理锁闭区数据更新
    * @param data - 锁闭区数据
    */
-  async areas_update(data: LockAreaUpdateData): Promise<void> {
+  async areas_update(data: LockAreaUpdateData, type: string): Promise<void> {
     const all_areas = data.data
     console.log('收到锁闭区数据:', Object.keys(all_areas).length, '个区域')
 
+    const graphics_key = (type === 'lock' ? 'graphics_lock_area' : 'graphics_limit_area') as keyof typeof this.manager
+    const data_key = (type === 'lock' ? 'lockAreas' : 'limitAreas') as keyof typeof this.manager
+
     // 清除之前的锁定区域显示
-    if (this.manager.graphics_lock_area) {
-      this.manager.graphics_lock_area.clear()
+    if (this.manager?.[graphics_key]) {
+      this.manager[graphics_key].clear()
+    }
+    // 清除text
+    if(type == "limit") {
+      this.manager.limitAreaTextContainer.children.forEach(child => {
+        child.destroy(); // 销毁子元素及其资源
+      });
+      this.manager.limitAreaTextContainer.removeChildren();
     }
 
     // 清理所有现有的锁闭区图形对象
-    Object.values(this.manager.lockAreas).forEach((areaGraphics) => {
+    Object.values(this.manager?.[data_key]).forEach((areaGraphics) => {
       if (areaGraphics && areaGraphics.parent) {
         areaGraphics.parent.removeChild(areaGraphics)
       }
     })
-    this.manager.lockAreas = {}
+    this.manager[data_key] = {}
 
     // 绘制所有锁定区域
     for (const [areaId, area] of Object.entries(all_areas)) {
-      await this.draw_lock_area(areaId, area)
+      await this.draw_lock_area(areaId, area, data_key, type)
     }
 
-    console.log('锁闭区更新完成，总共绘制了', Object.keys(this.manager.lockAreas).length, '个区域')
+    console.log('锁闭区更新完成，总共绘制了', Object.keys(this.manager[data_key]).length, '个区域')
   }
 
   /**
@@ -250,13 +274,15 @@ export class DataRenderer {
    * @param areaId - 区域ID
    * @param area - 区域数据
    */
-  private async draw_lock_area(areaId: string, area: LockArea): Promise<void> {
+  private async draw_lock_area(areaId: string, area: LockArea, data_key: string, type: string): Promise<void> {
     if (!area.polygon || area.polygon.length < 3) {
       console.log('跳过无效的锁闭区:', areaId, area)
       return
     }
 
     console.log('绘制锁闭区:', areaId, area.name)
+
+    const color = type == "lock" ? '0xFF0000' : '0xFFFF00'
 
     // 为每个锁闭区创建独立的图形对象
     const areaGraphics = new Graphics()
@@ -270,11 +296,11 @@ export class DataRenderer {
       areaId,
       points,
       true, // 使用虚线
-      '#ff0000', // 红色边框
+      color, // 红色边框
       1, // 线宽
       1, // 透明度
     )
-
+    
     // 设置交互属性
     areaGraphics.interactive = true
     areaGraphics.cursor = 'pointer'
@@ -332,13 +358,23 @@ export class DataRenderer {
       }
     })
 
+    // 绘制流量控制区域的约束数量
+    if(type == "limit") {
+      const p = this.manager.transform_xy(points[0])
+      // [7/12]
+      const content = '[' + (area?.count || '') + '/' + (area?.limit || '') + ']'
+      const textObj = this.manager.createText(content, p)
+      // 将text对象添加到容器中
+      this.manager.limitAreaTextContainer.addChild(textObj)
+    }
     // 将图形对象添加到主容器
     this.manager.mainContainer.addChild(areaGraphics)
+    
 
     // 存储到锁闭区对象中
-    this.manager.lockAreas[areaId] = areaGraphics
+    this.manager[data_key][areaId] = areaGraphics
 
-    console.log('锁闭区绘制完成:', areaId, '总数:', Object.keys(this.manager.lockAreas).length)
+    console.log('锁闭区绘制完成:', areaId, '总数:', Object.keys(this.manager[data_key]).length)
   }
 
   /**
@@ -353,9 +389,10 @@ export class DataRenderer {
     this.manager.agents[vehicleId].setPosition(x, -y, theta, tx, -ty, t_theta)
     this.manager.agents[vehicleId].v_info.block = data.block
     this.manager.agents[vehicleId].v_info.blocked_by = data.blocked_by
+    this.manager.agents[vehicleId].v_info.task = data.task
   }
 
-  private demo_path_to_my(path: PathData): number[][] {
+  private demo_path_to_my(path: PathData): number[][][] {
     const pathArray = path.path
     const pathLength = pathArray.length
     const startPose = path.start_pose
@@ -374,37 +411,65 @@ export class DataRenderer {
     }
 
     const all_path_t: number[][][] = []
+    let last_lcp_point: number[] = []  // 最后一个LCP点
     for (let i = 0; i < pathLength; i++) {
       const path_t: number[][] = []
       const node = pathArray[i]
       const llt_id = node['lane_id']
       const the_road_path = mapPathInfo[llt_id]
-      if (i == 0) {
-        path_t.push([startPose.x, startPose.y])
-        if (pathLength > 1) {
-          if (node.hasOwnProperty("lcp_point")){
-            // path_t.push(the_road_path.points[start_index])
-            path_t.push([node["lcp_point"]["x"], node["lcp_point"]["y"]])
-          }else{
-            path_t.push(...the_road_path.points.slice(start_index))
-          }
-        } else {
-          path_t.push(...the_road_path.points.slice(start_index, end_index))
-          path_t.push([endPose.x, endPose.y])
-        }
-
-      } else if (i == pathLength - 1) {
-        path_t.push(...the_road_path.points.slice(0, 1))
-        path_t.push(...the_road_path.points.slice(1, end_index))
-        path_t.push([endPose.x, endPose.y])
-      } else {
-        if (node.hasOwnProperty("lcp_point")){
-          path_t.push(the_road_path.points[0])
-          path_t.push([node["lcp_point"]["x"], node["lcp_point"]["y"]])
-        }else{
-          path_t.push(...the_road_path.points)
-        }
+      const points = the_road_path.points
+      // 如果只有一个节点，则直接使用start index 与end index截取即可
+      if(i == 0 && pathLength == 1) {
+        const projector = new PointProjection(points as Point[])
+        const result = projector.getPointsBetweenProjections([startPose.x, startPose.y], [endPose.x, endPose.y])
+        path_t.push(...result)
       }
+      // 第一个节点，需要根据start行截取
+      else if(i == 0) {
+        const projector = new PointProjection(points as Point[])
+        let p = [startPose.x, startPose.y]
+        const result = projector.processPointProjection(p as Point)
+        path_t.push(...(result.splitParts?.secondPart || []))
+      }
+      // 最后一个节点，需要根据end进行截取
+      else if(i == pathLength - 1) {
+        const projector = new PointProjection(points as Point[])
+        let p = [endPose.x, endPose.y]
+        const result = projector.processPointProjection(p as Point)
+        path_t.length = 0  //清空现有的数据
+        path_t.push(...(result.splitParts?.firstPart || []))
+      }
+      // 中间节点则直接使用完整的points
+      else{
+        path_t.push(...points)
+      }
+
+      // 处理前一个节点有lcp point的情况
+      if(last_lcp_point && last_lcp_point.length > 0) {
+        // 如果当前是第二个节点（车辆在第一个节点并且有lcp），那么使用车辆位置进行投影，否则使用lcp进行投影
+        // lcp/vehicle pose 往当前的path_t进行投影，并保留后面的部分
+        const projector = new PointProjection(path_t as Point[])
+        let p = i === 1 ? [startPose.x, startPose.y]: last_lcp_point
+        const result = projector.processPointProjection(p as Point)
+        path_t.length = 0  //清空现有的数据
+        path_t.push(...(result.splitParts?.secondPart || []))
+      }
+
+      // 处理当前节点有lcp point的情况
+      if (node.hasOwnProperty("lcp_point") && node.lcp_point){
+        // 明确告诉 TS lcp_point 存在且非 undefined
+        const lcp = node.lcp_point as { x: number; y: number };
+        last_lcp_point = [lcp.x, lcp.y];
+        // lcp 往当前的path_t进行投影，并保留前面的部分
+        const projector = new PointProjection(path_t as Point[])
+        const result = projector.processPointProjection(last_lcp_point as Point)
+        path_t.length = 0  //清空现有的数据
+        path_t.push(...(result.splitParts?.firstPart || []))
+      }else{
+        // 重置lcp point即可
+        last_lcp_point = []
+      }
+
       all_path_t.push(path_t)
     }
     return all_path_t

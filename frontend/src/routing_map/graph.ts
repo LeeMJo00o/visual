@@ -4,7 +4,7 @@
 // 颜色的整体亮度较高，假如亮度等级有1-100, 让亮度在30以上
 
 import CryptoJS from 'crypto-js'
-import { Graphics } from 'pixi.js'
+import { Graphics, Text, TextStyle } from 'pixi.js'
 
 // 定义点的接口
 interface Point {
@@ -184,4 +184,48 @@ export class GraphicTools {
       isDrawing = !isDrawing
     }
   }
+
+  /**
+ * 在指定位置绘制文本
+ * @param content - 要绘制的文本内容
+ * @param point - 文本位置坐标 [x, y]
+ * @param options - 文本样式配置（可选）
+ */
+createText(
+  content: string,
+  point: PointArray,
+  options?: {
+    fontSize?: number;
+    fontFamily?: string;
+    fill?: number | string;
+    align?: 'left' | 'center' | 'right';
+    stroke?: number | string;
+    strokeThickness?: number;
+    alpha?: number;
+  }
+): Text {
+  // 坐标变换
+  const [x, y] = point;
+
+  // 默认样式配置
+  const defaultStyle = new TextStyle({
+    fontSize: 12,
+    fontFamily: 'Arial',
+    fill: 0xffffff, // 黑色
+    align: 'left',
+    // stroke: 0xffffff, // 白色描边
+    // strokeThickness: 1,
+    // alpha: 1
+  });
+
+  // 合并自定义样式
+  const style = new TextStyle({ ...defaultStyle, ...options });
+
+  // 创建文本对象
+  const text = new Text({text: content, style });
+  text.position.set(x, y);
+  text.eventMode = 'none';
+  return text
+}
+
 }

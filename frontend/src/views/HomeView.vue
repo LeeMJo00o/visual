@@ -106,6 +106,10 @@ const onImageHide = () => {
               <span>Lock Area</span>
             </el-menu-item>
 
+            <el-menu-item index="limit-area">
+              <span>Traffic Control</span>
+            </el-menu-item>
+
             <el-sub-menu index="4">
               <template #title>
                 <span>The func group</span>
@@ -173,7 +177,11 @@ const onImageHide = () => {
               </div>
 
               <div v-else-if="currentMenu === 'lock-area'">
-                <LockArea />
+                <LockArea type="lock" text="Lock Area" />
+              </div>
+
+              <div v-else-if="currentMenu === 'limit-area'">
+                <LockArea type="limit" text="Traffic Control" />
               </div>
 
               <div v-else-if="currentMenu === '3-1'">
@@ -201,7 +209,10 @@ const onImageHide = () => {
   <VehicleList />
 
   <!-- 锁闭区列表对话框 -->
-  <LockAreaList />
+  <LockAreaList type="lock"/>
+
+  <!-- 流量控制区域列表对话框 -->
+  <LockAreaList type="limit"/>
 </template>
 
 <style scoped>

@@ -5,6 +5,7 @@ from src.api.routes.http.demo import router as demo_router
 
 from src.api.routes.websocket.route import router as ws_demo_router
 from src.api.routes.http.map import router as map_router
+from src.api.routes.http.lock_area import router as area_router
 
 router = APIRouter()
 
@@ -12,6 +13,7 @@ router = APIRouter()
 router.include_router(maintain_router, tags=["maintain"], prefix="/maintain")
 router.include_router(demo_router, tags=["demo"], prefix="/demo")
 router.include_router(map_router, tags=["map"], prefix="/map")
+router.include_router(area_router, tags=["area"], prefix="/area")
 
 # websocket
 router.include_router(ws_demo_router, tags=["ws-demo"], prefix="/ws/demo")

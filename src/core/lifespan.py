@@ -11,7 +11,8 @@ from src.services.grpc.start import manager as grpc_manager
 from src.services.grpc.start import grpc_tasks
 from src.middlewares.mq import mq, mq_route, mq_demo_path
 from chain_utils.asyncio_utils import RefTasks
-from src.api.routes.websocket.route import RouteWsServer, PoseWsServer, AreaWsServer, PathWsServer
+from src.api.routes.websocket.route import RouteWsServer, PoseWsServer, AreaWsServer, PathWsServer, LimitAreaWsServer
+
 ref_tasks = RefTasks(logger_done=logger)
 
 # trigger when the program starts
@@ -32,6 +33,7 @@ async def start():
     # ref_tasks << DemoPathWsServer.publish_demo_path()
     # ref_tasks << DemoPathWsServerShort.publish_demo_path()
     ref_tasks << AreaWsServer.publish_lock_area()
+    ref_tasks << LimitAreaWsServer.publish_lock_area()
     mq_demo_path.set_message_callback(PathWsServer.on_mq_message)
     await mq_demo_path.start_recv()
 
