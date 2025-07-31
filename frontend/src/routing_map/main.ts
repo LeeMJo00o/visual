@@ -216,15 +216,16 @@ export default class ApplicationManager extends GraphicTools {
     this.limitAreaTextContainer = new Container()
     this.limitAreaTextContainer.eventMode = 'none'
 
-
     // 创建时间显示文本
-    this.timeText = new Text('', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: 20,
-      fill: 0xffffff,
-      stroke: 0x000000,
-      strokeThickness: 2,
-      align: 'center',
+    this.timeText = new Text({
+      text: '',
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: 20,
+        fill: 0xffffff,
+        stroke: 0x000000,
+        align: 'center',
+      },
     })
     this.timeText.anchor.set(0.5, 0) // 水平居中，垂直顶部对齐
     this.timeText.position.set(750, 20) // 位置在顶部中间偏左，距离顶部20像素
@@ -311,15 +312,15 @@ export default class ApplicationManager extends GraphicTools {
       this.app.stage.addChild(this.mainContainer)
 
       this.app.stage.addChild(this.agentTextContainer)
-      
+
       this.app.stage.addChild(this.limitAreaTextContainer)
 
       // 添加时间文本到舞台，确保显示在最上层
       this.app.stage.addChild(this.timeText)
 
       this.graphics_path_apply_area = new Graphics()
-      this.graphics_lock_area = new Graphics()          // 锁闭区域
-      this.graphics_limit_area = new Graphics()   // 流量控制区域
+      this.graphics_lock_area = new Graphics() // 锁闭区域
+      this.graphics_limit_area = new Graphics() // 流量控制区域
 
       this.add_graphics(this.map_container)
 
@@ -715,10 +716,10 @@ export default class ApplicationManager extends GraphicTools {
     x += 5
     y -= 5
 
-    y = -y  // 坐标系翻转
+    y = -y // 坐标系翻转
     // 1. 先缩放
     let screenX = x * scale
-    let screenY = y * scale  
+    let screenY = y * scale
 
     // 2. 再旋转
     const cos = Math.cos(rotation)

@@ -5,22 +5,21 @@ import { useLockAreaStore, useLimitAreaStore } from '../stores/lockAreaStore'
 import { Graphics } from 'pixi.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-
 // area类型
-const props = defineProps<{ type: string, text: string }>();
+const props = defineProps<{ type: string; text: string }>()
 
 const appManager = ref<ApplicationManager | null>(null)
 const isDrawingMode = ref(false)
 const drawingStartPoint = ref<{ x: number; y: number } | null>(null)
 const drawingEndPoint = ref<{ x: number; y: number } | null>(null)
 const drawingGraphics = ref<any>(null)
-const areaStore = props.type == "lock" ? useLockAreaStore() : useLimitAreaStore()
+const areaStore = props.type == 'lock' ? useLockAreaStore() : useLimitAreaStore()
 // 弹窗
 const dialogFormLoading = ref(false)
 const dialogFormVisible = ref(false)
-const verticesText = ref("")  // 坐标
-const rect = ref({left: 0, top: 0, width: 0, height: 0})
-const limit_num = ref(5)  // 流量限制区域数量
+const verticesText = ref('') // 坐标
+const rect = ref({ left: 0, top: 0, width: 0, height: 0 })
+const limit_num = ref(5) // 流量限制区域数量
 
 // 填充颜色
 const fillColorMapping = {
@@ -36,12 +35,12 @@ const borderColorMapping = {
 
 // 计算填充颜色
 const fillColor = computed(() => {
-  return fillColorMapping[props.type as keyof typeof fillColorMapping] ?? '#ff0000';
-});
+  return fillColorMapping[props.type as keyof typeof fillColorMapping] ?? '#ff0000'
+})
 // 边框颜色
 const borderColor = computed(() => {
-  return borderColorMapping[props.type as keyof typeof borderColorMapping] ?? '#ff0000';
-});
+  return borderColorMapping[props.type as keyof typeof borderColorMapping] ?? '#ff0000'
+})
 
 onMounted(async () => {
   appManager.value = ApplicationManager.getInstance()
@@ -148,13 +147,10 @@ const handleDrawingMouseMove = (e: any) => {
   const width = Math.abs(drawingEndPoint.value.x - drawingStartPoint.value.x)
   const height = Math.abs(drawingEndPoint.value.y - drawingStartPoint.value.y)
 
-  // 开始填充
-  drawingGraphics.value.beginFill(fillColor.value, 0.1);
-
-  drawingGraphics.value.rect(left, top, width, height).stroke({ color: borderColor.value, width: 2 })
-
-  // 结束填充
-  drawingGraphics.value.endFill();
+  drawingGraphics.value
+    .rect(left, top, width, height)
+    .fill({ color: fillColor.value, alpha: 0.1 })
+    .stroke({ color: borderColor.value, width: 2 })
 }
 
 const handleDrawingMouseUp = (e: any) => {
@@ -180,7 +176,7 @@ const handleDrawingMouseUp = (e: any) => {
 
   rect.value = { left, top, width, height }
 
-   // 计算四个顶点的屏幕坐标
+  // 计算四个顶点的屏幕坐标
   const screenVertices = [
     { x: left, y: top }, // 左上角
     { x: left + width, y: top }, // 右上角
@@ -218,7 +214,13 @@ const handleCancel = () => {
 // 弹窗确认
 const handleConfirm = () => {
   dialogFormLoading.value = true
-  sendDrawingRequest(rect.value?.left, rect.value?.top, rect.value?.width, rect.value?.height, limit_num.value)
+  sendDrawingRequest(
+    rect.value?.left,
+    rect.value?.top,
+    rect.value?.width,
+    rect.value?.height,
+    limit_num.value,
+  )
   // 清除画框
   clearCurrentDrawing()
   dialogFormLoading.value = false
@@ -231,8 +233,13 @@ const clearCurrentDrawing = () => {
   }
 }
 
-const sendDrawingRequest = async (left: number, top: number, width: number, height: number,
-        limit_num: number = 0) => {
+const sendDrawingRequest = async (
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  limit_num: number = 0,
+) => {
   if (!appManager.value) return
 
   try {
@@ -297,23 +304,21 @@ onUnmounted(() => {
     <el-button type="success" plain @click="areaStore.toggleLockAreaDialog">Area List</el-button>
     <el-button type="primary" plain @click="handleDrawBox">start draw</el-button>
   </div>
-  <el-dialog v-model="dialogFormVisible" 
-      title="确认绘制区域？" 
-      width="500" 
-      :close-on-click-modal="false"
-      :append-to-body="true">
+  <el-dialog
+    v-model="dialogFormVisible"
+    title="确认绘制区域？"
+    width="500"
+    :close-on-click-modal="false"
+    :append-to-body="true"
+  >
     <el-form>
       <!-- 多边形顶点坐标 -->
       <el-form-item label="polygon" label-width="140px">
-        <el-input v-model="verticesText" 
-              type="textarea" 
-              :rows="6"
-              readonly
-              autocomplete="off" />
+        <el-input v-model="verticesText" type="textarea" :rows="6" readonly autocomplete="off" />
       </el-form-item>
       <!-- 流量控制区域控制车辆数 -->
       <el-form-item label="limit" label-width="140px" v-if="type === 'limit'">
-        <el-input-number v-model="limit_num" :min="0" :max="1000" :precision="0"/>
+        <el-input-number v-model="limit_num" :min="0" :max="1000" :precision="0" />
       </el-form-item>
     </el-form>
     <template #footer>
