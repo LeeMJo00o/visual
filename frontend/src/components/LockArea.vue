@@ -267,7 +267,8 @@ const sendDrawingRequest = async (
         props.type === 'lock' && lockAreaType.value === 'no_parking'
           ? 'no_parking_' + Date.now()
           : props.type + '_area_' + Date.now(), // 禁停区使用no_parking_xxxx格式
-      subtype: props.type === 'lock' && lockAreaType.value === 'no_parking' ? '' : props.type, // 禁停区的subtype留空
+      subtype:
+        props.type === 'lock' && lockAreaType.value === 'no_parking' ? 'no_parking' : props.type, // 禁停区的subtype使用no_parking
       type: props.type === 'lock' ? lockAreaType.value : props.type, // 根据锁闭区类型设置正确的type
       created_by: 'pp-visual',
       describe: '',
