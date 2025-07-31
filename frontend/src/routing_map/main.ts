@@ -645,9 +645,14 @@ export default class ApplicationManager extends GraphicTools {
       this.mainContainer.position.y + off_y,
     )
 
-    // 更新所有文本的位置
+    // 更新车辆 id 文本的位置
     Object.values(this.agents).forEach((agent) => {
       agent.sync_text_pos(agent.position.x, agent.position.y)
+    })
+
+    // 更新流控区域的文本位置
+    this.limitAreaTextContainer.children.forEach((limit_text) => {
+      limit_text.__ww_update()
     })
 
     console.log('main container: ', this.mainContainer.position, this.mainContainer.scale.x)
