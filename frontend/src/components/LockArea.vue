@@ -3,7 +3,6 @@ import ApplicationManager from '../routing_map/main.ts'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useLockAreaStore, useLimitAreaStore } from '../stores/lockAreaStore'
 import { Graphics } from 'pixi.js'
-import { ElMessage, ElMessageBox } from 'element-plus'
 
 // area类型
 const props = defineProps<{ type: string; text: string }>()
@@ -20,17 +19,20 @@ const dialogFormVisible = ref(false)
 const verticesText = ref('') // 坐标
 const rect = ref({ left: 0, top: 0, width: 0, height: 0 })
 const limit_num = ref(5) // 流量限制区域数量
+const lockAreaType = ref('lock') // 锁闭区类型，默认为"锁闭区"
 
 // 填充颜色
 const fillColorMapping = {
   lock: '#ff0000',
   limit: '#FDFD96',
+  no_parking: '#e645e3',
 } as const
 
 //边框颜色
 const borderColorMapping = {
   lock: '#ff0000',
   limit: '#FFFF00',
+  no_parking: '#e645e3',
 } as const
 
 // 计算填充颜色
@@ -261,9 +263,12 @@ const sendDrawingRequest = async (
     const polygon = [...mapVertices, mapVertices[0]]
 
     const requestData = {
-      name: props.type + '_area_' + Date.now(), // 生成唯一名称
-      subtype: props.type,
-      type: props.type,
+      name:
+        props.type === 'lock' && lockAreaType.value === 'no_parking'
+          ? 'no_parking_' + Date.now()
+          : props.type + '_area_' + Date.now(), // 禁停区使用no_parking_xxxx格式
+      subtype: props.type === 'lock' && lockAreaType.value === 'no_parking' ? '' : props.type, // 禁停区的subtype留空
+      type: props.type === 'lock' ? lockAreaType.value : props.type, // 根据锁闭区类型设置正确的type
       created_by: 'pp-visual',
       describe: '',
       polygon: polygon,
@@ -319,6 +324,13 @@ onUnmounted(() => {
       <!-- 流量控制区域控制车辆数 -->
       <el-form-item label="limit" label-width="140px" v-if="type === 'limit'">
         <el-input-number v-model="limit_num" :min="0" :max="1000" :precision="0" />
+      </el-form-item>
+      <!-- 锁闭区类型 -->
+      <el-form-item label="area_type" label-width="140px" v-if="type === 'lock'">
+        <el-select v-model="lockAreaType" placeholder="请选择锁闭区类型">
+          <el-option label="禁行区" value="lock" />
+          <el-option label="禁停区" value="no_parking" />
+        </el-select>
       </el-form-item>
     </el-form>
     <template #footer>

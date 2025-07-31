@@ -288,7 +288,18 @@ export class DataRenderer {
 
     console.log('绘制锁闭区:', areaId, area.name)
 
-    const color = type == 'lock' ? '0xFF0000' : '0xFFFF00'
+    // 根据区域的实际类型设置颜色
+    let color = '0xFF0000' // 默认红色
+    if (type === 'limit') {
+      color = '0xFFFF00' // 流量限制区：黄色
+    } else if (type === 'lock') {
+      // 锁闭区内部细分类型
+      if (area.type === 'no_parking') {
+        color = '0xe645e3' // 禁停区：紫色
+      } else {
+        color = '0xFF0000' // 锁闭区：红色
+      }
+    }
 
     // 为每个锁闭区创建独立的图形对象
     const areaGraphics = new Graphics()
@@ -320,7 +331,8 @@ export class DataRenderer {
       console.log('鼠标悬停在锁闭区上:', areaId)
 
       // 高亮显示锁闭区
-      areaGraphics.tint = 0xffff00 // 黄色高亮
+      // tint 是颜色叠加，需要重新实现高亮方式
+      // areaGraphics.tint = 0xffff00 // 黄色高亮
 
       // 创建tooltip内容
       const tooltipContent = `
