@@ -308,7 +308,7 @@ export default class ApplicationManager extends GraphicTools {
 
       this.map_container = await this.initMap()
       // 默认关闭地图显示
-      this.map_container.visible = false
+      this.map_container.visible = !this.map_config.use_back_image
       this.app.stage.addChild(this.mainContainer)
 
       this.app.stage.addChild(this.agentTextContainer)

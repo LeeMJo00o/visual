@@ -9,6 +9,8 @@ import LockArea from '@/components/LockArea.vue'
 import LockAreaList from '@/components/LockAreaList.vue'
 import AgentsManager from '@/components/AgentsManager.vue'
 import VehicleList from '@/components/VehicleList.vue'
+import WeightScaleConfig from '@/components/WeightScaleConfig.vue'
+import PriorityConfig from '@/components/PriorityConfig.vue'
 
 // 声明全局接口
 declare global {
@@ -110,6 +112,14 @@ const onImageHide = () => {
               <span>Traffic Control</span>
             </el-menu-item>
 
+            <el-menu-item index="weight-scale-config">
+              <span>Weight Scale Config</span>
+            </el-menu-item>
+
+            <el-menu-item index="priority-config">
+              <span>Priority Config</span>
+            </el-menu-item>
+
             <el-sub-menu index="4">
               <template #title>
                 <span>The func group</span>
@@ -182,6 +192,14 @@ const onImageHide = () => {
 
               <div v-else-if="currentMenu === 'limit-area'">
                 <LockArea type="limit" text="Traffic Control" />
+              </div>
+
+              <div v-else-if="currentMenu === 'weight-scale-config'">
+                <WeightScaleConfig />
+              </div>
+
+              <div v-else-if="currentMenu === 'priority-config'">
+                <PriorityConfig />
               </div>
 
               <div v-else-if="currentMenu === '3-1'">

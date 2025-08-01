@@ -17,11 +17,21 @@ def get_config_by_prefix(config_map: dict, src: str) -> dict:
     for k, v in config_map.items():
         if src.startswith(k):
             return v
+    return config_map.get("default")
 
 
 @router.post('/config')
 async def get_config():
     config_map = {
+        "default": {
+            "rotation": 0,
+            "offset": [0, 0],
+            "offset_back_image": [0, 0],
+            "scale_back": 1,
+            "scale": 1.0,
+            "mode": "test-demo",
+            "version": MAP_NAME
+        },
         "Abuzhabi_QP_VPB": {
             "rotation": -2.471,
             "offset": [450, 330],
@@ -57,6 +67,14 @@ async def get_config():
             "scale_back": 0.28230378433981407,
             "back_image_file": "taiguo.png", 
             "scale": 1.31,
+            "mode": "test-demo",
+            "version": MAP_NAME
+        },
+        "TangShan": {
+            "rotation": 0,
+            "offset": [500, 900],
+            "use_back_image": False,
+            "scale": 1.2,
             "mode": "test-demo",
             "version": MAP_NAME
         }

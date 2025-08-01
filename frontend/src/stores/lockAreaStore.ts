@@ -61,8 +61,6 @@ const createLockAreaStore = (storeId: string, manager_key: string, type: string)
 
     // 增加/更新锁闭区请求
     async function addOrUpdateLockArea(areaData: LockArea) {
-      console.log("addOrUpdateLockArea", areaData)
-
       try {
         isLoading.value = true
         // 发送添加请求到后端

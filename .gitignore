@@ -11,3 +11,4 @@ venv
 myNoteBook.py
 .coverage
 map/*
+src/map/*
