@@ -201,7 +201,9 @@ const query = async () => {
     console.log("query weight config response:", response)
     if (response.status === 200 && response.data.code === 200 && response.data.data) {
         let data = response.data.data
-        form.value = data.weightConfigData
+        if(data.weightConfigData) {
+            form.value = data.weightConfigData
+        }
         NPA_SCALE.value = data.NPA_SCALE
         BS_CURVE_SCALE.value = data.BS_CURVE_SCALE
         STACK_BUSY_BUSY_SCALE.value = data.STACK_BUSY_BUSY_SCALE
@@ -255,7 +257,7 @@ const handleRefresh = async () => {
 
 const handleOpen = async () => {
     dialogFormVisible.value = true
-    handleRefresh()
+    await handleRefresh()
 }
 
 // 弹窗确认
