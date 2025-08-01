@@ -29,7 +29,7 @@ async def _get_float(key: str, default: float = 0) -> float | str:
 
 @router.get('/query', description="查询权重配置")
 async def query():
-    weightConfigData = json.loads(s) if (s := await redis_cli.get(KEY)) else {}
+    weightConfigData = json.loads(s) if (s := await redis_cli.get(KEY)) else None
     NPA_SCALE = await _get_float(KEY_PP4_NPA_SCALE_SIMWEB, float("inf"))
     BS_CURVE_SCALE = await _get_float(KEY_PP4_BS_CURVE_SCALE_SIMWEB, 10)
     STACK_BUSY_BUSY_SCALE = await _get_float(KEY_PP4_STACK_BUSY_SCALE_SIMWEB, 1)
