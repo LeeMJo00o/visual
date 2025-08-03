@@ -46,5 +46,11 @@ async def query():
 
 @router.post('/update', description="更新权重配置")
 async def update(req: dict = Body()):
-    await redis_cli.set(KEY, json.dumps(req))
+    async with redis_cli.pipeline() as pipe:
+        await pipe.set(KEY, json.dumps(req.get("weightConfigData")))
+        await pipe.set(KEY_PP4_NPA_SCALE_SIMWEB, req.get("NPA_SCALE"))
+        await pipe.set(KEY_PP4_BS_CURVE_SCALE_SIMWEB, req.get("BS_CURVE_SCALE"))
+        await pipe.set(KEY_PP4_STACK_BUSY_SCALE_SIMWEB, req.get("STACK_BUSY_BUSY_SCALE"))
+        await pipe.set(KEY_PP4_STACK_CROWDED_SCALE_SIMWEB, req.get("STACK_BUSY_CROWDED_SCALE"))
+        await pipe.execute()
     return StdRes()

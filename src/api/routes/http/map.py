@@ -72,9 +72,9 @@ async def get_config():
         },
         "TangShan": {
             "rotation": 0,
-            "offset": [500, 900],
+            "offset": [350, 650],
             "use_back_image": False,
-            "scale": 1.2,
+            "scale": 0.8,
             "mode": "test-demo",
             "version": MAP_NAME
         }

@@ -8,7 +8,7 @@ from chain_websocket.server import ConnectionManager, MulLinkServerEndpoint
 from src.middlewares.mq import mq_route
 import json
 from src.middlewares.redis_handler.connect import redis_cli
-from src.core.config import DEMO_REDIS_URL
+from src.core.config import DEMO_REDIS_URL, pp_visual_DEVICE_MODE
 from src.core.log import logger
 import traceback
 from src.map_tools import g_roads
@@ -86,6 +86,7 @@ class PoseWsServer(MulLinkServerEndpoint):
                     all_v_pose_t[v_id]["blocked_by"] = all_v_be_blame.get(v_id, "")
                     all_v_pose_t[v_id]["block"] = all_v_blame.get(v_id, "")
                     all_v_pose_t[v_id]["task"] = True if all_v_task.get(v_id, None) else False
+                    all_v_pose_t[v_id]["device_mode"] = pp_visual_DEVICE_MODE
 
                 await cls.ws_manager.broadcast_json({
                     "type": "pose",

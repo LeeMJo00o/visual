@@ -13,8 +13,8 @@ export default class Agent {
     this.graphics.addChild(this.graphics_trailer)
     this.manager = manager
 
-    // this.w = 16
-    // this.h = 3.5
+    this.w = 16
+    this.h = 3.1
 
     this.head_front = 6.625
     this.head_back = 0.885
@@ -29,6 +29,7 @@ export default class Agent {
       block: '',
       blocked_by: '',
       task: null,
+      device_mode: '',
     }
 
     // 添加位置信息属性，用于tooltip显示
@@ -204,33 +205,57 @@ export default class Agent {
 
   // 新方法：更新图形显示
   _updateGraphics_simple() {
-    this.graphics.clear()
+    this.graphics_trailer.clear()
+    let g = this.graphics_head
+    g.clear()
+    let _x = this.position.x
+    let _y = this.position.y
 
-    let mid_v = 3 / 4
-    let x_t = -this.w * mid_v
-    let y_t = -this.h / 2
+    g.pivot.set(_x, _y)
+    g.position.set(_x, _y)
 
-    this.sync_text_pos(this.position.x, this.position.y)
+    let fillColor = this.color
+    let fillV = 0.7
+    if(!this.v_info.task) {
+      fillColor = "#00ff00"
+      fillV = 1.0
+    }
 
-    let _x = this.position.x //+ this.manager.mainContainer.position.x
-    let _y = this.position.y //+ this.manager.mainContainer.position.y
+    g.rect(-this.w/2, -this.h/2, this.w, this.h)
+      .fill({color: fillColor, alpha: fillV})
+      .stroke({ color: this.color, width: 0.5 })
 
-    this.graphics.pivot.set(_x, _y)
-    this.graphics.position.set(_x, _y)
+      g.rotation = -this.position.theta
+    g.pivot.set(0, 0)
 
-    this.graphics.rect(x_t, y_t, this.w, this.h)
-    this.graphics.stroke({ color: this.color, width: 1 })
 
-    this.graphics.moveTo(0, -this.h / 2)
-    this.graphics.lineTo(0, this.h / 2)
+    // this.graphics.clear()
 
-    // this.graphics.moveTo(this.w * (1 - mid_v), -this.h / 2)
-    // this.graphics.lineTo(this.w * (1 - mid_v), this.h / 2)
+    // let mid_v = 3 / 4
+    // let x_t = -this.w * mid_v
+    // let y_t = -this.h / 2
 
-    this.graphics.stroke({ color: this.color_head, width: 1 })
-    this.graphics.rotation = -this.position.theta
+    // this.sync_text_pos(this.position.x, this.position.y)
 
-    this.graphics.pivot.set(0, 0)
+    // let _x = this.position.x //+ this.manager.mainContainer.position.x
+    // let _y = this.position.y //+ this.manager.mainContainer.position.y
+
+    // this.graphics.pivot.set(_x, _y)
+    // this.graphics.position.set(_x, _y)
+
+    // this.graphics.rect(x_t, y_t, this.w, this.h)
+    // this.graphics.stroke({ color: this.color, width: 1 })
+
+    // this.graphics.moveTo(0, -this.h / 2)
+    // this.graphics.lineTo(0, this.h / 2)
+
+    // // this.graphics.moveTo(this.w * (1 - mid_v), -this.h / 2)
+    // // this.graphics.lineTo(this.w * (1 - mid_v), this.h / 2)
+
+    // this.graphics.stroke({ color: this.color_head, width: 1 })
+    // this.graphics.rotation = -this.position.theta
+
+    // this.graphics.pivot.set(0, 0)
 
     // console.log("update pos:", this.vehicle_id, this.position.x, this.position.y);
   }
@@ -276,8 +301,14 @@ export default class Agent {
   }
 
   _updateGraphics() {
-    this._updateGraphicsHead(this.graphics_head)
-    this._updateGraphicsTrailer(this.graphics_trailer)
+    console.log("device mode", this.v_info.device_mode)
+    if(this.v_info.device_mode === 'igv') {
+      this._updateGraphics_simple()
+    }else {
+      this._updateGraphicsHead(this.graphics_head)
+      this._updateGraphicsTrailer(this.graphics_trailer)
+    }
+    
     this.sync_text_pos(this.position.x, this.position.y)
   }
 }

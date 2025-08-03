@@ -49,3 +49,6 @@ DEMO_REDIS_URL: str = config(
 )
 
 PATH_REPORT_URL = config("PATH_REPORT_URL", cast=str, default="http://127.0.0.1:3000")
+
+# device_mode
+pp_visual_DEVICE_MODE = config("pp_visual_DEVICE_MODE", cast=str, default="truck")

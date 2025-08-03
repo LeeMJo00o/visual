@@ -18,6 +18,7 @@ interface AgentData {
   block: string
   blocked_by: string
   task: object | null
+  device_mode: string | null
 }
 
 interface OneLane {
@@ -225,6 +226,7 @@ export class DataRenderer {
         block: v.block,
         blocked_by: v.blocked_by,
         task: v.task,
+        device_mode: v.device_mode,
       })
     }
   }
@@ -411,6 +413,7 @@ export class DataRenderer {
     this.manager.agents[vehicleId].v_info.block = data.block
     this.manager.agents[vehicleId].v_info.blocked_by = data.blocked_by
     this.manager.agents[vehicleId].v_info.task = data.task
+    this.manager.agents[vehicleId].v_info.device_mode = data.device_mode
   }
 
   private demo_path_to_my(path: PathData): number[][][] {
