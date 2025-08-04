@@ -24,32 +24,6 @@ _manager_limit_area = ConnectionManager()
 _manager_path = ConnectionManager()
 
 
-@router.websocket_route("/route_info", name="websocket for pushlish route info")
-class RouteWsServer(MulLinkServerEndpoint):
-    ws_manager = _manager
-
-    async def on_receive_json(self, mess: dict):
-        print(f"I receive mess: {mess}")
-
-        # send message to the connection
-        await self.websocket.send_json({
-            "msg": "this is a mesage for the one connection"
-        })
-
-        # braodcast message to all connections
-        await self.broadcast_json({
-            "msg_all": "this is a mesage for the all connections"
-        })
-
-    @classmethod
-    async def on_mq_message(cls, message: dict[str, str]):
-        for key, value in message.items():
-            await cls.ws_manager.broadcast_json({
-                "type": key,
-                "data": json.loads(value)
-            })
-
-
 @router.websocket_route("/pose_info", name="websocket for pushlish vehicle info")
 class PoseWsServer(MulLinkServerEndpoint):
     ws_manager = _manager_pose
