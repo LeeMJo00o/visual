@@ -398,12 +398,17 @@ export default class ApplicationManager extends GraphicTools {
 
       // 创建tooltip内容
       const agent = this.agents[vehicle_id]
+      const priorityInfo =
+        agent.v_info.priority !== null && agent.v_info.priority !== undefined
+          ? ` (${agent.v_info.priority})`
+          : ''
       const tooltipContent = `
         <div style="font-weight: bold; margin-bottom: 4px;">Vehicle Info</div>
-        <div>id: ${agent.vehicle_id}</div>
+        <div>id: ${agent.vehicle_id}${priorityInfo}</div>
         <div>pose: ${agent.position.x.toFixed(3)}, ${-agent.position.y.toFixed(3)}, ${agent.position.theta.toFixed(3)}</div>
         <div>blocked_by: ${agent.v_info.blocked_by}</div>
         <div>block: ${agent.v_info.block}</div>
+        ${agent.v_info.priority !== null && agent.v_info.priority !== undefined ? `<div>priority: ${agent.v_info.priority}</div>` : ''}
       `
 
       // 显示tooltip

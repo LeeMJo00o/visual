@@ -19,6 +19,7 @@ interface AgentData {
   blocked_by: string
   task: object | null
   device_mode: string | null
+  priority?: number
 }
 
 interface OneLane {
@@ -53,6 +54,7 @@ interface PoseData {
   x: number
   y: number
   yaw: number
+  priority?: number
 }
 
 interface PoseUpdateData {
@@ -227,6 +229,7 @@ export class DataRenderer {
         blocked_by: v.blocked_by,
         task: v.task,
         device_mode: v.device_mode,
+        priority: v.priority,
       })
     }
   }
@@ -406,7 +409,7 @@ export class DataRenderer {
    * @param data - 车辆数据
    */
   draw_one_agent(data: AgentData): void {
-    const { vehicleId, x, y, theta, tx, ty, t_theta } = data
+    const { vehicleId, x, y, theta, tx, ty, t_theta, priority } = data
     if (!this.manager.agents.hasOwnProperty(vehicleId)) {
       this.manager.add_agent(vehicleId, x, -y, theta, theta, tx, -ty, t_theta)
     }
@@ -415,6 +418,14 @@ export class DataRenderer {
     this.manager.agents[vehicleId].v_info.blocked_by = data.blocked_by
     this.manager.agents[vehicleId].v_info.task = data.task
     this.manager.agents[vehicleId].v_info.device_mode = data.device_mode
+    this.manager.agents[vehicleId].v_info.priority = priority
+
+    // 更新车辆文本，包含优先级
+    let displayText = vehicleId
+    if (priority !== null && priority !== undefined) {
+      displayText = `${vehicleId} (${priority})`
+    }
+    this.manager.agents[vehicleId].text.text = displayText
   }
 
   private demo_path_to_my(path: PathData): number[][][] {
