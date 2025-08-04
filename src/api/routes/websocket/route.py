@@ -15,9 +15,6 @@ from src.map_tools import g_roads
 from src.utils.tools import str_to_json
 
 router = APIRouter()
-_manager = ConnectionManager()
-_manager_demo_path = ConnectionManager()
-_manager_demo_short_path = ConnectionManager()
 _manager_pose = ConnectionManager()
 _manager_lock_area = ConnectionManager()
 _manager_limit_area = ConnectionManager()
