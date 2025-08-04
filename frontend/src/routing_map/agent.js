@@ -225,9 +225,8 @@ export default class Agent {
       .fill({color: fillColor, alpha: fillV})
       .stroke({ color: this.color, width: 0.5 })
 
-      g.rotation = -this.position.theta
+    g.rotation = -this.position.theta
     g.pivot.set(0, 0)
-
 
     // this.graphics.clear()
 
@@ -308,7 +307,7 @@ export default class Agent {
       this._updateGraphicsHead(this.graphics_head)
       this._updateGraphicsTrailer(this.graphics_trailer)
     }
-    
+
     this.sync_text_pos(this.position.x, this.position.y)
   }
 }

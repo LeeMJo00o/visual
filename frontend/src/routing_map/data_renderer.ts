@@ -260,6 +260,7 @@ export class DataRenderer {
     Object.values(this.manager?.[data_key]).forEach((areaGraphics) => {
       if (areaGraphics && areaGraphics.parent) {
         areaGraphics.parent.removeChild(areaGraphics)
+        areaGraphics.destroy()
       }
     })
     this.manager[data_key] = {}
