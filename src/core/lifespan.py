@@ -11,7 +11,7 @@ from src.services.grpc.start import manager as grpc_manager
 from src.services.grpc.start import grpc_tasks
 from src.middlewares.mq import mq, mq_route, mq_demo_path
 from chain_utils.asyncio_utils import RefTasks
-from src.api.routes.websocket.route import RouteWsServer, PoseWsServer, AreaWsServer, PathWsServer, LimitAreaWsServer
+from src.api.routes.websocket.route import PoseWsServer, AreaWsServer, PathWsServer, LimitAreaWsServer
 
 ref_tasks = RefTasks(logger_done=logger)
 
