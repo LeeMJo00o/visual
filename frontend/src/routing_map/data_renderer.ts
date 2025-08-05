@@ -238,62 +238,119 @@ export class DataRenderer {
    * 处理锁闭区数据更新
    * @param data - 锁闭区数据
    */
-  async areas_update(data: LockAreaUpdateData, type: string): Promise<void> {
+  areas_update(data: LockAreaUpdateData, type: string): void {
     const all_areas = data.data
-    console.log('收到锁闭区数据:', Object.keys(all_areas).length, '个区域')
+    const data_key = type === 'limit' ? 'limitAreas' : 'lockAreas'
 
-    const graphics_key = (
-      type === 'lock' ? 'graphics_lock_area' : 'graphics_limit_area'
-    ) as keyof typeof this.manager
-    const data_key = (type === 'lock' ? 'lockAreas' : 'limitAreas') as keyof typeof this.manager
-
-    // 清除之前的锁定区域显示
-    if (this.manager?.[graphics_key]) {
-      this.manager[graphics_key].clear()
-    }
     // 清除text
-    if (type == 'limit') {
-      this.manager.limitAreaTextContainer.children.forEach((child) => {
-        child.destroy() // 销毁子元素及其资源
-      })
-      this.manager.limitAreaTextContainer.removeChildren()
-    }
+    // if (type == 'limit') {
+    //   this.manager.limitAreaTextContainer.children.forEach((child) => {
+    //     child.destroy() // 销毁子元素及其资源
+    //   })
+    //   this.manager.limitAreaTextContainer.removeChildren()
+    // }
 
-    // 清理所有现有的锁闭区图形对象
-    Object.values(this.manager?.[data_key]).forEach((areaGraphics) => {
-      if (areaGraphics && areaGraphics.parent) {
-        areaGraphics.parent.removeChild(areaGraphics)
-        areaGraphics.destroy()
+    // 获取现有的区域ID集合
+    const existingAreaIds = new Set(Object.keys(this.manager[data_key] || {}))
+    const newAreaIds = new Set(Object.keys(all_areas))
+
+    // 移除不再存在的区域
+    for (const areaId of existingAreaIds) {
+      if (!newAreaIds.has(areaId)) {
+        const areaGraphics = this.manager[data_key][areaId]
+        if (areaGraphics && areaGraphics.parent) {
+          areaGraphics.parent.removeChild(areaGraphics)
+          areaGraphics.destroy()
+        }
+        delete this.manager[data_key][areaId]
       }
-    })
-    this.manager[data_key] = {}
-
-    // 绘制所有锁定区域
-    for (const [areaId, area] of Object.entries(all_areas)) {
-      await this.draw_lock_area(areaId, area, data_key, type)
     }
 
-    console.log('锁闭区更新完成，总共绘制了', Object.keys(this.manager[data_key]).length, '个区域')
+    // 更新或创建区域
+    for (const [areaId, area] of Object.entries(all_areas)) {
+      this.update_or_create_lock_area(areaId, area, data_key, type)
+    }
+
+    // console.log('锁闭区更新完成，总共绘制了', Object.keys(this.manager[data_key]).length, '个区域')
   }
 
   /**
-   * 绘制单个锁闭区
+   * 更新或创建锁闭区
    * @param areaId - 区域ID
    * @param area - 区域数据
+   * @param data_key - 数据键名
+   * @param type - 区域类型
    */
-  private async draw_lock_area(
+  private update_or_create_lock_area(
     areaId: string,
     area: LockArea,
     data_key: string,
     type: string,
-  ): Promise<void> {
+  ): void {
     if (!area.polygon || area.polygon.length < 3) {
       console.log('跳过无效的锁闭区:', areaId, area)
       return
     }
 
-    console.log('绘制锁闭区:', areaId, area.name)
+    let areaGraphics = this.manager[data_key]?.[areaId]
 
+    if (!areaGraphics) {
+      areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type)
+    }
+  }
+
+  /**
+   * 更新现有锁闭区图形对象
+   * @param areaGraphics - 现有的图形对象
+   * @param area - 区域数据
+   * @param type - 区域类型
+   */
+  private update_lock_area_graphics(areaGraphics: Graphics, area: LockArea, type: string): void {
+    // 根据区域的实际类型设置颜色
+    let color = '0xFF0000' // 默认红色
+    if (type === 'limit') {
+      color = '0xFFFF00' // 流量限制区：黄色
+    } else if (type === 'lock') {
+      // 锁闭区内部细分类型
+      if (area.type === 'no_parking') {
+        color = '0xe645e3' // 禁停区：紫色
+      } else {
+        color = '0xFF0000' // 锁闭区：红色
+      }
+    }
+
+    // 将多边形数据转换为drawLine需要的格式
+    const points = area.polygon.map((point) => [point.x, point.y])
+
+    // 清除现有内容并重新绘制
+    areaGraphics.clear()
+    this.manager.drawLine(
+      areaGraphics,
+      (areaGraphics as any).areaId,
+      points,
+      true, // 使用虚线
+      color, // 边框颜色
+      1, // 线宽
+      1, // 透明度
+    )
+
+    // 更新保存的区域数据
+    ;(areaGraphics as any).areaData = area
+  }
+
+  /**
+   * 创建新的锁闭区图形对象
+   * @param areaId - 区域ID
+   * @param area - 区域数据
+   * @param data_key - 数据键名
+   * @param type - 区域类型
+   */
+  private create_lock_area_graphics(
+    areaId: string,
+    area: LockArea,
+    data_key: string,
+    type: string,
+  ): Graphics {
     // 根据区域的实际类型设置颜色
     let color = '0xFF0000' // 默认红色
     if (type === 'limit') {
@@ -334,11 +391,7 @@ export class DataRenderer {
 
     // 添加鼠标悬停事件处理，显示锁闭区信息
     areaGraphics.on('pointerover', (e: any) => {
-      console.log('鼠标悬停在锁闭区上:', areaId)
-
-      // 高亮显示锁闭区
-      // tint 是颜色叠加，需要重新实现高亮方式
-      // areaGraphics.tint = 0xffff00 // 黄色高亮
+      // console.log('鼠标悬停在锁闭区上:', areaId)
 
       // 创建tooltip内容
       const tooltipContent = `
@@ -367,7 +420,7 @@ export class DataRenderer {
 
         // 鼠标离开时移除事件监听
         const onPointerOut = () => {
-          console.log('鼠标离开锁闭区:', areaId)
+          // console.log('鼠标离开锁闭区:', areaId)
           document.removeEventListener('mousemove', onMouseMove)
           if (this.manager.tooltip) {
             this.manager.tooltip.style.display = 'none'
@@ -393,15 +446,20 @@ export class DataRenderer {
         textObj.position.set(p[0], p[1])
       }
       // 将text对象添加到容器中
-      this.manager.limitAreaTextContainer.addChild(textObj)
+      // this.manager.limitAreaTextContainer.addChild(textObj)
     }
-    // 将图形对象添加到主容器
     this.manager.mainContainer.addChild(areaGraphics)
-
-    // 存储到锁闭区对象中
     this.manager[data_key][areaId] = areaGraphics
+    return areaGraphics
+  }
 
-    console.log('锁闭区绘制完成:', areaId, '总数:', Object.keys(this.manager[data_key]).length)
+  /**
+   * 绘制单个锁闭区（保留原有方法以兼容性）
+   * @param areaId - 区域ID
+   * @param area - 区域数据
+   */
+  private draw_lock_area(areaId: string, area: LockArea, data_key: string, type: string): void {
+    this.create_lock_area_graphics(areaId, area, data_key, type)
   }
 
   /**

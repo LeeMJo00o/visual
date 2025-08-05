@@ -89,7 +89,6 @@ export default class ApplicationManager extends GraphicTools {
     this.graphics_path_short = null
     this.graphics_path_long = null
     this.graphics_path_apply_area = null
-    this.graphics_lock_area = null
     this.agent_graphics = []
     this.isDragging = false
     this.x_init = 0
@@ -319,16 +318,12 @@ export default class ApplicationManager extends GraphicTools {
       this.app.stage.addChild(this.timeText)
 
       this.graphics_path_apply_area = new Graphics()
-      this.graphics_lock_area = new Graphics() // 锁闭区域
-      this.graphics_limit_area = new Graphics() // 流量控制区域
 
       this.add_graphics(this.map_container)
 
       this.mainContainer.addChild(this.longPathContainer)
       this.mainContainer.addChild(this.shortPathContainer)
       this.add_graphics(this.graphics_path_apply_area)
-      this.add_graphics(this.graphics_lock_area)
-      this.add_graphics(this.graphics_limit_area)
       this.mainContainer.addChild(this.agentContainer)
 
       this.graphics_path_apply_area.alpha = 0.5
