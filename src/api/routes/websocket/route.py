@@ -21,6 +21,7 @@ _manager_demo_short_path = ConnectionManager()
 _manager_pose = ConnectionManager()
 _manager_lock_area = ConnectionManager()
 _manager_limit_area = ConnectionManager()
+_manager_trigger_area = ConnectionManager()
 _manager_path = ConnectionManager()
 
 
@@ -162,6 +163,12 @@ class LimitAreaWsServer(AreaWsServer):
     ws_manager = _manager_limit_area
     key = "pp4:limit_area:simweb"
     type = "limit"
+
+@router.websocket_route("/trigger_area", name="websocket for trigger area")
+class LimitAreaWsServer(AreaWsServer):
+    ws_manager = _manager_trigger_area
+    key = "pp4:trigger_area:simweb"
+    type = "trigger"
 
 @router.websocket_route("/path", name="websocket for pushlish path (short + long)")
 class PathWsServer(MulLinkServerEndpoint):

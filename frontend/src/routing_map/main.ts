@@ -126,6 +126,9 @@ export default class ApplicationManager extends GraphicTools {
     // 存储流量控制区域图形对象
     this.limitAreas = {}
 
+    // 存储电子围栏图形对象
+    this.geoFences = {}
+
     // 存储画框处理方法（由LockArea.vue设置）
     this.drawingHandlers = null
 
@@ -321,6 +324,7 @@ export default class ApplicationManager extends GraphicTools {
       this.graphics_path_apply_area = new Graphics()
       this.graphics_lock_area = new Graphics() // 锁闭区域
       this.graphics_limit_area = new Graphics() // 流量控制区域
+      this.graphics_trigger_area = new Graphics() // 电子为围栏区域
 
       this.add_graphics(this.map_container)
 
@@ -329,6 +333,7 @@ export default class ApplicationManager extends GraphicTools {
       this.add_graphics(this.graphics_path_apply_area)
       this.add_graphics(this.graphics_lock_area)
       this.add_graphics(this.graphics_limit_area)
+      this.add_graphics(this.graphics_trigger_area)
       this.mainContainer.addChild(this.agentContainer)
 
       this.graphics_path_apply_area.alpha = 0.5

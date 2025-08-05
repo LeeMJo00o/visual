@@ -16,6 +16,7 @@ router = APIRouter()
 KEYS = {
     "lock": "pp4:lock_area:simweb",
     "limit": "pp4:limit_area:simweb",
+    "trigger": "pp4:trigger_area:simweb",
 }
 
 # {"name":"lock_area_1751455131293","subtype":"lock","type":"lock","created_by":"pp-visual","describe":"","polygon":[{"x":1449.7863,"y":1769.692},{"x":712.9327,"y":543.7826},{"x":198.9195,"y":852.739},{"x":935.7731,"y":2078.6483},{"x":1449.7863,"y":1769.692}]}

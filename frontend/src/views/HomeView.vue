@@ -111,6 +111,11 @@ const onImageHide = () => {
             <el-menu-item index="limit-area">
               <span>Traffic Control</span>
             </el-menu-item>
+            
+            <!-- 电子围栏 -->
+            <el-menu-item index="geo-fence">
+              <span>Geo-fence</span>
+            </el-menu-item>
 
             <el-menu-item index="weight-scale-config">
               <span>Weight Scale Config</span>
@@ -193,6 +198,10 @@ const onImageHide = () => {
               <div v-else-if="currentMenu === 'limit-area'">
                 <LockArea type="limit" text="Traffic Control" />
               </div>
+              
+              <div v-else-if="currentMenu === 'geo-fence'">
+                <LockArea type="trigger" text="Geo-fence" />
+              </div>
 
               <div v-else-if="currentMenu === 'weight-scale-config'">
                 <WeightScaleConfig />
@@ -231,6 +240,9 @@ const onImageHide = () => {
 
   <!-- 流量控制区域列表对话框 -->
   <LockAreaList type="limit"/>
+
+  <!-- 电子围栏区域列表对话框 -->
+  <LockAreaList type="trigger"/>
 </template>
 
 <style scoped>

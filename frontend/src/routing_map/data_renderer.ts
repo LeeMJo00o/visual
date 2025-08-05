@@ -2,6 +2,7 @@ import { WebSocketClient } from './pp_backend.js'
 import { Graphics } from 'pixi.js'
 import ApplicationManager from './main.ts'
 import { PointProjection, type Point } from './project.ts'
+import { getBorderColor, getFillColor } from '@/colors/lockarea_color.ts'
 
 // 类型定义
 interface Position {
@@ -151,6 +152,15 @@ export class DataRenderer {
     ws_limit_areas.connect()
     this.websocket_clients['demo_areas_limit'] = ws_limit_areas
 
+    // 电子围栏区域WebSocket
+    const ws_trigger_areas = new WebSocketClient(`${ws_prefix}/api/ws/demo/trigger_area`, {
+      onMessage: (data: LockAreaUpdateData) => {
+        this.areas_update(data, 'trigger')
+      },
+    })
+    ws_trigger_areas.connect()
+    this.websocket_clients['demo_areas_trigger'] = ws_trigger_areas
+
     // 设置路径宽度
     this.long_path_width = 1
     this.short_path_width = 4
@@ -231,22 +241,42 @@ export class DataRenderer {
     }
   }
 
+
+  /***
+   * area 相关的类型及key
+   */
+  get_area_key(type: string): { graphics_key: string; data_key: string } {
+    console.log("type:", "get_area_key", type)
+    if(type === "lock") {
+      return {graphics_key: 'graphics_lock_area', data_key: 'lockAreas'}
+    }else if(type === "limit") {
+      return {graphics_key: 'graphics_limit_area', data_key: 'limitAreas'}
+    }else if(type === "trigger") {
+      return {graphics_key: 'graphics_trigger_area', data_key: 'geoFences'}
+    }else {
+      // default
+      return {graphics_key: 'graphics_lock_area', data_key: 'lockAreas'}
+    }
+  }
+
   /**
    * 处理锁闭区数据更新
    * @param data - 锁闭区数据
    */
   async areas_update(data: LockAreaUpdateData, type: string): Promise<void> {
     const all_areas = data.data
-    console.log('收到锁闭区数据:', Object.keys(all_areas).length, '个区域')
+    console.log(type, '收到锁闭区数据:', Object.keys(all_areas).length, '个区域')
 
-    const graphics_key = (
-      type === 'lock' ? 'graphics_lock_area' : 'graphics_limit_area'
-    ) as keyof typeof this.manager
-    const data_key = (type === 'lock' ? 'lockAreas' : 'limitAreas') as keyof typeof this.manager
+    let {graphics_key, data_key} = this.get_area_key(type)
+
+    // console.log('type: ', type, 'graphics_key:', graphics_key, 'data_key: ', data_key)
+
+    const _graphics_key = graphics_key as keyof typeof this.manager
+    const _data_key = data_key as keyof typeof this.manager
 
     // 清除之前的锁定区域显示
-    if (this.manager?.[graphics_key]) {
-      this.manager[graphics_key].clear()
+    if (this.manager?.[_graphics_key]) {
+      this.manager[_graphics_key].clear()
     }
     // 清除text
     if (type == 'limit') {
@@ -257,19 +287,19 @@ export class DataRenderer {
     }
 
     // 清理所有现有的锁闭区图形对象
-    Object.values(this.manager?.[data_key]).forEach((areaGraphics) => {
+    Object.values(this.manager?.[_data_key]).forEach((areaGraphics) => {
       if (areaGraphics && areaGraphics.parent) {
         areaGraphics.parent.removeChild(areaGraphics)
       }
     })
-    this.manager[data_key] = {}
+    this.manager[_data_key] = {}
 
     // 绘制所有锁定区域
     for (const [areaId, area] of Object.entries(all_areas)) {
       await this.draw_lock_area(areaId, area, data_key, type)
     }
 
-    console.log('锁闭区更新完成，总共绘制了', Object.keys(this.manager[data_key]).length, '个区域')
+    console.log('锁闭区更新完成，总共绘制了', Object.keys(this.manager[_data_key]).length, '个区域')
   }
 
   /**
@@ -288,20 +318,10 @@ export class DataRenderer {
       return
     }
 
-    console.log('绘制锁闭区:', areaId, area.name)
+    // console.log('绘制锁闭区:', areaId, area.name, area.type, area.subtype)
 
-    // 根据区域的实际类型设置颜色
-    let color = '0xFF0000' // 默认红色
-    if (type === 'limit') {
-      color = '0xFFFF00' // 流量限制区：黄色
-    } else if (type === 'lock') {
-      // 锁闭区内部细分类型
-      if (area.type === 'no_parking') {
-        color = '0xe645e3' // 禁停区：紫色
-      } else {
-        color = '0xFF0000' // 锁闭区：红色
-      }
-    }
+    const color = getBorderColor(type)
+    // const fillColor = getFillColor(type)
 
     // 为每个锁闭区创建独立的图形对象
     const areaGraphics = new Graphics()

@@ -31,12 +31,20 @@ const createLockAreaStore = (storeId: string, manager_key: string, type: string)
     // 计算属性
     const lockAreaCount = computed(() => lockAreas.value.length)
 
+    // 当前选中的区域
+    const currentLockArea = ref<LockAreaListItem | null>(null)
+
     // 获取ApplicationManager实例
     function getApplicationManager(): ApplicationManager | null {
       return (
         (window as Window & { __applicationManagerInstance?: ApplicationManager })
           .__applicationManagerInstance || null
       )
+    }
+
+    // 当前选中的区域
+    function selectLockArea(row: LockAreaListItem | null, column: any, e: any) {
+      currentLockArea.value = currentLockArea.value === row ? null : row
     }
 
     // 更新锁闭区列表 - 弹窗显示用
@@ -159,8 +167,12 @@ const createLockAreaStore = (storeId: string, manager_key: string, type: string)
       // 计算属性
       lockAreaCount,
 
+      // 当前选中的area
+      currentLockArea,
+
       // 方法
       getApplicationManager,
+      selectLockArea,
       updateLockAreaList,
       addOrUpdateLockArea,
       deleteLockArea,
@@ -173,3 +185,12 @@ const createLockAreaStore = (storeId: string, manager_key: string, type: string)
 export const useLockAreaStore = createLockAreaStore('lockArea', 'lockAreas', 'lock')
 // 流量监控区，限制区域内的车辆数
 export const useLimitAreaStore = createLockAreaStore('limitArea', 'limitAreas', 'limit')
+// 电子围栏
+export const useGeoFenceStore = createLockAreaStore('geoFence', 'geoFences', 'trigger')
+
+
+export const storeMap = {
+  lock: useLockAreaStore,
+  limit: useLimitAreaStore,
+  trigger: useGeoFenceStore
+} as const;

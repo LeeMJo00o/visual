@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import ApplicationManager from '../routing_map/main.ts'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useLockAreaStore, useLimitAreaStore } from '../stores/lockAreaStore'
+import { storeMap } from '../stores/lockAreaStore'
 import { Graphics } from 'pixi.js'
+import { getFillColor, getBorderColor } from '@/colors/lockarea_color.ts'
 
 // area类型
 const props = defineProps<{ type: string; text: string }>()
@@ -12,7 +13,13 @@ const isDrawingMode = ref(false)
 const drawingStartPoint = ref<{ x: number; y: number } | null>(null)
 const drawingEndPoint = ref<{ x: number; y: number } | null>(null)
 const drawingGraphics = ref<any>(null)
-const areaStore = props.type == 'lock' ? useLockAreaStore() : useLimitAreaStore()
+
+const areaStore = storeMap[props.type]?.();
+
+if (!areaStore) {
+  throw new Error(`Unknown type: ${props.type}`);
+}
+
 // 弹窗
 const dialogFormLoading = ref(false)
 const dialogFormVisible = ref(false)
@@ -20,31 +27,18 @@ const verticesText = ref('') // 坐标
 const rect = ref({ left: 0, top: 0, width: 0, height: 0 })
 const limit_num = ref(5) // 流量限制区域数量
 const lockAreaType = ref('lock') // 锁闭区类型，默认为"锁闭区"
+const lockAreaName = ref('TZ_')
 
-// 填充颜色
-const fillColorMapping = {
-  lock: '#ff0000',
-  limit: '#FDFD96',
-  no_parking: '#e645e3',
-} as const
+const fillColor = getFillColor(props.type)
+const borderColor = getBorderColor(props.type)
 
-//边框颜色
-const borderColorMapping = {
-  lock: '#ff0000',
-  limit: '#FFFF00',
-  no_parking: '#e645e3',
-} as const
-
-// 计算填充颜色
-const fillColor = computed(() => {
-  return fillColorMapping[props.type as keyof typeof fillColorMapping] ?? '#ff0000'
-})
-// 边框颜色
-const borderColor = computed(() => {
-  return borderColorMapping[props.type as keyof typeof borderColorMapping] ?? '#ff0000'
-})
+console.log(props.type, fillColor, borderColor)
 
 onMounted(async () => {
+  if(props.type === 'trigger') {
+   lockAreaType.value = 'trigger'
+  }
+
   appManager.value = ApplicationManager.getInstance()
   await setupDrawingGraphics()
 
@@ -151,8 +145,8 @@ const handleDrawingMouseMove = (e: any) => {
 
   drawingGraphics.value
     .rect(left, top, width, height)
-    .fill({ color: fillColor.value, alpha: 0.1 })
-    .stroke({ color: borderColor.value, width: 2 })
+    .fill({ color: fillColor, alpha: 0.1 })
+    .stroke({ color: borderColor, width: 2 })
 }
 
 const handleDrawingMouseUp = (e: any) => {
@@ -261,12 +255,17 @@ const sendDrawingRequest = async (
 
     // 创建闭合多边形（添加第一个点作为最后一个点）
     const polygon = [...mapVertices, mapVertices[0]]
+    let name = ''
+    if (props.type === 'trigger') {
+      name = lockAreaName.value
+    }else {
+      name = props.type === 'lock' && lockAreaType.value === 'no_parking'
+          ? 'no_parking_' + Date.now()
+          : props.type + '_area_' + Date.now() // 禁停区使用no_parking_xxxx格式
+    }
 
     const requestData = {
-      name:
-        props.type === 'lock' && lockAreaType.value === 'no_parking'
-          ? 'no_parking_' + Date.now()
-          : props.type + '_area_' + Date.now(), // 禁停区使用no_parking_xxxx格式
+      name: name,
       subtype:
         props.type === 'lock' && lockAreaType.value === 'no_parking' ? 'no_parking' : props.type, // 禁停区的subtype使用no_parking
       type: props.type === 'lock' ? lockAreaType.value : props.type, // 根据锁闭区类型设置正确的type
@@ -310,13 +309,10 @@ onUnmounted(() => {
     <el-button type="success" plain @click="areaStore.toggleLockAreaDialog">Area List</el-button>
     <el-button type="primary" plain @click="handleDrawBox">start draw</el-button>
   </div>
-  <el-dialog
-    v-model="dialogFormVisible"
-    title="确认绘制区域？"
-    width="500"
+  <el-dialog v-model="dialogFormVisible" title="确认绘制区域？" width="550"
     :close-on-click-modal="false"
     :append-to-body="true"
-  >
+    @close="handleCancel">
     <el-form>
       <!-- 多边形顶点坐标 -->
       <el-form-item label="polygon" label-width="140px">
@@ -333,6 +329,16 @@ onUnmounted(() => {
           <el-option label="禁停区" value="no_parking" />
         </el-select>
       </el-form-item>
+      <template v-if="type === 'trigger'">
+        <el-form-item label="area_type" label-width="140px" required>
+          <el-input readonly v-model="lockAreaType">trigger</el-input>
+        </el-form-item>
+        <el-form-item label="name" label-width="140px" required>
+          <el-input v-model="lockAreaName"></el-input>
+          <el-alert size="small" :closable="false"  title="eg: TZ_I01_ENTRY, TZ_I01_MIDDLE, TZ_I01_EXIT" type="primary" />
+        </el-form-item>
+      </template>
+
     </el-form>
     <template #footer>
       <div class="dialog-footer">

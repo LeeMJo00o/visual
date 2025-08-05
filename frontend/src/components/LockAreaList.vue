@@ -27,6 +27,8 @@
       stripe
       class="lock-area-table"
       @wheel="handleTableWheel"
+      highlight-current-row
+      @row-click="areaStore.selectLockArea"
     >
       <el-table-column prop="name" label="Name" min-width="200">
         <template #default="{ row }">
@@ -97,7 +99,7 @@
 
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
-import { useLockAreaStore, useLimitAreaStore } from '../stores/lockAreaStore'
+import { storeMap } from '../stores/lockAreaStore'
 import CustomDialog from './CustomDialog.vue'
 
 //编辑对话框
@@ -108,7 +110,11 @@ const dialogFormLoading = ref(false); // loading
 // area类型
 const props = defineProps<{ type: string }>();
 
-const areaStore = props.type == "lock" ? useLockAreaStore() : useLimitAreaStore()
+const areaStore = storeMap[props.type]?.();
+
+if (!areaStore) {
+  throw new Error(`Unknown type: ${props.type}`);
+}
 
 // 锁闭区管理相关逻辑
 const lockAreaCount = computed(() => areaStore.lockAreaCount)
