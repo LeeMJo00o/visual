@@ -15,40 +15,11 @@ from src.map_tools import g_roads
 from src.utils.tools import str_to_json
 
 router = APIRouter()
-_manager = ConnectionManager()
-_manager_demo_path = ConnectionManager()
-_manager_demo_short_path = ConnectionManager()
 _manager_pose = ConnectionManager()
 _manager_lock_area = ConnectionManager()
 _manager_limit_area = ConnectionManager()
 _manager_trigger_area = ConnectionManager()
 _manager_path = ConnectionManager()
-
-
-@router.websocket_route("/route_info", name="websocket for pushlish route info")
-class RouteWsServer(MulLinkServerEndpoint):
-    ws_manager = _manager
-
-    async def on_receive_json(self, mess: dict):
-        print(f"I receive mess: {mess}")
-
-        # send message to the connection
-        await self.websocket.send_json({
-            "msg": "this is a mesage for the one connection"
-        })
-
-        # braodcast message to all connections
-        await self.broadcast_json({
-            "msg_all": "this is a mesage for the all connections"
-        })
-
-    @classmethod
-    async def on_mq_message(cls, message: dict[str, str]):
-        for key, value in message.items():
-            await cls.ws_manager.broadcast_json({
-                "type": key,
-                "data": json.loads(value)
-            })
 
 
 @router.websocket_route("/pose_info", name="websocket for pushlish vehicle info")
@@ -79,8 +50,9 @@ class PoseWsServer(MulLinkServerEndpoint):
                 pipe.hgetall("scenario:arbiter:blameAT")
                 pipe.hgetall("scenario:arbiter:atBlame")
                 pipe.hgetall("scenario:long_path:req_task")
-                all_v_pose, all_v_be_blame, all_v_blame, all_v_task = await pipe.execute()
-
+                pipe.get("scenario:priority:real_val")
+                all_v_pose, all_v_be_blame, all_v_blame, all_v_task,  _all_priority = await pipe.execute()
+                all_priority = json.loads(_all_priority) if _all_priority else {}
                 for v_id, pose in all_v_pose.items():
                     pose_data = json.loads(pose)
                     all_v_pose_t[v_id] = pose_data
@@ -88,6 +60,7 @@ class PoseWsServer(MulLinkServerEndpoint):
                     all_v_pose_t[v_id]["block"] = all_v_blame.get(v_id, "")
                     all_v_pose_t[v_id]["task"] = True if all_v_task.get(v_id, None) else False
                     all_v_pose_t[v_id]["device_mode"] = pp_visual_DEVICE_MODE
+                    all_v_pose_t[v_id]["priority"] = all_priority.get(v_id, -1)
 
                 await cls.ws_manager.broadcast_json({
                     "type": "pose",
@@ -165,7 +138,7 @@ class LimitAreaWsServer(AreaWsServer):
     type = "limit"
 
 @router.websocket_route("/trigger_area", name="websocket for trigger area")
-class LimitAreaWsServer(AreaWsServer):
+class TriggerAreaWsServer(AreaWsServer):
     ws_manager = _manager_trigger_area
     key = "pp4:trigger_area:simweb"
     type = "trigger"

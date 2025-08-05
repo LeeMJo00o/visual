@@ -7,6 +7,9 @@ run-demo:
 run-taiguo:
   dotenv -f envs/env_taiguo run bash run.sh
 
+run-tangshan:
+  dotenv -f envs/env_tangshan run bash run.sh
+
 run-abu:
   dotenv -f envs/env_abu_local run bash run.sh
 

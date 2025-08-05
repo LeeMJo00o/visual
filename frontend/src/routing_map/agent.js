@@ -30,6 +30,7 @@ export default class Agent {
       blocked_by: '',
       task: null,
       device_mode: '',
+      priority: null,
     }
 
     // 添加位置信息属性，用于tooltip显示
@@ -216,18 +217,17 @@ export default class Agent {
 
     let fillColor = this.color
     let fillV = 0.7
-    if(!this.v_info.task) {
-      fillColor = "#00ff00"
+    if (!this.v_info.task) {
+      fillColor = '#00ff00'
       fillV = 1.0
     }
 
-    g.rect(-this.w/2, -this.h/2, this.w, this.h)
-      .fill({color: fillColor, alpha: fillV})
+    g.rect(-this.w / 2, -this.h / 2, this.w, this.h)
+      .fill({ color: fillColor, alpha: fillV })
       .stroke({ color: this.color, width: 0.5 })
 
-      g.rotation = -this.position.theta
+    g.rotation = -this.position.theta
     g.pivot.set(0, 0)
-
 
     // this.graphics.clear()
 
@@ -270,10 +270,10 @@ export default class Agent {
     g.position.set(_x, _y)
 
     g.rect(-this.head_back, -this.width / 2, this.head_back + this.head_front, this.width)
-      .fill({color: this.color, alpha: 0.3})
+      .fill({ color: this.color, alpha: 0.3 })
       .stroke({ color: this.color, width: 0.5 })
 
-      g.rotation = -this.position.theta
+    g.rotation = -this.position.theta
     g.pivot.set(0, 0)
   }
 
@@ -287,13 +287,13 @@ export default class Agent {
 
     let fillColor = this.color
     let fillV = 0.3
-    if(!this.v_info.task) {
-      fillColor = "#00ff00"
+    if (!this.v_info.task) {
+      fillColor = '#00ff00'
       fillV = 1.0
     }
 
     g.rect(-this.trailer_back, -this.width / 2, this.trailer_back + this.trailer_front, this.width)
-      .fill({color: fillColor, alpha: fillV})
+      .fill({ color: fillColor, alpha: fillV })
       .stroke({ color: this.color, width: 0.5 })
 
     g.rotation = -this.position.t_theta
@@ -301,13 +301,14 @@ export default class Agent {
   }
 
   _updateGraphics() {
-    if(this.v_info.device_mode === 'igv') {
+    // console.log('device mode', this.v_info.device_mode)
+    if (this.v_info.device_mode === 'igv') {
       this._updateGraphics_simple()
-    }else {
+    } else {
       this._updateGraphicsHead(this.graphics_head)
       this._updateGraphicsTrailer(this.graphics_trailer)
     }
-    
+
     this.sync_text_pos(this.position.x, this.position.y)
   }
 }

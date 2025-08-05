@@ -89,7 +89,6 @@ export default class ApplicationManager extends GraphicTools {
     this.graphics_path_short = null
     this.graphics_path_long = null
     this.graphics_path_apply_area = null
-    this.graphics_lock_area = null
     this.agent_graphics = []
     this.isDragging = false
     this.x_init = 0
@@ -322,18 +321,12 @@ export default class ApplicationManager extends GraphicTools {
       this.app.stage.addChild(this.timeText)
 
       this.graphics_path_apply_area = new Graphics()
-      this.graphics_lock_area = new Graphics() // 锁闭区域
-      this.graphics_limit_area = new Graphics() // 流量控制区域
-      this.graphics_trigger_area = new Graphics() // 电子为围栏区域
 
       this.add_graphics(this.map_container)
 
       this.mainContainer.addChild(this.longPathContainer)
       this.mainContainer.addChild(this.shortPathContainer)
       this.add_graphics(this.graphics_path_apply_area)
-      this.add_graphics(this.graphics_lock_area)
-      this.add_graphics(this.graphics_limit_area)
-      this.add_graphics(this.graphics_trigger_area)
       this.mainContainer.addChild(this.agentContainer)
 
       this.graphics_path_apply_area.alpha = 0.5
@@ -403,12 +396,17 @@ export default class ApplicationManager extends GraphicTools {
 
       // 创建tooltip内容
       const agent = this.agents[vehicle_id]
+      const priorityInfo =
+        agent.v_info.priority !== null && agent.v_info.priority !== undefined
+          ? ` (${agent.v_info.priority})`
+          : ''
       const tooltipContent = `
         <div style="font-weight: bold; margin-bottom: 4px;">Vehicle Info</div>
-        <div>id: ${agent.vehicle_id}</div>
+        <div>id: ${agent.vehicle_id}${priorityInfo}</div>
         <div>pose: ${agent.position.x.toFixed(3)}, ${-agent.position.y.toFixed(3)}, ${agent.position.theta.toFixed(3)}</div>
         <div>blocked_by: ${agent.v_info.blocked_by}</div>
         <div>block: ${agent.v_info.block}</div>
+        ${agent.v_info.priority !== null && agent.v_info.priority !== undefined ? `<div>priority: ${agent.v_info.priority}</div>` : ''}
       `
 
       // 显示tooltip
