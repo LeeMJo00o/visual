@@ -301,7 +301,7 @@ export default class Agent {
   }
 
   _updateGraphics() {
-    console.log('device mode', this.v_info.device_mode)
+    // console.log('device mode', this.v_info.device_mode)
     if (this.v_info.device_mode === 'igv') {
       this._updateGraphics_simple()
     } else {
