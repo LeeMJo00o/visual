@@ -34,9 +34,11 @@ done
 # 获取当前时间
 now=`date -d today +"%Y-%m-%d-%H-%M-%S"`
 
+COMMIT_CODE=$(git rev-parse --short=8 HEAD)
+
 # 如果没有指定 tag，使用时间戳作为默认值
 if [ -z "$tag" ]; then
-  tag=$now
+  tag="$COMMIT_CODE.$now"
 fi
 
 # 构建 Docker 镜像
