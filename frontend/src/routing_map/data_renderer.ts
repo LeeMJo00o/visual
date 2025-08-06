@@ -3,6 +3,7 @@ import { Graphics } from 'pixi.js'
 import ApplicationManager from './main.ts'
 import { PointProjection, type Point } from './project.ts'
 import { getBorderColor, getFillColor } from '@/colors/lockarea_color.ts'
+import { usePriorityStore } from '@/stores/priority.ts'
 
 // 类型定义
 interface Position {
@@ -93,6 +94,8 @@ export class DataRenderer {
   private websocket_clients: WebSocketClients
   private long_path_width: number
   private short_path_width: number
+
+  private priorityStore = usePriorityStore()
 
   /**
    * @param manager - ApplicationManager实例
@@ -209,7 +212,13 @@ export class DataRenderer {
       if (v.path === null) {
         return
       }
-      const all_path_t = this.demo_path_to_my(v)
+
+      if(vehicleId == "503") {
+        console.log("503 path")
+
+      }
+
+      const all_path_t = path_type == 'long' ? this.demo_path_to_my_long(v) : this.demo_path_to_my_short(v)
       for (const a_road_path of all_path_t) {
         this.manager.drawLine(g, vehicleId, a_road_path, false, vehicle.color, path_width, alpha)
       }
@@ -487,13 +496,13 @@ export class DataRenderer {
 
     // 更新车辆文本，包含优先级
     let displayText = vehicleId
-    if (priority !== null && priority !== undefined) {
+    if (this.priorityStore.visible && priority !== null && priority !== undefined) {
       displayText = `${vehicleId} (${priority})`
     }
     this.manager.agents[vehicleId].text.text = displayText
   }
 
-  private demo_path_to_my(path: PathData): number[][][] {
+   private demo_path_to_my_long(path: PathData): number[][][] {
     const pathArray = path.path
     const pathLength = pathArray.length
     const startPose = path.start_pose
@@ -576,6 +585,115 @@ export class DataRenderer {
 
       all_path_t.push(path_t)
     }
+    return all_path_t
+  }
+  
+  private demo_path_to_my_short(path: PathData): number[][][] {
+    const pathArray = path.path
+    const pathLength = pathArray.length
+    const startPose = path.start_pose
+    const endPose = path.end_pose
+    const mapPathInfo = this.manager.map_path_info
+
+    // 计算起始和结束索引
+    let start_index = startPose.index
+    if (!startPose.is_ahead) {
+      start_index += 1
+    }
+
+    let end_index = endPose.index
+    if (endPose.is_ahead) {
+      end_index -= 1
+    }
+
+    const all_path_t: number[][][] = []
+    const all_points: number[][] = []
+    let last_lcp_point: number[] = [] // 最后一个LCP点
+    let last_lane_id = ""
+    for (let i = 0; i < pathLength; i++) {
+      const path_t: number[][] = []
+      const node = pathArray[i]
+      const llt_id = node['lane_id']
+      const the_road_path = mapPathInfo[llt_id]
+      const points = the_road_path.points
+
+      if(llt_id === last_lane_id) {
+        continue
+      }
+      last_lane_id = llt_id
+
+      
+      path_t.push(...points)
+
+
+      // 如果只有一个节点，则直接使用start index 与end index截取即可
+      // if (i == 0 && pathLength == 1) {
+      //   const projector = new PointProjection(points as Point[])
+      //   const result = projector.getPointsBetweenProjections(
+      //     [startPose.x, startPose.y],
+      //     [endPose.x, endPose.y],
+      //   )
+      //   path_t.push(...result)
+      // }
+      // 第一个节点，需要根据start行截取
+      // else if (i == 0) {
+      //   const projector = new PointProjection(points as Point[])
+      //   let p = [startPose.x, startPose.y]
+      //   const result = projector.processPointProjection(p as Point)
+      //   path_t.push(...(result.splitParts?.secondPart || []))
+      // }
+      // // 最后一个节点，需要根据end进行截取
+      // else if (i == pathLength - 1) {
+      //   const projector = new PointProjection(points as Point[])
+      //   let p = [endPose.x, endPose.y]
+      //   const result = projector.processPointProjection(p as Point)
+      //   path_t.length = 0 //清空现有的数据
+      //   path_t.push(...(result.splitParts?.firstPart || []))
+      // }
+      // // 中间节点则直接使用完整的points
+      // else {
+      //   path_t.push(...points)
+      // }
+
+      // 处理前一个节点有lcp point的情况
+      if (last_lcp_point && last_lcp_point.length > 0) {
+        // 如果当前是第二个节点（车辆在第一个节点并且有lcp），那么使用车辆位置进行投影，否则使用lcp进行投影
+        // lcp/vehicle pose 往当前的path_t进行投影，并保留后面的部分
+        const projector = new PointProjection(path_t as Point[])
+        let p = i === 1 ? [startPose.x, startPose.y] : last_lcp_point
+        const result = projector.processPointProjection(p as Point)
+        path_t.length = 0 //清空现有的数据
+        path_t.push(...(result.splitParts?.secondPart || []))
+      }
+
+      // 处理当前节点有lcp point的情况
+      if (node.hasOwnProperty('lcp_point') && node.lcp_point) {
+        // 明确告诉 TS lcp_point 存在且非 undefined
+        const lcp = node.lcp_point as { x: number; y: number }
+        last_lcp_point = [lcp.x, lcp.y]
+        // lcp 往当前的path_t进行投影，并保留前面的部分
+        const projector = new PointProjection(path_t as Point[])
+        const result = projector.processPointProjection(last_lcp_point as Point)
+        path_t.length = 0 //清空现有的数据
+        path_t.push(...(result.splitParts?.firstPart || []))
+      } else {
+        // 重置lcp point即可
+        last_lcp_point = []
+      }
+
+      all_points.push(...path_t)
+    }
+
+    //根据起点及终点进行裁剪
+    const projector = new PointProjection(all_points as Point[])
+    const result = projector.getPointsBetweenProjections(
+      [startPose.x, startPose.y],
+      [endPose.x, endPose.y],
+    )
+    all_points.length = 0
+    all_points.push(...result)
+
+    all_path_t.push(all_points)
     return all_path_t
   }
 }

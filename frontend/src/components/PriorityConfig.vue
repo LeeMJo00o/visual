@@ -2,6 +2,8 @@
 <template>
     <div class="lock-area-func">
         <el-button type="success" plain @click="handleOpen">Set</el-button>
+
+        <span style="margin-left: 20px;">Visible: <el-switch v-model="priorityStore.visible"></el-switch></span>
     </div>
     <el-dialog v-model="dialogFormVisible" title="优先级系数配置" width="600" :close-on-click-modal="false" :append-to-body="true">
 
@@ -55,9 +57,12 @@ import { ref, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import axios from 'axios';
 import { Refresh } from '@element-plus/icons-vue'
+import { usePriorityStore } from '@/stores/priority';
 
 
 const activeNames = ref(['1'])
+
+const priorityStore = usePriorityStore()
 
 type PriorityConfigData = {
     hasStopLinePriority: number;
