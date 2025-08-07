@@ -36,6 +36,13 @@
         </template>
       </el-table-column>
 
+      <el-table-column prop="area" label="Source" min-width="70" v-if="type=='lock'">
+        <template #default="{ row }">
+          <el-tag type="primary" v-if="row.area.fms">fms</el-tag>
+          <el-tag type="success" v-else>simweb</el-tag>
+        </template>
+      </el-table-column>
+
       <el-table-column prop="area" label="Limit" min-width="70" v-if="type=='limit'">
         <template #default="{ row }">
           <span class="lock-area-name">{{ row.area.limit }}</span>
@@ -56,6 +63,7 @@
             size="small"
             :loading="areaStore.isLoading"
             @click="handleDelete(row)"
+            :disabled="row.area.fms"
           >
             删除
           </el-button>

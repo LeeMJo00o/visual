@@ -70,7 +70,8 @@ interface LockArea {
   created_by?: string
   describe?: string
   polygon: Array<{ x: number; y: number }>
-  limit: number
+  limit: number,
+  fms: boolean,
 }
 
 interface LockAreaUpdateData {
@@ -211,11 +212,6 @@ export class DataRenderer {
       g.clear()
       if (v.path === null) {
         return
-      }
-
-      if(vehicleId == "503") {
-        console.log("503 path")
-
       }
 
       const all_path_t = path_type == 'long' ? this.demo_path_to_my_long(v) : this.demo_path_to_my_short(v)
@@ -378,13 +374,18 @@ export class DataRenderer {
     type: string,
   ): Graphics {
     // 根据区域的实际类型设置颜色
-    const color = getBorderColor(type)
+    const color = area.subtype==='no_parking' ? getBorderColor('no_parking') :getBorderColor(type)
+    // console.log("type:", type, "color: ", color)
 
     // 为每个锁闭区创建独立的图形对象
     const areaGraphics = new Graphics()
 
     // 将多边形数据转换为drawLine需要的格式
     const points = area.polygon.map((point) => [point.x, point.y])
+    // 如何首尾的点不相同，那么将第一个点加入到末尾中
+    if (points[0][0] !== points[points.length - 1][0] || points[0][1] !== points[points.length - 1][1]) {
+      points.push(points[0])
+    }
 
     // 使用drawLine方法绘制锁闭区
     this.manager.drawLine(
@@ -417,6 +418,7 @@ export class DataRenderer {
         <div>sub-type: ${area.subtype || 'lock'}</div>
         <div>create_by: ${area.created_by || 'unknown'}</div>
         <div>desc: ${area.describe || '无'}</div>
+        <div>source: ${area.fms ? 'fms' : 'simweb'}</div>
       `
 
       // 显示tooltip
