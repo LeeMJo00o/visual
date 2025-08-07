@@ -683,6 +683,13 @@ export class DataRenderer {
         last_lcp_point = []
       }
 
+      // 优化连接点过近时显示突兀的问题
+      if(all_points.length > 0 && path_t.length > 0) {
+        const lp = all_points[all_points.length - 1]
+        const p = path_t[0]
+        const dis = Math.sqrt((lp[0] - p[0]) ** 2 + (lp[1] - p[1]) ** 2)
+        if(dis <= 0.01) { path_t.shift() }  // 过近时去掉第一个点
+      }
       all_points.push(...path_t)
     }
 
@@ -696,6 +703,9 @@ export class DataRenderer {
     all_points.push(...result)
 
     all_path_t.push(all_points)
+
+    console.log("short all_path_t", all_path_t);
+
     return all_path_t
   }
 }
