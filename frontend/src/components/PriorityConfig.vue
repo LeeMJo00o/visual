@@ -31,6 +31,9 @@
                 <el-form-item label="notTurnRoadPriority">
                     <el-input v-model="form.notTurnRoadPriority" type="number" />
                 </el-form-item>
+                <el-form-item label="blamePriority">
+                    <el-input v-model="form.blamePriority" type="number" />
+                </el-form-item>
                 <el-form-item label="parkPriority">
                     <el-input v-model="form.parkPriority" type="number" />
                 </el-form-item>
@@ -69,6 +72,7 @@ type PriorityConfigData = {
     notStopLinePriority: number;
     hasTurnRoadPriority: number;
     notTurnRoadPriority: number;
+    blamePriority: number;
     parkPriority: number;
     parkTimeLimit: number;
     isOpenPriority: boolean;
@@ -81,8 +85,9 @@ function createDefaultConfig(): PriorityConfigData {
         hasTurnRoadPriority: 5,
         notTurnRoadPriority: 20,
         parkPriority: 1,
+        blamePriority: 1,
         parkTimeLimit: 10,
-        isOpenPriority: true,
+        isOpenPriority: false,
     };
 }
 
@@ -102,6 +107,7 @@ function convert(data: PriorityConfigData): PriorityConfigData {
     notStopLinePriority: Number(data.notStopLinePriority),
     hasTurnRoadPriority: Number(data.hasTurnRoadPriority),
     notTurnRoadPriority: Number(data.notTurnRoadPriority),
+    blamePriority: Number(data.blamePriority),
     parkPriority: Number(data.parkPriority),
     parkTimeLimit: Number(data.parkTimeLimit),
     isOpenPriority:  String(data.isOpenPriority) === 'true',
