@@ -128,9 +128,14 @@ class AreaWsServer(MulLinkServerEndpoint):
                 all_lock_areas = await cls.get_areas()
                 traffic_num = await cls.get_traffic_data()
                 for v_id, area in all_lock_areas.items():
-                    pose_data = json.loads(area)
-                    pose_data["count"] = traffic_num.get(v_id, 0)
-                    all_areas_t[v_id] = pose_data
+                    area_data = json.loads(area)
+
+                    # 过滤未激活的区域
+                    if not(area_data.get("is_active", True)):
+                        continue
+
+                    area_data["count"] = traffic_num.get(v_id, 0)
+                    all_areas_t[v_id] = area_data
                 await cls.ws_manager.broadcast_json({
                     "type": "areas",
                     "data": all_areas_t
