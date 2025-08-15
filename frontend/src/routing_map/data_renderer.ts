@@ -37,14 +37,10 @@ interface PathData {
   start_pose: {
     x: number
     y: number
-    index: number
-    is_ahead: boolean
   }
   end_pose: {
     x: number
     y: number
-    index: number
-    is_ahead: boolean
   }
 }
 
@@ -213,6 +209,23 @@ export class DataRenderer {
       if (v.path === null) {
         return
       }
+
+      // 获取车辆当前位置，作为path截取的start_pose
+      // const vehicle_obj = this.vehicleStore.getVehicleById(vehicleId)
+      // if(vehicle_obj) {
+      //   const ox = v.start_pose.x
+      //   const oy = v.start_pose.y
+
+      //   let start_pose = v.start_pose
+      //   start_pose.x = vehicle_obj.targetPosition.x
+      //   start_pose.y = vehicle_obj.targetPosition.y
+
+      //   console.log('update path start pose, vid ', vehicleId, 
+      //     ' old pose: ', ox, oy,
+      //     ' new pose: ', start_pose.x, start_pose.y
+      //   )
+
+      // }
 
       const all_path_t = path_type == 'long' ? this.demo_path_to_my_long(v) : this.demo_path_to_my_short(v)
       for (const a_road_path of all_path_t) {
@@ -511,17 +524,6 @@ export class DataRenderer {
     const endPose = path.end_pose
     const mapPathInfo = this.manager.map_path_info
 
-    // 计算起始和结束索引
-    let start_index = startPose.index
-    if (!startPose.is_ahead) {
-      start_index += 1
-    }
-
-    let end_index = endPose.index
-    if (endPose.is_ahead) {
-      end_index -= 1
-    }
-
     const all_path_t: number[][][] = []
     let last_lcp_point: number[] = [] // 最后一个LCP点
     for (let i = 0; i < pathLength; i++) {
@@ -597,17 +599,6 @@ export class DataRenderer {
     const endPose = path.end_pose
     const mapPathInfo = this.manager.map_path_info
 
-    // 计算起始和结束索引
-    let start_index = startPose.index
-    if (!startPose.is_ahead) {
-      start_index += 1
-    }
-
-    let end_index = endPose.index
-    if (endPose.is_ahead) {
-      end_index -= 1
-    }
-
     const all_path_t: number[][][] = []
     const all_points: number[][] = []
     let last_lcp_point: number[] = [] // 最后一个LCP点
@@ -624,38 +615,7 @@ export class DataRenderer {
       }
       last_lane_id = llt_id
 
-      
       path_t.push(...points)
-
-
-      // 如果只有一个节点，则直接使用start index 与end index截取即可
-      // if (i == 0 && pathLength == 1) {
-      //   const projector = new PointProjection(points as Point[])
-      //   const result = projector.getPointsBetweenProjections(
-      //     [startPose.x, startPose.y],
-      //     [endPose.x, endPose.y],
-      //   )
-      //   path_t.push(...result)
-      // }
-      // 第一个节点，需要根据start行截取
-      // else if (i == 0) {
-      //   const projector = new PointProjection(points as Point[])
-      //   let p = [startPose.x, startPose.y]
-      //   const result = projector.processPointProjection(p as Point)
-      //   path_t.push(...(result.splitParts?.secondPart || []))
-      // }
-      // // 最后一个节点，需要根据end进行截取
-      // else if (i == pathLength - 1) {
-      //   const projector = new PointProjection(points as Point[])
-      //   let p = [endPose.x, endPose.y]
-      //   const result = projector.processPointProjection(p as Point)
-      //   path_t.length = 0 //清空现有的数据
-      //   path_t.push(...(result.splitParts?.firstPart || []))
-      // }
-      // // 中间节点则直接使用完整的points
-      // else {
-      //   path_t.push(...points)
-      // }
 
       // 处理前一个节点有lcp point的情况
       if (last_lcp_point && last_lcp_point.length > 0) {
