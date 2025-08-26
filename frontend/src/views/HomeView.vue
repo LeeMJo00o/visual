@@ -11,6 +11,7 @@ import AgentsManager from '@/components/AgentsManager.vue'
 import VehicleList from '@/components/VehicleList.vue'
 import WeightScaleConfig from '@/components/WeightScaleConfig.vue'
 import PriorityConfig from '@/components/PriorityConfig.vue'
+import SpeedFmsConfig from '@/components/SpeedFmsConfig.vue'
 
 // 声明全局接口
 declare global {
@@ -111,7 +112,7 @@ const onImageHide = () => {
             <el-menu-item index="limit-area">
               <span>Traffic Control</span>
             </el-menu-item>
-            
+
             <!-- 电子围栏 -->
             <el-menu-item index="geo-fence">
               <span>Geo-fence</span>
@@ -123,6 +124,10 @@ const onImageHide = () => {
 
             <el-menu-item index="priority-config">
               <span>Priority Config</span>
+            </el-menu-item>
+
+            <el-menu-item index="speed-config">
+              <span>Speed Config</span>
             </el-menu-item>
 
             <el-sub-menu index="4">
@@ -198,7 +203,7 @@ const onImageHide = () => {
               <div v-else-if="currentMenu === 'limit-area'">
                 <LockArea type="limit" text="Traffic Control" />
               </div>
-              
+
               <div v-else-if="currentMenu === 'geo-fence'">
                 <LockArea type="trigger" text="Geo-fence" />
               </div>
@@ -209,6 +214,10 @@ const onImageHide = () => {
 
               <div v-else-if="currentMenu === 'priority-config'">
                 <PriorityConfig />
+              </div>
+
+              <div v-else-if="currentMenu === 'speed-config'">
+                <SpeedFmsConfig />
               </div>
 
               <div v-else-if="currentMenu === '3-1'">
