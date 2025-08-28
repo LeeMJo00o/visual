@@ -77,6 +77,14 @@ async def get_config():
             "scale": 0.8,
             "mode": "test-demo",
             "version": MAP_NAME
+        },
+        "malaysia": {
+            "rotation": 1.047,
+            "offset": [1000, 400],
+            "use_back_image": False,
+            "scale": 0.2,
+            "mode": "test-demo",
+            "version": MAP_NAME
         }
     }
 
