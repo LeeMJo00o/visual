@@ -52,3 +52,13 @@ PATH_REPORT_URL = config("PATH_REPORT_URL", cast=str, default="http://127.0.0.1:
 
 # device_mode
 pp_visual_DEVICE_MODE = config("pp_visual_DEVICE_MODE", cast=str, default="truck")
+
+# infos
+# map graph version info
+pp_visual_MAP_GRAPH_VERSION_URL: str = config("pp_visual_MAP_GRAPH_VERSION_URL",
+                                              cast=str,
+                                              default="http://127.0.0.1:8108/api/query/version")
+
+pp_visual_WELLROUTING_VERSION_URL: str = config("pp_visual_WELLROUTING_VERSION_URL",
+                                                cast=str,
+                                                default="http://127.0.0.1:8008/api/routing/map_graph")

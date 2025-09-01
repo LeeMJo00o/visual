@@ -12,6 +12,8 @@ import VehicleList from '@/components/VehicleList.vue'
 import WeightScaleConfig from '@/components/WeightScaleConfig.vue'
 import PriorityConfig from '@/components/PriorityConfig.vue'
 import SpeedFmsConfig from '@/components/SpeedFmsConfig.vue'
+import Infos from '@/components/Infos.vue'
+
 
 // 声明全局接口
 declare global {
@@ -130,13 +132,17 @@ const onImageHide = () => {
               <span>Speed Config</span>
             </el-menu-item>
 
-            <el-sub-menu index="4">
+            <el-menu-item index="Infos">
+              <span>Infos</span>
+            </el-menu-item>
+
+            <!-- <el-sub-menu index="4">
               <template #title>
                 <span>The func group</span>
               </template>
               <el-menu-item index="3-1">The func group's one</el-menu-item>
               <el-menu-item index="3-2">The func group's two</el-menu-item>
-            </el-sub-menu>
+            </el-sub-menu> -->
           </el-menu>
         </div>
       </el-aside>
@@ -219,13 +225,10 @@ const onImageHide = () => {
               <div v-else-if="currentMenu === 'speed-config'">
                 <SpeedFmsConfig />
               </div>
-
-              <div v-else-if="currentMenu === '3-1'">
-                <p>这里是子功能1的简要介绍 ...</p>
+              <div v-else-if="currentMenu === 'Infos'">
+                <Infos />
               </div>
-              <div v-else-if="currentMenu === '3-2'">
-                <p>这里是子功能2的简要介绍 ...</p>
-              </div>
+              
               <div v-else>
                 <!-- <h3>请选择一个功能</h3> -->
               </div>

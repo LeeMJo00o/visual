@@ -13,7 +13,11 @@
       >
         <!-- 标题栏 -->
         <div class="dialog-header" @mousedown="startDrag">
-          <h3 class="dialog-title">{{ title }}</h3>
+          <h3 class="dialog-title">
+            <slot name="title">
+              {{ title }}
+            </slot>
+          </h3>
           <button class="close-btn" @click="$emit('update:visible', false)">
             <span>×</span>
           </button>
