@@ -51,7 +51,8 @@ class PoseWsServer(MulLinkServerEndpoint):
                 pipe.hgetall("scenario:arbiter:atBlame")
                 pipe.hgetall("scenario:long_path:req_task")
                 pipe.get("scenario:priority:real_val")
-                all_v_pose, all_v_be_blame, all_v_blame, all_v_task,  _all_priority = await pipe.execute()
+                pipe.hgetall("pp4:vehicle:device_mode")
+                all_v_pose, all_v_be_blame, all_v_blame, all_v_task,  _all_priority, all_v_mode = await pipe.execute()
                 all_priority = json.loads(_all_priority) if _all_priority else {}
                 for v_id, pose in all_v_pose.items():
                     pose_data = json.loads(pose)
@@ -59,7 +60,7 @@ class PoseWsServer(MulLinkServerEndpoint):
                     all_v_pose_t[v_id]["blocked_by"] = all_v_be_blame.get(v_id, "")
                     all_v_pose_t[v_id]["block"] = all_v_blame.get(v_id, "")
                     all_v_pose_t[v_id]["task"] = True if all_v_task.get(v_id, None) else False
-                    all_v_pose_t[v_id]["device_mode"] = pp_visual_DEVICE_MODE
+                    all_v_pose_t[v_id]["device_mode"] = str(all_v_mode.get(v_id, pp_visual_DEVICE_MODE)).lower()
                     all_v_pose_t[v_id]["priority"] = all_priority.get(v_id, -1)
 
                 await cls.ws_manager.broadcast_json({
