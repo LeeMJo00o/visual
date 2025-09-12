@@ -93,7 +93,15 @@ async def get_config():
             "scale": 0.2,
             "mode": "test-demo",
             "version": MAP_NAME
-        }
+        },
+        "taipingyang": {
+            "rotation": 0,
+            "offset": [400, 600],
+            "use_back_image": False,
+            "scale": 0.7,
+            "mode": "test-demo",
+            "version": MAP_NAME
+        },
     }
 
     return get_config_by_prefix(config_map, MAP_NAME)
