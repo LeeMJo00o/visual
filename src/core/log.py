@@ -14,6 +14,7 @@ config = {
 
 logger = get_logger("log/main.log", **config)
 logger_road = get_logger("log/road.log", **config)
+logger_proxy = get_logger("log/proxy.log", **config)
 
 replace_default_handler(sys.stderr, (logger,))
 

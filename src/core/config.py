@@ -62,3 +62,5 @@ pp_visual_MAP_GRAPH_VERSION_URL: str = config("pp_visual_MAP_GRAPH_VERSION_URL",
 pp_visual_WELLROUTING_VERSION_URL: str = config("pp_visual_WELLROUTING_VERSION_URL",
                                                 cast=str,
                                                 default="http://127.0.0.1:8008/api/routing/map_graph")
+
+pp_visual_COLLECTOR_URL: str = config("pp_visual_COLLECTOR_URL", cast=str, default="http://127.0.0.1:2040")
