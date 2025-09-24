@@ -265,7 +265,7 @@ export default class Agent {
     g.clear()
     let _x = this.position.x
     let _y = this.position.y
-
+    
     g.pivot.set(_x, _y)
     g.position.set(_x, _y)
 
@@ -301,7 +301,6 @@ export default class Agent {
   }
 
   _updateGraphics() {
-    // console.log('device mode', this.v_info.device_mode)
     if (this.v_info.device_mode === 'igv') {
       this._updateGraphics_simple()
     } else {

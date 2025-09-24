@@ -63,7 +63,7 @@
             size="small"
             :loading="areaStore.isLoading"
             @click="handleDelete(row)"
-            :disabled="row.area.fms"
+            :disabled="row.area.fms || globalStore.isReplay"
           >
             删除
           </el-button>
@@ -109,7 +109,9 @@
 import { computed, ref } from 'vue'
 import { storeMap } from '../stores/lockAreaStore'
 import CustomDialog from './CustomDialog.vue'
+import { useGlobalStore } from '@/stores/globalStore'
 
+const globalStore = useGlobalStore()
 //编辑对话框
 const currentRow = ref(null); //当前编辑的行数据
 const editDialogVisible = ref(false); //编辑弹窗是否显示

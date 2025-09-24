@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
@@ -14,6 +14,7 @@ import PriorityConfig from '@/components/PriorityConfig.vue'
 import SpeedFmsConfig from '@/components/SpeedFmsConfig.vue'
 import Infos from '@/components/Infos.vue'
 
+import ReplayConfig from '@/components/ReplayConfig.vue'
 
 // 声明全局接口
 declare global {
@@ -24,6 +25,13 @@ declare global {
 }
 
 const globalStore = useGlobalStore()
+watch(
+  () => globalStore.isReplay,
+  (newValue) => {
+    console.log('Positions isReplay:', newValue)
+  },
+  { deep: true },
+)
 
 // 添加当前选中的菜单项
 const currentMenu = ref('main-map')
@@ -99,10 +107,6 @@ const onImageHide = () => {
               <span>Map Tools</span>
             </el-menu-item>
 
-            <el-menu-item index="3">
-              <span>No func2</span>
-            </el-menu-item>
-
             <el-menu-item index="agents-manager">
               <span>Agent List</span>
             </el-menu-item>
@@ -134,6 +138,9 @@ const onImageHide = () => {
 
             <el-menu-item index="Infos">
               <span>Infos</span>
+            </el-menu-item>
+            <el-menu-item index="replay-config">
+              <span>Replay Config</span>
             </el-menu-item>
 
             <!-- <el-sub-menu index="4">
@@ -221,6 +228,9 @@ const onImageHide = () => {
               <div v-else-if="currentMenu === 'priority-config'">
                 <PriorityConfig />
               </div>
+              <div v-else-if="currentMenu === 'replay-config'">
+                <ReplayConfig />
+              </div>
 
               <div v-else-if="currentMenu === 'speed-config'">
                 <SpeedFmsConfig />
@@ -228,7 +238,7 @@ const onImageHide = () => {
               <div v-else-if="currentMenu === 'Infos'">
                 <Infos />
               </div>
-              
+
               <div v-else>
                 <!-- <h3>请选择一个功能</h3> -->
               </div>
@@ -248,13 +258,13 @@ const onImageHide = () => {
   <VehicleList />
 
   <!-- 锁闭区列表对话框 -->
-  <LockAreaList type="lock"/>
+  <LockAreaList type="lock" />
 
   <!-- 流量控制区域列表对话框 -->
-  <LockAreaList type="limit"/>
+  <LockAreaList type="limit" />
 
   <!-- 电子围栏区域列表对话框 -->
-  <LockAreaList type="trigger"/>
+  <LockAreaList type="trigger" />
 </template>
 
 <style scoped>
