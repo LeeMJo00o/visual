@@ -22,7 +22,7 @@ _manager_trigger_area = ConnectionManager()
 _manager_path = ConnectionManager()
 
 
-@router.websocket_route("/pose_info", name="websocket for pushlish vehicle info")
+@router.websocket_route("/pose_info", name="websocket for publish vehicle info")
 class PoseWsServer(MulLinkServerEndpoint):
     ws_manager = _manager_pose
 

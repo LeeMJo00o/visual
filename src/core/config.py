@@ -41,6 +41,21 @@ pp_visual_REDIS_SENTINEL_PWD: str = config(
     "pp_visual_REDIS_SENTINEL_PWD", default="westwell"
 )
 
+# arbiter redis
+# if redis mode id single, use this config
+pp_visual_ARBITER_REDIS_URL: str = config(
+    "pp_visual_ARBITER_REDIS_URL", default="redis://127.0.0.1:6370/2"
+)
+# if redis mode id sentinel, use this config
+pp_visual_ARBITER_REDIS_SENTINELS: str = config(
+    "pp_visual_ARBITER_REDIS_SENTINELS", default="127.0.0.1:6379,127.0.0.1:6380,127.0.0.1:6381"
+)
+# for sentinel password
+pp_visual_ARBITER_REDIS_SENTINEL_PWD: str = config(
+    "pp_visual_ARBITER_REDIS_SENTINEL_PWD", default="westwell"
+)
+
+
 pp_visual_GRPC_PORT: int = config("pp_visual_GRPC_PORT", cast=int, default=10013)
 
 MAP_NAME: str = config("MAP_NAME", cast=str, default="xxxx.osm")
