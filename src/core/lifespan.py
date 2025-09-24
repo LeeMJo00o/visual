@@ -15,6 +15,7 @@ from src.middlewares.mq import mq, mq_route, mq_demo_path
 from chain_utils.asyncio_utils import RefTasks
 from src.api.routes.websocket.route import PoseWsServer, AreaWsServer, PathWsServer, LimitAreaWsServer, \
     TriggerAreaWsServer
+from src.services.map_info import save_map_info
 
 ref_tasks = RefTasks(logger_done=logger)
 
@@ -41,6 +42,7 @@ async def start():
     mq_demo_path.set_message_callback(PathWsServer.on_mq_message)
     await mq_demo_path.start_recv()
     await start_polygon_ws()
+    ref_tasks << save_map_info()
 
 # trigger when the program exits
 
