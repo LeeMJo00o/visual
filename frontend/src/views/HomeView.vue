@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
@@ -22,6 +22,13 @@ declare global {
 }
 
 const globalStore = useGlobalStore()
+watch(
+  () => globalStore.isReplay,
+  (newValue) => {
+    console.log('Positions isReplay:', newValue)
+  },
+  { deep: true },
+)
 
 // 添加当前选中的菜单项
 const currentMenu = ref('main-map')
@@ -97,10 +104,6 @@ const onImageHide = () => {
               <span>Map Tools</span>
             </el-menu-item>
 
-            <el-menu-item index="3">
-              <span>No func2</span>
-            </el-menu-item>
-
             <el-menu-item index="agents-manager">
               <span>Agent List</span>
             </el-menu-item>
@@ -129,14 +132,6 @@ const onImageHide = () => {
             <el-menu-item index="replay-config">
               <span>replay Config</span>
             </el-menu-item>
-
-            <el-sub-menu index="4">
-              <template #title>
-                <span>The func group</span>
-              </template>
-              <el-menu-item index="3-1">The func group's one</el-menu-item>
-              <el-menu-item index="3-2">The func group's two</el-menu-item>
-            </el-sub-menu>
           </el-menu>
         </div>
       </el-aside>

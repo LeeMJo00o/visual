@@ -72,6 +72,8 @@ const clearGlobalInstance = () => {
 export default class ApplicationManager extends GraphicTools {
   public app: Application
   public agents: AgentMap = {}
+  public dataRenderer: DataRenderer | null // 暴露给外部使用
+  public isSuspend: boolean = sessionStorage.getItem('isReplay') === 'true' ? true : false // 是否暂停数据渲染，回放时为true
 
   constructor() {
     // 如果已经存在实例，返回现有实例
@@ -117,7 +119,7 @@ export default class ApplicationManager extends GraphicTools {
     this.eventManager = null
 
     // 创建数据渲染管理器实例
-    this.dataRenderer = null
+    // this.dataRenderer = null
 
     // 存储锁闭区图形对象
     this.lockAreas = {}
@@ -362,6 +364,15 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
+  // 暂停websocket数据渲染
+  public pauseWSDataRendering() {
+    this.isSuspend = true
+  }
+  // 恢复websocket数据渲染
+  public resumeWSDataRendering() {
+    this.isSuspend = false
+  }
+
   // 坐标变换，注意 pixijs 的变换顺序是 缩放、旋转、平移
   // 考虑地图坐标 (raw_x, raw_y) 则点击位置 (x, y) 与原位置的关系为：
   // x = rotate(raw_x * scale) + offset_x
@@ -382,6 +393,8 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   add_agent(vehicle_id) {
+    console.log('vehicle_id',vehicle_id);
+    
     const v = new Agent(this, vehicle_id)
     // this.agent_graphics.push(v.graphics)
     v.graphics.interactive = true
@@ -658,7 +671,7 @@ export default class ApplicationManager extends GraphicTools {
       limit_text.__ww_update()
     })
 
-    console.log('main container: ', this.mainContainer.position, this.mainContainer.scale.x)
+    // console.log('main container: ', this.mainContainer.position, this.mainContainer.scale.x)
   }
 
   // 更新所有车辆的位置

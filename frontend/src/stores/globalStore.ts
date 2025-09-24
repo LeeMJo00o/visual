@@ -10,6 +10,27 @@ export const useGlobalStore = defineStore('global', () => {
     pointer: null,
   })
 
+  const isReplay = ref<boolean>(sessionStorage.getItem('isReplay') === 'true' ? true : false)
+
+  //  回放数据
+  const replayData = ref<any[]>([])
+
+  function clearReplayData() {
+    replayData.value = []
+  }
+  function setReplayData(data: any[]) {
+    replayData.value = data
+  }
+
+  function setIsReplay(value?: boolean) {
+    sessionStorage.setItem('isReplay', (value ? value : !isReplay.value).toString())
+    isReplay.value = value ? value : !isReplay.value
+  }
+
+  function getIsReplay() {
+    return isReplay.value
+  }
+
   // 设置某种类型的坐标
   function setPosition(type: PositionType, x: number, y: number) {
     positions.value[type] = [x, y]
@@ -28,6 +49,12 @@ export const useGlobalStore = defineStore('global', () => {
   }
 
   return {
+    replayData,
+    setReplayData,
+    clearReplayData,
+    isReplay,
+    setIsReplay,
+    getIsReplay,
     positions,
     setPosition,
     getPosition,

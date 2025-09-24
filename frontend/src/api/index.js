@@ -90,12 +90,12 @@ export const downloadReplayDBFile = (params) => {
  * @param {string} [filename] - 文件名 (必填)
  * @returns {Promise}
  */
-export const uploadReplayDBFile = (file, filename) => {
+export const uploadReplayDBFile = (file) => {
   const formData = new FormData()
   formData.append('file', file)
-  if (filename) {
-    formData.append('filename', filename)
-  }
+  // if (filename) {
+  //   formData.append('filename', filename)
+  // }
 
   return axios.post('/replay/api/replay/upload/db/file', formData, {
     headers: {

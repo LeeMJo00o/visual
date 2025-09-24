@@ -16,7 +16,8 @@ export default defineConfig({
     proxy: {
       // 代理配置
       '/api': {
-        target: 'http://10.3.19.18:2030', // 目标服务器地址
+        target: 'http://10.105.64.36:2030', // 目标服务器地址
+        // target: 'http://10.3.19.18:2030', // 目标服务器地址
         changeOrigin: true, // 允许跨域
         secure: false,
         ws: true,
@@ -24,12 +25,12 @@ export default defineConfig({
       },
       // 代理图片路径
       '/map': {
-        target: 'http://10.3.19.18:2030', // 目标服务器地址
+        target: 'http://10.105.64.36:2030', // 目标服务器地址
         changeOrigin: true, // 允许跨域
         secure: false,
       },
       '/replay': {
-        target: 'http://10.3.19.18:2040', // 目标服务器地址
+        target: 'http://10.105.64.36:2030', // 目标服务器地址
         changeOrigin: true, // 允许跨域
         secure: false,
         rewrite: (path) => path.replace(/^\/replay/, ''), // 替换路径,需要去替代当前头部代码

@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import ApplicationManager from '../routing_map/main.ts'
 
+import { useGlobalStore } from '@/stores/globalStore'
+
+const globalStore = useGlobalStore()
 const gameContainer = ref<HTMLDivElement | null>(null)
 let appManager: ApplicationManager | null = null
 
@@ -14,6 +17,29 @@ const handleResize = () => {
     )
   }
 }
+
+// 当进行回放的时候，需要不去处理当前websocket的数据
+watch(
+  () => globalStore.isReplay,
+  (newVal) => {
+    if (newVal === true) {
+      // 如果是回放模式，停止当前的游戏实例
+      appManager?.pauseWSDataRendering()
+    } else if (newVal === false) {
+      // 如果不是回放模式，恢复游戏实例
+      appManager?.resumeWSDataRendering()
+    }
+  },
+)
+watch(
+  () => globalStore.replayData,
+  (newVal) => {
+    if (newVal) {
+      console.log('收到回放数据，开始处理', newVal)
+     
+    }
+  },
+)
 
 // 组件挂载时初始化游戏
 onMounted(async () => {

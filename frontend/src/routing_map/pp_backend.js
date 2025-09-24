@@ -31,7 +31,7 @@ export class WebSocketClient {
     this.socket = new WebSocket(this.url);
 
     this.socket.onopen = (event) => {
-      console.log('WebSocket connected: ', event);
+      // console.log('WebSocket connected: ', event);
       this.startHeartbeat();
       this.flushMessageQueue();
       this.emit('open', event);

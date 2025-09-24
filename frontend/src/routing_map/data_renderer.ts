@@ -120,6 +120,7 @@ export class DataRenderer {
 
     const ws_path = new WebSocketClient(`${ws_prefix}/api/ws/demo/path`, {
       onMessage: (data: PathUpdateData) => {
+        if (this.manager.isSuspend) return
         this.demo_update_path(data)
       },
     })
@@ -130,6 +131,8 @@ export class DataRenderer {
     // 位置信息WebSocket
     const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
       onMessage: (data: PoseUpdateData) => {
+        if (this.manager.isSuspend) return
+        // console.log('ws_pose')
         this.pose_update(data)
       },
     })
@@ -139,6 +142,8 @@ export class DataRenderer {
     // 锁闭区WebSocket
     const ws_areas = new WebSocketClient(`${ws_prefix}/api/ws/demo/lock_area`, {
       onMessage: (data: LockAreaUpdateData) => {
+        if (this.manager.isSuspend) return
+        // console.log('ws_areas')
         this.areas_update(data, 'lock')
       },
     })
@@ -148,6 +153,8 @@ export class DataRenderer {
     // 流量控制区域WebSocket
     const ws_limit_areas = new WebSocketClient(`${ws_prefix}/api/ws/demo/limit_area`, {
       onMessage: (data: LockAreaUpdateData) => {
+        if (this.manager.isSuspend) return
+        // console.log('ws_limit_areas')
         this.areas_update(data, 'limit')
       },
     })
@@ -157,6 +164,8 @@ export class DataRenderer {
     // 电子围栏区域WebSocket
     const ws_trigger_areas = new WebSocketClient(`${ws_prefix}/api/ws/demo/trigger_area`, {
       onMessage: (data: LockAreaUpdateData) => {
+        if (this.manager.isSuspend) return
+        // console.log('ws_trigger_areas')
         this.areas_update(data, 'trigger')
       },
     })
@@ -220,7 +229,7 @@ export class DataRenderer {
    * 处理位置信息更新
    * @param data - 位置数据
    */
-  pose_update(data: PoseUpdateData): void {
+  public pose_update(data: PoseUpdateData): void {
     for (const [id, v] of Object.entries(data.data)) {
       // 如果禁用了平滑移动，则为每个Agent重置设置
       if (!this.manager.smoothMovementConfig.enabled && this.manager.agents[id]) {
@@ -244,18 +253,17 @@ export class DataRenderer {
     }
   }
 
-
   /***
    * area 相关的类型及key
    */
   get_data_key(type: string): string {
-    if(type === "lock") {
+    if (type === 'lock') {
       return 'lockAreas'
-    }else if(type === "limit") {
+    } else if (type === 'limit') {
       return 'limitAreas'
-    }else if(type === "trigger") {
+    } else if (type === 'trigger') {
       return 'geoFences'
-    }else {
+    } else {
       // default
       return 'lockAreas'
     }
