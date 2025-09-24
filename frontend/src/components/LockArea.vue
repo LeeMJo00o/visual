@@ -5,6 +5,8 @@ import { storeMap } from '../stores/lockAreaStore'
 import { Graphics } from 'pixi.js'
 import { getFillColor, getBorderColor } from '@/colors/lockarea_color.ts'
 
+import { useGlobalStore } from '@/stores/globalStore.ts'
+
 // area类型
 const props = defineProps<{ type: string; text: string }>()
 
@@ -14,6 +16,7 @@ const drawingStartPoint = ref<{ x: number; y: number } | null>(null)
 const drawingEndPoint = ref<{ x: number; y: number } | null>(null)
 const drawingGraphics = ref<any>(null)
 
+const globalStore = useGlobalStore()
 const areaStore = storeMap[props.type]?.();
 
 if (!areaStore) {
@@ -307,7 +310,7 @@ onUnmounted(() => {
   <div class="lock-area-func">
     <span>{{ text }}</span>
     <el-button type="success" plain @click="areaStore.toggleLockAreaDialog">Area List</el-button>
-    <el-button type="primary" plain @click="handleDrawBox">start draw</el-button>
+    <el-button type="primary" plain @click="handleDrawBox" :disabled="globalStore.isReplay">start draw</el-button>
   </div>
   <el-dialog v-model="dialogFormVisible" title="确认绘制区域？" width="550"
     :close-on-click-modal="false"

@@ -22,6 +22,7 @@ const handleResize = () => {
 watch(
   () => globalStore.isReplay,
   (newVal) => {
+    // 每次变化，都需要先清空当前的游戏实例
     if (newVal === true) {
       // 如果是回放模式，停止当前的游戏实例
       appManager?.pauseWSDataRendering()
@@ -31,15 +32,7 @@ watch(
     }
   },
 )
-watch(
-  () => globalStore.replayData,
-  (newVal) => {
-    if (newVal) {
-      console.log('收到回放数据，开始处理', newVal)
-     
-    }
-  },
-)
+
 
 // 组件挂载时初始化游戏
 onMounted(async () => {

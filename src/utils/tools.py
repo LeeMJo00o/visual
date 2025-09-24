@@ -1,4 +1,6 @@
+import binascii
 import datetime
+import gzip
 import json
 import math
 import uuid
@@ -38,3 +40,32 @@ def str_to_json(s: dict) -> dict:
         if key:
             rs[key] = value_t
     return rs
+
+
+def gzip_decompress_to_str(content: bytes|str, encoding: str = 'utf-8') -> str:
+    """
+    解压 gzip 压缩的内容并转为字符串，如果不是 gzip 压缩则尝试直接解码
+
+    Args:
+        content: 要解压的字节内容
+        encoding: 解码使用的字符编码，默认为 'utf-8'
+
+    Returns:
+        解压/解码后的字符串
+
+    Raises:
+        UnicodeDecodeError: 当内容既不是 gzip 压缩也无法用指定编码解码时
+    """
+    if not content or not isinstance(content, bytes):
+        return content
+    # 检查是否是 gzip 压缩的内容 (gzip 文件头是 0x1f 0x8b)
+    if content and len(content) > 2 and content[:2] == b'\x1f\x8b':
+        try:
+            decompressed = gzip.decompress(content)
+            return decompressed.decode(encoding)
+        except (gzip.BadGzipFile, binascii.Error, EOFError):
+            # 如果解压失败，尝试直接解码
+            return content.decode(encoding)
+
+    # 不是 gzip 内容，直接尝试解码
+    return content.decode(encoding)

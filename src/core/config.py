@@ -41,6 +41,21 @@ pp_visual_REDIS_SENTINEL_PWD: str = config(
     "pp_visual_REDIS_SENTINEL_PWD", default="westwell"
 )
 
+# arbiter redis
+# if redis mode id single, use this config
+pp_visual_ARBITER_REDIS_URL: str = config(
+    "pp_visual_ARBITER_REDIS_URL", default="redis://127.0.0.1:6370/2"
+)
+# if redis mode id sentinel, use this config
+pp_visual_ARBITER_REDIS_SENTINELS: str = config(
+    "pp_visual_ARBITER_REDIS_SENTINELS", default="127.0.0.1:6379,127.0.0.1:6380,127.0.0.1:6381"
+)
+# for sentinel password
+pp_visual_ARBITER_REDIS_SENTINEL_PWD: str = config(
+    "pp_visual_ARBITER_REDIS_SENTINEL_PWD", default="westwell"
+)
+
+
 pp_visual_GRPC_PORT: int = config("pp_visual_GRPC_PORT", cast=int, default=10013)
 
 MAP_NAME: str = config("MAP_NAME", cast=str, default="xxxx.osm")
@@ -52,3 +67,15 @@ PATH_REPORT_URL = config("PATH_REPORT_URL", cast=str, default="http://127.0.0.1:
 
 # device_mode
 pp_visual_DEVICE_MODE = config("pp_visual_DEVICE_MODE", cast=str, default="truck")
+
+# infos
+# map graph version info
+pp_visual_MAP_GRAPH_VERSION_URL: str = config("pp_visual_MAP_GRAPH_VERSION_URL",
+                                              cast=str,
+                                              default="http://127.0.0.1:8108/api/query/version")
+
+pp_visual_WELLROUTING_VERSION_URL: str = config("pp_visual_WELLROUTING_VERSION_URL",
+                                                cast=str,
+                                                default="http://127.0.0.1:8008/api/routing/map_graph")
+
+pp_visual_COLLECTOR_URL: str = config("pp_visual_COLLECTOR_URL", cast=str, default="http://127.0.0.1:2040")

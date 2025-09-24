@@ -14,7 +14,22 @@ export const useGlobalStore = defineStore('global', () => {
 
   //  回放数据
   const replayData = ref<any[]>([])
+  const speedConfig = ref<any>(null)
+  const weightConfig = ref<any>(null)
 
+  const priorityConfig = ref<any>({})
+
+  function setPriorityConfig(config: any) {
+    priorityConfig.value = config
+  }
+
+  function setWeightConfig(config: any) {
+    weightConfig.value = config
+  }
+
+  function setSpeedConfig(config: any) {
+    speedConfig.value = config
+  }
   function clearReplayData() {
     replayData.value = []
   }
@@ -49,6 +64,12 @@ export const useGlobalStore = defineStore('global', () => {
   }
 
   return {
+    priorityConfig,
+    setPriorityConfig,
+    weightConfig,
+    setWeightConfig,
+    speedConfig,
+    setSpeedConfig,
     replayData,
     setReplayData,
     clearReplayData,

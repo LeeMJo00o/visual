@@ -364,14 +364,95 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
+  // 暂停和回复都得清理原先存在的数据，
   // 暂停websocket数据渲染
   public pauseWSDataRendering() {
+    this.clearDynamicData()
     this.isSuspend = true
   }
   // 恢复websocket数据渲染
   public resumeWSDataRendering() {
+    this.clearDynamicData()
     this.isSuspend = false
   }
+
+  /**
+   * 清理现有的动态数据
+   * 1. 车辆
+   * 2. 长短路径
+   * 3.区域绘制
+   */
+ // ...existing code...
+  private clearDynamicData() {
+    console.log('clearDynamicData: clearing dynamic data, agents count=', Object.keys(this.agents).length)
+
+    // 先销毁/移除所有 agent 相关显示对象
+    Object.values(this.agents).forEach((agent: any) => {
+      try {
+        // 从父容器移除
+        if (agent.graphics && agent.graphics.parent) agent.graphics.parent.removeChild(agent.graphics)
+        if (agent.graph_long_path && agent.graph_long_path.parent) agent.graph_long_path.parent.removeChild(agent.graph_long_path)
+        if (agent.graph_short_path && agent.graph_short_path.parent) agent.graph_short_path.parent.removeChild(agent.graph_short_path)
+        if (agent.text && agent.text.parent) agent.text.parent.removeChild(agent.text)
+
+        // 销毁对象（防止内存泄露）
+        const destroyOpts = { children: true, texture: false, baseTexture: false }
+        if (agent.graphics && typeof agent.graphics.destroy === 'function') agent.graphics.destroy(destroyOpts)
+        if (agent.graphics_head && typeof agent.graphics_head.destroy === 'function') agent.graphics_head.destroy(destroyOpts)
+        if (agent.graphics_trailer && typeof agent.graphics_trailer.destroy === 'function') agent.graphics_trailer.destroy(destroyOpts)
+        if (agent.graph_long_path && typeof agent.graph_long_path.destroy === 'function') agent.graph_long_path.destroy(destroyOpts)
+        if (agent.graph_short_path && typeof agent.graph_short_path.destroy === 'function') agent.graph_short_path.destroy(destroyOpts)
+        if (agent.text && typeof agent.text.destroy === 'function') agent.text.destroy()
+      } catch (e) {
+        console.warn('clearDynamicData: error destroying agent', agent && agent.vehicle_id, e)
+      }
+    })
+
+    // 清空 agents 映射
+    this.agents = {}
+
+    // 清空并移除容器内残留图形
+    if (this.agentContainer) this.agentContainer.removeChildren()
+    if (this.longPathContainer) this.longPathContainer.removeChildren()
+    if (this.shortPathContainer) this.shortPathContainer.removeChildren()
+    if (this.agentTextContainer) this.agentTextContainer.removeChildren()
+
+    // 清理应用级别的 graphics（如果存在）
+    if (this.graphics_path_apply_area) {
+      if (this.graphics_path_apply_area.parent) this.graphics_path_apply_area.parent.removeChild(this.graphics_path_apply_area)
+      try { this.graphics_path_apply_area.clear() } catch (e) {}
+    }
+
+    // 清理锁闭区 / 流控 / 围栏 等
+    const clearGraphicsMap = (mapObj: Record<string, any>) => {
+      Object.values(mapObj).forEach((g: any) => {
+        try {
+          if (g.parent) g.parent.removeChild(g)
+          if (typeof g.clear === 'function') g.clear()
+          if (typeof g.destroy === 'function') g.destroy({ children: true })
+        } catch (e) {}
+      })
+    }
+    clearGraphicsMap(this.lockAreas)
+    clearGraphicsMap(this.limitAreas)
+    clearGraphicsMap(this.geoFences)
+    this.lockAreas = {}
+    this.limitAreas = {}
+    this.geoFences = {}
+
+    // 重置其他状态
+    this.agent_graphics = []
+    // 如需也可清空路径数据：this.map_path_info = {}
+    // 强制渲染一次，确保界面立即更新
+    try {
+      if (this.app && this.app.renderer) this.app.renderer.render(this.app.stage)
+    } catch (e) {
+      console.warn('clearDynamicData: render failed', e)
+    }
+
+    console.log('clearDynamicData: done')
+  }
+// ...existing code...
 
   // 坐标变换，注意 pixijs 的变换顺序是 缩放、旋转、平移
   // 考虑地图坐标 (raw_x, raw_y) 则点击位置 (x, y) 与原位置的关系为：
@@ -393,8 +474,6 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   add_agent(vehicle_id) {
-    console.log('vehicle_id',vehicle_id);
-    
     const v = new Agent(this, vehicle_id)
     // this.agent_graphics.push(v.graphics)
     v.graphics.interactive = true

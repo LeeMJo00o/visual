@@ -19,7 +19,7 @@ import axios from 'axios'
 }
  */
 export const queryReplayDBFileList = () => {
-  return axios.get('/replay/api/replay/query/db/file/list')
+  return axios.get('/api/replay/query/db/file/list')
 }
 
 /**
@@ -38,7 +38,7 @@ export const queryReplayDBFileList = () => {
 }
  */
 export const queryReplayTimeRange = (params) => {
-  return axios.get('/replay/api/replay/query/time/range', { params: params })
+  return axios.get('/api/replay/query/time/range', { params: params })
 }
 
 /**
@@ -51,7 +51,7 @@ export const queryReplayTimeRange = (params) => {
  * @returns {Promise}
  */
 export const queryReplayData = (params) => {
-  return axios.get('/replay/api/replay/get/data', { params })
+  return axios.get('/api/replay/get/data', { params })
 }
 
 /**
@@ -65,7 +65,7 @@ export const queryReplayData = (params) => {
  * @returns {Promise} data[Array]
  */
 export const queryReplayRangeData = (params) => {
-  return axios.get('/replay/api/replay/get/range/data', { params })
+  return axios.get('/api/replay/get/range/data', { params })
 }
 
 /**
@@ -75,7 +75,7 @@ export const queryReplayRangeData = (params) => {
  * @returns {Promise}  db文件压缩包,  xxx.db.tar.gz
  */
 export const downloadReplayDBFile = (params) => {
-  return axios.get('/replay/api/replay/download/db/file', {
+  return axios.get('/api/replay/download/db/file', {
     params: params,
     responseType: 'blob', // 指定响应类型为 blob
     headers: {
@@ -97,7 +97,7 @@ export const uploadReplayDBFile = (file) => {
   //   formData.append('filename', filename)
   // }
 
-  return axios.post('/replay/api/replay/upload/db/file', formData, {
+  return axios.post('/api/replay/upload/db/file', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

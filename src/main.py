@@ -72,5 +72,7 @@ if __name__ == "__main__":
         loop="uvloop",
         host=pp_visual_RUN_HOST,
         port=pp_visual_RUN_PORT,
-        workers=pp_visual_RUN_WORKERS
+        workers=pp_visual_RUN_WORKERS,
+        ws = "websockets",
+        ws_per_message_deflate = True
     )

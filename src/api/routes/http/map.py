@@ -2,6 +2,8 @@ from chain_model.model import StdRes
 from fastapi import APIRouter, Body, Response
 from src.core.config import MAP_NAME
 import json
+
+from src.entity.MapInfo import MapInfo
 from src.map_tools import export_osm_path_info
 import os
 from src.middlewares.redis_handler.connect import redis_cli
@@ -21,7 +23,8 @@ def get_config_by_prefix(config_map: dict, src: str) -> dict:
 
 
 @router.post('/config')
-async def get_config():
+async def get_config(req: MapInfo):
+    map_name = req.mapName
     config_map = {
         "default": {
             "rotation": 0,
@@ -30,7 +33,7 @@ async def get_config():
             "scale_back": 1,
             "scale": 1.0,
             "mode": "test-demo",
-            "version": MAP_NAME
+            "version": map_name
         },
         "Abuzhabi_QP_VPB": {
             "rotation": -2.471,
@@ -39,7 +42,7 @@ async def get_config():
             "scale_back": 1,
             "scale": 1.0,
             "mode": "test-my-pp",
-            "version": MAP_NAME
+            "version": map_name
         },
         "MapSingapore": {
             "rotation": -2.112,
@@ -48,7 +51,7 @@ async def get_config():
             "scale_back": 1,
             "scale": 0.355166,
             "mode": "test-demo",
-            "version": MAP_NAME
+            "version": map_name
         },
         "fangzhen": {
             "rotation": -2.112,
@@ -57,7 +60,7 @@ async def get_config():
             "scale_back": 1,
             "scale": 0.355166,
             "mode": "test-demo",
-            "version": MAP_NAME
+            "version": map_name
         },
         "taiguo": {
             "rotation": 0.292,
@@ -68,7 +71,7 @@ async def get_config():
             "back_image_file": "taiguo.png", 
             "scale": 1.31,
             "mode": "test-demo",
-            "version": MAP_NAME
+            "version": map_name
         },
         "TangShan": {
             "rotation": 0,
@@ -76,17 +79,44 @@ async def get_config():
             "use_back_image": False,
             "scale": 0.8,
             "mode": "test-demo",
-            "version": MAP_NAME
-        }
+            "version": map_name
+        },
+        "malaysia": {
+            "rotation": 1.047,
+            "offset": [1000, 400],
+            "use_back_image": False,
+            "scale": 0.2,
+            "mode": "test-demo",
+            "version": map_name
+        },
+        "malaixiya": {
+            "rotation": 1.047,
+            "offset": [1000, 400],
+            "use_back_image": False,
+            "scale": 0.2,
+            "mode": "test-demo",
+            "version": map_name
+        },
+        "taipingyang": {
+            "rotation": 0,
+            "offset": [400, 600],
+            "use_back_image": False,
+            "scale": 0.7,
+            "mode": "test-demo",
+            "version": map_name
+        },
     }
 
-    return get_config_by_prefix(config_map, MAP_NAME)
+    return get_config_by_prefix(config_map, map_name)
 
 
 @router.post('/path_info')
-async def get_path_info():
-    map_path = f"map/{MAP_NAME}"
-    path_file = f"map/raw_path_{MAP_NAME}.json"
+async def get_path_info(req: MapInfo):
+    map_name = req.mapName
+
+
+    map_path = f"map/{map_name}"
+    path_file = f"map/raw_path_{map_name}.json"
 
     # 检查文件是否存在
     if os.path.exists(path_file):

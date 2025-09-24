@@ -3,6 +3,7 @@ import { Graphics } from 'pixi.js'
 import ApplicationManager from './main.ts'
 import { PointProjection, type Point } from './project.ts'
 import { getBorderColor, getFillColor } from '@/colors/lockarea_color.ts'
+import { usePriorityStore } from '@/stores/priority.ts'
 
 // 类型定义
 interface Position {
@@ -36,14 +37,10 @@ interface PathData {
   start_pose: {
     x: number
     y: number
-    index: number
-    is_ahead: boolean
   }
   end_pose: {
     x: number
     y: number
-    index: number
-    is_ahead: boolean
   }
 }
 
@@ -69,7 +66,8 @@ interface LockArea {
   created_by?: string
   describe?: string
   polygon: Array<{ x: number; y: number }>
-  limit: number
+  limit: number,
+  fms: boolean,
 }
 
 interface LockAreaUpdateData {
@@ -93,6 +91,8 @@ export class DataRenderer {
   private websocket_clients: WebSocketClients
   private long_path_width: number
   private short_path_width: number
+
+  private priorityStore = usePriorityStore()
 
   /**
    * @param manager - ApplicationManager实例
@@ -218,7 +218,25 @@ export class DataRenderer {
       if (v.path === null) {
         return
       }
-      const all_path_t = this.demo_path_to_my(v)
+
+      // 获取车辆当前位置，作为path截取的start_pose
+      // const vehicle_obj = this.vehicleStore.getVehicleById(vehicleId)
+      // if(vehicle_obj) {
+      //   const ox = v.start_pose.x
+      //   const oy = v.start_pose.y
+
+      //   let start_pose = v.start_pose
+      //   start_pose.x = vehicle_obj.targetPosition.x
+      //   start_pose.y = vehicle_obj.targetPosition.y
+
+      //   console.log('update path start pose, vid ', vehicleId, 
+      //     ' old pose: ', ox, oy,
+      //     ' new pose: ', start_pose.x, start_pose.y
+      //   )
+
+      // }
+
+      const all_path_t = path_type == 'long' ? this.demo_path_to_my_long(v) : this.demo_path_to_my_short(v)
       for (const a_road_path of all_path_t) {
         this.manager.drawLine(g, vehicleId, a_road_path, false, vehicle.color, path_width, alpha)
       }
@@ -376,14 +394,21 @@ export class DataRenderer {
     data_key: string,
     type: string,
   ): Graphics {
+    console.log(area);
+    
     // 根据区域的实际类型设置颜色
-    const color = getBorderColor(type)
+    const color = area.subtype==='no_parking' ? getBorderColor('no_parking') :getBorderColor(type)
+    console.log("type:", type, "color: ", color)
 
     // 为每个锁闭区创建独立的图形对象
     const areaGraphics = new Graphics()
 
     // 将多边形数据转换为drawLine需要的格式
     const points = area.polygon.map((point) => [point.x, point.y])
+    // 如何首尾的点不相同，那么将第一个点加入到末尾中
+    if (points[0][0] !== points[points.length - 1][0] || points[0][1] !== points[points.length - 1][1]) {
+      points.push(points[0])
+    }
 
     // 使用drawLine方法绘制锁闭区
     this.manager.drawLine(
@@ -416,6 +441,7 @@ export class DataRenderer {
         <div>sub-type: ${area.subtype || 'lock'}</div>
         <div>create_by: ${area.created_by || 'unknown'}</div>
         <div>desc: ${area.describe || '无'}</div>
+        <div>source: ${area.fms ? 'fms' : 'simweb'}</div>
       `
 
       // 显示tooltip
@@ -464,6 +490,7 @@ export class DataRenderer {
       // this.manager.limitAreaTextContainer.addChild(textObj)
     }
     this.manager.mainContainer.addChild(areaGraphics)
+    debugger
     this.manager[data_key][areaId] = areaGraphics
     return areaGraphics
   }
@@ -495,29 +522,18 @@ export class DataRenderer {
 
     // 更新车辆文本，包含优先级
     let displayText = vehicleId
-    if (priority !== null && priority !== undefined) {
+    if (this.priorityStore.visible && priority !== null && priority !== undefined) {
       displayText = `${vehicleId} (${priority})`
     }
     this.manager.agents[vehicleId].text.text = displayText
   }
 
-  private demo_path_to_my(path: PathData): number[][][] {
+   private demo_path_to_my_long(path: PathData): number[][][] {
     const pathArray = path.path
     const pathLength = pathArray.length
     const startPose = path.start_pose
     const endPose = path.end_pose
     const mapPathInfo = this.manager.map_path_info
-
-    // 计算起始和结束索引
-    let start_index = startPose.index
-    if (!startPose.is_ahead) {
-      start_index += 1
-    }
-
-    let end_index = endPose.index
-    if (endPose.is_ahead) {
-      end_index -= 1
-    }
 
     const all_path_t: number[][][] = []
     let last_lcp_point: number[] = [] // 最后一个LCP点
@@ -584,6 +600,83 @@ export class DataRenderer {
 
       all_path_t.push(path_t)
     }
+    return all_path_t
+  }
+  
+  private demo_path_to_my_short(path: PathData): number[][][] {
+    const pathArray = path.path
+    const pathLength = pathArray.length
+    const startPose = path.start_pose
+    const endPose = path.end_pose
+    const mapPathInfo = this.manager.map_path_info
+
+    const all_path_t: number[][][] = []
+    const all_points: number[][] = []
+    let last_lcp_point: number[] = [] // 最后一个LCP点
+    let last_lane_id = ""
+    for (let i = 0; i < pathLength; i++) {
+      const path_t: number[][] = []
+      const node = pathArray[i]
+      const llt_id = node['lane_id']
+      const the_road_path = mapPathInfo[llt_id]
+      const points = the_road_path.points
+
+      if(llt_id === last_lane_id) {
+        continue
+      }
+      last_lane_id = llt_id
+
+      path_t.push(...points)
+
+      // 处理前一个节点有lcp point的情况
+      if (last_lcp_point && last_lcp_point.length > 0) {
+        // 如果当前是第二个节点（车辆在第一个节点并且有lcp），那么使用车辆位置进行投影，否则使用lcp进行投影
+        // lcp/vehicle pose 往当前的path_t进行投影，并保留后面的部分
+        const projector = new PointProjection(path_t as Point[])
+        let p = i === 1 ? [startPose.x, startPose.y] : last_lcp_point
+        const result = projector.processPointProjection(p as Point)
+        path_t.length = 0 //清空现有的数据
+        path_t.push(...(result.splitParts?.secondPart || []))
+      }
+
+      // 处理当前节点有lcp point的情况
+      if (node.hasOwnProperty('lcp_point') && node.lcp_point) {
+        // 明确告诉 TS lcp_point 存在且非 undefined
+        const lcp = node.lcp_point as { x: number; y: number }
+        last_lcp_point = [lcp.x, lcp.y]
+        // lcp 往当前的path_t进行投影，并保留前面的部分
+        const projector = new PointProjection(path_t as Point[])
+        const result = projector.processPointProjection(last_lcp_point as Point)
+        path_t.length = 0 //清空现有的数据
+        path_t.push(...(result.splitParts?.firstPart || []))
+      } else {
+        // 重置lcp point即可
+        last_lcp_point = []
+      }
+
+      // 优化连接点过近时显示突兀的问题
+      if(all_points.length > 0 && path_t.length > 0) {
+        const lp = all_points[all_points.length - 1]
+        const p = path_t[0]
+        const dis = Math.sqrt((lp[0] - p[0]) ** 2 + (lp[1] - p[1]) ** 2)
+        if(dis <= 0.01) { path_t.shift() }  // 过近时去掉第一个点
+      }
+      all_points.push(...path_t)
+    }
+
+    //根据起点及终点进行裁剪
+    const projector = new PointProjection(all_points as Point[])
+    const result = projector.getPointsBetweenProjections(
+      [startPose.x, startPose.y],
+      [endPose.x, endPose.y],
+    )
+    all_points.length = 0
+    all_points.push(...result)
+
+    all_path_t.push(all_points)
+
+    // console.log("short all_path_t", all_path_t);
+
     return all_path_t
   }
 }

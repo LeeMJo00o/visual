@@ -36,6 +36,13 @@
         </template>
       </el-table-column>
 
+      <el-table-column prop="area" label="Source" min-width="70" v-if="type=='lock'">
+        <template #default="{ row }">
+          <el-tag type="primary" v-if="row.area.fms">fms</el-tag>
+          <el-tag type="success" v-else>simweb</el-tag>
+        </template>
+      </el-table-column>
+
       <el-table-column prop="area" label="Limit" min-width="70" v-if="type=='limit'">
         <template #default="{ row }">
           <span class="lock-area-name">{{ row.area.limit }}</span>
@@ -56,6 +63,7 @@
             size="small"
             :loading="areaStore.isLoading"
             @click="handleDelete(row)"
+            :disabled="row.area.fms || globalStore.isReplay"
           >
             删除
           </el-button>
@@ -101,7 +109,9 @@
 import { computed, ref } from 'vue'
 import { storeMap } from '../stores/lockAreaStore'
 import CustomDialog from './CustomDialog.vue'
+import { useGlobalStore } from '@/stores/globalStore'
 
+const globalStore = useGlobalStore()
 //编辑对话框
 const currentRow = ref(null); //当前编辑的行数据
 const editDialogVisible = ref(false); //编辑弹窗是否显示

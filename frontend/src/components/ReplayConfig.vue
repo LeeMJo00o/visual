@@ -101,21 +101,17 @@ import { ElMessage } from 'element-plus'
 import type { UploadProps, UploadUserFile } from 'element-plus'
 import { Refresh, ArrowLeft, ArrowRight, VideoPlay, VideoPause } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
-import type {PosUpdateData} from '@/routing_map/types'
+import type { PosUpdateData, LockAreaUpdateData, PathUpdateData } from '@/routing_map/types'
 import ApplicationManager from '@/routing_map/main'
 
 import { useGlobalStore } from '@/stores/globalStore'
 
 const globalStore = useGlobalStore()
 
-const appManager = ref<ApplicationManager | null>(null)
-watch(
-  () => appManager.value,
-  (newVal) => {
-    console.log('appManager isSuspend changed:', newVal)
-  },
-  { immediate: true },
-)
+// const appManager = ref<ApplicationManager | null>(null)
+// const appManager = ApplicationManager.getInstance()
+const appManager = ApplicationManager.getInstance()
+
 const isReplay = ref<boolean>(false)
 
 watch(
@@ -241,7 +237,7 @@ const getReplayRangeData = () => {
     if (res.status === 200) {
       const { data }: any = res.data.data
       for (let i = 0; i < data.length; i++) {
-        const { type, subType, data: _data } = data[i]
+        const { type, subtype, data: _data } = data[i]
         if (type === 'map') {
           //  判断地图 是否和当前的一致,如果不一致,则需要提示用户
           if (_data.map_name !== selectedFile.value) {
@@ -251,30 +247,42 @@ const getReplayRangeData = () => {
         }
         if (type === 'pose') {
           // 车辆定位
-          // appManager?.updateAgentPose(data.timestamp, data.data)
-          appManager.value?.dataRenderer?.pose_update(data[i] as PosUpdateData)
-        } else if (type === 'areas' && subType === 'lock') {
-          // 禁行区
-        } else if (type === 'areas' && subType === 'trigger') {
-          //
-        } else if (type === 'polygon' && subType === 'selfarea') {
+          appManager?.dataRenderer?.pose_update(data[i] as PosUpdateData)
+        } else if (type === 'areas') {
+          // subType === 'lock' 禁行区
+          // subType === 'trigger'  电子围栏
+          // subType === "traffic_control" 流量控制区域
+          if (subtype === 'lock') {
+            appManager?.dataRenderer?.areas_update(data[i] as LockAreaUpdateData, 'lock')
+          }
+          if (subtype === 'trigger') {
+            appManager?.dataRenderer?.areas_update(data[i] as LockAreaUpdateData, 'trigger')
+          }
+          if (subtype === 'traffic_control') {
+            appManager?.dataRenderer?.areas_update(data[i] as LockAreaUpdateData, 'limit')
+          }
+        } else if (type === 'polygon' && subtype === 'selfarea') {
           // 多边形
-        } else if (type === 'polygon' && subType === 'ga') {
+        } else if (type === 'polygon' && subtype === 'ga') {
           // GA
-        } else if (type === 'polygon' && subType === 'pga') {
+        } else if (type === 'polygon' && subtype === 'pga') {
           // pga
-        } else if (type === 'polygon' && subType === 'pla') {
+        } else if (type === 'polygon' && subtype === 'pla') {
           // pla
-        } else if (type === 'long') {
-          // 长路径数据
-        } else if (type === 'short') {
-          // 短路径数据
+        } else if (type === 'long' || type === 'short') {
+          // 长路径数据 | 短路径数据
+          appManager?.dataRenderer?.demo_update_path(data[i] as PathUpdateData)
         } else if (type === 'speed_config') {
-          // 速度配置
+          console.log('speed config data: ', _data)
+
+          // 速度配置 | 需要更新到store中
+          globalStore.setSpeedConfig(_data)
         } else if (type === 'weight_config') {
           // 载重配置
+          globalStore.setWeightConfig(_data)
         } else if (type === 'priority_config') {
           // 优先级配置
+          globalStore.setPriorityConfig(_data)
         }
       }
 
@@ -340,7 +348,7 @@ const handleChange = (uploadFile: any) => {
 watch(currentTime, updatePercent)
 
 onMounted(() => {
-  appManager.value = ApplicationManager.getInstance()
+  // appManager.value = ApplicationManager.getInstance()
   getReplayDBFileList()
 })
 onUnmounted(() => {
