@@ -157,7 +157,7 @@ const togglePlay = () => {
 const play = () => {
   isPlaying.value = true
   timer.value = window.setInterval(() => {
-    currentTime.value += 1000 * playbackRate.value
+    currentTime.value += 1000 
     if (currentTime.value >= endTime.value) {
       currentTime.value = endTime.value
       stop()
@@ -167,7 +167,7 @@ const play = () => {
     }
 
     updatePercent()
-  }, 1000)
+  }, 1000/playbackRate.value)
 }
 
 const stop = () => {
@@ -304,6 +304,8 @@ const getReplayDBFileList = () => {
 
 const handleChangeRate = (value: number) => {
   playbackRate.value = value
+  stop()
+  play()
 }
 
 /**

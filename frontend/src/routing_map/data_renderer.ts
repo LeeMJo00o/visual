@@ -4,6 +4,7 @@ import ApplicationManager from './main.ts'
 import { PointProjection, type Point } from './project.ts'
 import { getBorderColor, getFillColor } from '@/colors/lockarea_color.ts'
 import { usePriorityStore } from '@/stores/priority.ts'
+import { parseWKT } from '@/util/index.ts'
 
 // 类型定义
 interface Position {
@@ -66,8 +67,8 @@ interface LockArea {
   created_by?: string
   describe?: string
   polygon: Array<{ x: number; y: number }>
-  limit: number,
-  fms: boolean,
+  limit: number
+  fms: boolean
 }
 
 interface LockAreaUpdateData {
@@ -127,6 +128,45 @@ export class DataRenderer {
 
     ws_path.connect()
     this.websocket_clients['demo_path'] = ws_path
+
+    // 多边形锁闭区
+    const ws_self_area = new WebSocketClient(`${ws_prefix}/api/ws/demo/self_area`, {
+      onMessage: (data: any) => {
+        if (this.manager.isSuspend) return
+        this.demo_update_polygon(data)
+
+        console.log('ws_self_area', data)
+      },
+    })
+    ws_self_area.connect()
+    this.websocket_clients['demo_self_area'] = ws_self_area
+
+    const ws_ga = new WebSocketClient(`${ws_prefix}/api/ws/demo/ga`, {
+      onMessage: (data: any) => {
+        if (this.manager.isSuspend) return
+        // console.log('ws_ga', data)
+      },
+    })
+    ws_ga.connect()
+    this.websocket_clients['demo_ga'] = ws_ga
+
+    const ws_pga = new WebSocketClient(`${ws_prefix}/api/ws/demo/pga`, {
+      onMessage: (data: any) => {
+        if (this.manager.isSuspend) return
+        // console.log('ws_pga', data)
+      },
+    })
+    ws_pga.connect()
+    this.websocket_clients['demo_pga'] = ws_pga
+
+    const ws_pla = new WebSocketClient(`${ws_prefix}/api/ws/demo/pla`, {
+      onMessage: (data: any) => {
+        if (this.manager.isSuspend) return
+        // console.log('ws_pla', data)
+      },
+    })
+    ws_pla.connect()
+    this.websocket_clients['demo_pla'] = ws_pla
 
     // 位置信息WebSocket
     const ws_pose = new WebSocketClient(`${ws_prefix}/api/ws/demo/pose_info`, {
@@ -188,6 +228,19 @@ export class DataRenderer {
     })
     this.websocket_clients = {}
   }
+  /**
+   * 
+   * @param param 
+   * @param param.data 当前的多边形数据,对象类型
+   * @param param.type
+   * @param param.subtype
+   */
+  demo_update_polygon({ data, type, subtype }: any) {
+    for (const key in data.data) {
+      const element = data.data[key]
+    }
+    const _polygon = data.data
+  }
 
   demo_update_path(data) {
     let path_type = data['type']
@@ -229,14 +282,15 @@ export class DataRenderer {
       //   start_pose.x = vehicle_obj.targetPosition.x
       //   start_pose.y = vehicle_obj.targetPosition.y
 
-      //   console.log('update path start pose, vid ', vehicleId, 
+      //   console.log('update path start pose, vid ', vehicleId,
       //     ' old pose: ', ox, oy,
       //     ' new pose: ', start_pose.x, start_pose.y
       //   )
 
       // }
 
-      const all_path_t = path_type == 'long' ? this.demo_path_to_my_long(v) : this.demo_path_to_my_short(v)
+      const all_path_t =
+        path_type == 'long' ? this.demo_path_to_my_long(v) : this.demo_path_to_my_short(v)
       for (const a_road_path of all_path_t) {
         this.manager.drawLine(g, vehicleId, a_road_path, false, vehicle.color, path_width, alpha)
       }
@@ -394,11 +448,12 @@ export class DataRenderer {
     data_key: string,
     type: string,
   ): Graphics {
-    console.log(area);
-    
+    console.log(area)
+
     // 根据区域的实际类型设置颜色
-    const color = area.subtype==='no_parking' ? getBorderColor('no_parking') :getBorderColor(type)
-    console.log("type:", type, "color: ", color)
+    const color =
+      area.subtype === 'no_parking' ? getBorderColor('no_parking') : getBorderColor(type)
+    console.log('type:', type, 'color: ', color)
 
     // 为每个锁闭区创建独立的图形对象
     const areaGraphics = new Graphics()
@@ -406,7 +461,10 @@ export class DataRenderer {
     // 将多边形数据转换为drawLine需要的格式
     const points = area.polygon.map((point) => [point.x, point.y])
     // 如何首尾的点不相同，那么将第一个点加入到末尾中
-    if (points[0][0] !== points[points.length - 1][0] || points[0][1] !== points[points.length - 1][1]) {
+    if (
+      points[0][0] !== points[points.length - 1][0] ||
+      points[0][1] !== points[points.length - 1][1]
+    ) {
       points.push(points[0])
     }
 
@@ -490,7 +548,6 @@ export class DataRenderer {
       // this.manager.limitAreaTextContainer.addChild(textObj)
     }
     this.manager.mainContainer.addChild(areaGraphics)
-    debugger
     this.manager[data_key][areaId] = areaGraphics
     return areaGraphics
   }
@@ -528,7 +585,7 @@ export class DataRenderer {
     this.manager.agents[vehicleId].text.text = displayText
   }
 
-   private demo_path_to_my_long(path: PathData): number[][][] {
+  private demo_path_to_my_long(path: PathData): number[][][] {
     const pathArray = path.path
     const pathLength = pathArray.length
     const startPose = path.start_pose
@@ -602,7 +659,7 @@ export class DataRenderer {
     }
     return all_path_t
   }
-  
+
   private demo_path_to_my_short(path: PathData): number[][][] {
     const pathArray = path.path
     const pathLength = pathArray.length
@@ -613,7 +670,7 @@ export class DataRenderer {
     const all_path_t: number[][][] = []
     const all_points: number[][] = []
     let last_lcp_point: number[] = [] // 最后一个LCP点
-    let last_lane_id = ""
+    let last_lane_id = ''
     for (let i = 0; i < pathLength; i++) {
       const path_t: number[][] = []
       const node = pathArray[i]
@@ -621,7 +678,7 @@ export class DataRenderer {
       const the_road_path = mapPathInfo[llt_id]
       const points = the_road_path.points
 
-      if(llt_id === last_lane_id) {
+      if (llt_id === last_lane_id) {
         continue
       }
       last_lane_id = llt_id
@@ -655,11 +712,13 @@ export class DataRenderer {
       }
 
       // 优化连接点过近时显示突兀的问题
-      if(all_points.length > 0 && path_t.length > 0) {
+      if (all_points.length > 0 && path_t.length > 0) {
         const lp = all_points[all_points.length - 1]
         const p = path_t[0]
         const dis = Math.sqrt((lp[0] - p[0]) ** 2 + (lp[1] - p[1]) ** 2)
-        if(dis <= 0.01) { path_t.shift() }  // 过近时去掉第一个点
+        if (dis <= 0.01) {
+          path_t.shift()
+        } // 过近时去掉第一个点
       }
       all_points.push(...path_t)
     }
