@@ -38,6 +38,19 @@ def export_osm_path_info(osm_file: str):
                 road_info["points"].append([round(llt.centerline[-1].x, 3), round(llt.centerline[-1].y, 3)])
         map_info[llt.id] = road_info
 
+    # area - junction
+    for area in routing.map.polygonLayer:
+        if "subtype" in area.attributes and area.attributes["subtype"] == "no_stop_area":
+            continue
+        if "specialtype" in area.attributes and area.attributes["specialtype"] != "junction":
+            continue
+        if "area" in area.attributes and area.attributes["area"] == "true":
+            road_info = {
+                "attrs": {},
+                "points": [[round(p.x, 3), round(p.y, 3)] for p in area],
+            }
+            map_info[f"junction_{area.id}"] = road_info
+
     with open(to_raw_path, "w") as f:
         json.dump(map_info, f, separators=(',', ':'))
 
