@@ -130,6 +130,17 @@ export default class ApplicationManager extends GraphicTools {
     // 存储电子围栏图形对象
     this.geoFences = {}
 
+    // ga 图形对象
+    this.gaAreas = {}
+
+    // pla 图形对象
+    this.plaAreas = {}
+
+    // pga 图形对象
+    this.pgaAreas = {}
+
+    this.self_area = {}
+
     // 存储画框处理方法（由LockArea.vue设置）
     this.drawingHandlers = null
 
@@ -382,26 +393,37 @@ export default class ApplicationManager extends GraphicTools {
    * 2. 长短路径
    * 3.区域绘制
    */
- // ...existing code...
+  // ...existing code...
   private clearDynamicData() {
-    console.log('clearDynamicData: clearing dynamic data, agents count=', Object.keys(this.agents).length)
+    console.log(
+      'clearDynamicData: clearing dynamic data, agents count=',
+      Object.keys(this.agents).length,
+    )
 
     // 先销毁/移除所有 agent 相关显示对象
     Object.values(this.agents).forEach((agent: any) => {
       try {
         // 从父容器移除
-        if (agent.graphics && agent.graphics.parent) agent.graphics.parent.removeChild(agent.graphics)
-        if (agent.graph_long_path && agent.graph_long_path.parent) agent.graph_long_path.parent.removeChild(agent.graph_long_path)
-        if (agent.graph_short_path && agent.graph_short_path.parent) agent.graph_short_path.parent.removeChild(agent.graph_short_path)
+        if (agent.graphics && agent.graphics.parent)
+          agent.graphics.parent.removeChild(agent.graphics)
+        if (agent.graph_long_path && agent.graph_long_path.parent)
+          agent.graph_long_path.parent.removeChild(agent.graph_long_path)
+        if (agent.graph_short_path && agent.graph_short_path.parent)
+          agent.graph_short_path.parent.removeChild(agent.graph_short_path)
         if (agent.text && agent.text.parent) agent.text.parent.removeChild(agent.text)
 
         // 销毁对象（防止内存泄露）
         const destroyOpts = { children: true, texture: false, baseTexture: false }
-        if (agent.graphics && typeof agent.graphics.destroy === 'function') agent.graphics.destroy(destroyOpts)
-        if (agent.graphics_head && typeof agent.graphics_head.destroy === 'function') agent.graphics_head.destroy(destroyOpts)
-        if (agent.graphics_trailer && typeof agent.graphics_trailer.destroy === 'function') agent.graphics_trailer.destroy(destroyOpts)
-        if (agent.graph_long_path && typeof agent.graph_long_path.destroy === 'function') agent.graph_long_path.destroy(destroyOpts)
-        if (agent.graph_short_path && typeof agent.graph_short_path.destroy === 'function') agent.graph_short_path.destroy(destroyOpts)
+        if (agent.graphics && typeof agent.graphics.destroy === 'function')
+          agent.graphics.destroy(destroyOpts)
+        if (agent.graphics_head && typeof agent.graphics_head.destroy === 'function')
+          agent.graphics_head.destroy(destroyOpts)
+        if (agent.graphics_trailer && typeof agent.graphics_trailer.destroy === 'function')
+          agent.graphics_trailer.destroy(destroyOpts)
+        if (agent.graph_long_path && typeof agent.graph_long_path.destroy === 'function')
+          agent.graph_long_path.destroy(destroyOpts)
+        if (agent.graph_short_path && typeof agent.graph_short_path.destroy === 'function')
+          agent.graph_short_path.destroy(destroyOpts)
         if (agent.text && typeof agent.text.destroy === 'function') agent.text.destroy()
       } catch (e) {
         console.warn('clearDynamicData: error destroying agent', agent && agent.vehicle_id, e)
@@ -419,8 +441,11 @@ export default class ApplicationManager extends GraphicTools {
 
     // 清理应用级别的 graphics（如果存在）
     if (this.graphics_path_apply_area) {
-      if (this.graphics_path_apply_area.parent) this.graphics_path_apply_area.parent.removeChild(this.graphics_path_apply_area)
-      try { this.graphics_path_apply_area.clear() } catch (e) {}
+      if (this.graphics_path_apply_area.parent)
+        this.graphics_path_apply_area.parent.removeChild(this.graphics_path_apply_area)
+      try {
+        this.graphics_path_apply_area.clear()
+      } catch (e) {}
     }
 
     // 清理锁闭区 / 流控 / 围栏 等
@@ -436,9 +461,20 @@ export default class ApplicationManager extends GraphicTools {
     clearGraphicsMap(this.lockAreas)
     clearGraphicsMap(this.limitAreas)
     clearGraphicsMap(this.geoFences)
+
+    clearGraphicsMap(this.gaAreas)
+    clearGraphicsMap(this.plaAreas)
+    clearGraphicsMap(this.pgaAreas)
+     clearGraphicsMap(this.self_area)
+
     this.lockAreas = {}
     this.limitAreas = {}
     this.geoFences = {}
+
+    this.gaAreas = {}
+    this.plaAreas = {}
+    this.pgaAreas = {}
+    this.self_area = {}
 
     // 重置其他状态
     this.agent_graphics = []
@@ -452,7 +488,7 @@ export default class ApplicationManager extends GraphicTools {
 
     console.log('clearDynamicData: done')
   }
-// ...existing code...
+  // ...existing code...
 
   // 坐标变换，注意 pixijs 的变换顺序是 缩放、旋转、平移
   // 考虑地图坐标 (raw_x, raw_y) 则点击位置 (x, y) 与原位置的关系为：

@@ -67,8 +67,8 @@ interface LockArea {
   created_by?: string
   describe?: string
   polygon: Array<{ x: number; y: number }>
-  limit: number
-  fms: boolean
+  limit?: number
+  fms?: boolean
 }
 
 interface LockAreaUpdateData {
@@ -229,17 +229,49 @@ export class DataRenderer {
     this.websocket_clients = {}
   }
   /**
-   * 
-   * @param param 
+   *
+   * @param param
    * @param param.data 当前的多边形数据,对象类型
    * @param param.type
    * @param param.subtype
    */
-  demo_update_polygon({ data, type, subtype }: any) {
-    for (const key in data.data) {
-      const element = data.data[key]
+  demo_update_polygon({ data, type, subtype}: any) {
+    // console.log(data, type, subtype)
+
+    const entriesArray = Object.entries(data).map((e) => {
+      return {
+        areaId: e[0],
+        area: {
+          name: e[0],
+          type,
+          subtype,
+          polygon: parseWKT(e[1] as string).coordinates.map((e) => ({ x: e[0], y: e[1] })),
+        },
+      }
+    })
+
+    const data_key = this.get_data_key(subtype)
+    // 获取现有的区域ID集合
+    const existingAreaIds = new Set(Object.keys(this.manager[data_key] || {}))
+    const newAreaIds = new Set(Object.keys(data))
+
+    // 移除不再存在的区域
+    for (const areaId of existingAreaIds) {
+      if (!newAreaIds.has(areaId)) {
+        const areaGraphics = this.manager[data_key][areaId]
+        if (areaGraphics && areaGraphics.parent) {
+          areaGraphics.parent.removeChild(areaGraphics)
+          areaGraphics.destroy()
+        }
+        delete this.manager[data_key][areaId]
+      }
     }
-    const _polygon = data.data
+
+    // 更新或创建区域
+    for (const { areaId, area } of entriesArray) {
+      this.update_or_create_lock_area(areaId, area, data_key, type)
+    }
+    // this.update_or_create_lock_area()
   }
 
   demo_update_path(data) {
@@ -335,6 +367,14 @@ export class DataRenderer {
       return 'limitAreas'
     } else if (type === 'trigger') {
       return 'geoFences'
+    } else if (type === 'pla') {
+      return 'plaAreas'
+    } else if (type === 'plg') {
+      return 'plgAreas'
+    } else if (type === 'ga') {
+      return 'gaAreas'
+    } else if (type === 'self_area') {
+      return 'self_area'
     } else {
       // default
       return 'lockAreas'
@@ -398,7 +438,6 @@ export class DataRenderer {
       console.log('跳过无效的锁闭区:', areaId, area)
       return
     }
-
     let areaGraphics = this.manager[data_key]?.[areaId]
 
     if (!areaGraphics) {
@@ -448,18 +487,17 @@ export class DataRenderer {
     data_key: string,
     type: string,
   ): Graphics {
-    console.log(area)
 
     // 根据区域的实际类型设置颜色
     const color =
       area.subtype === 'no_parking' ? getBorderColor('no_parking') : getBorderColor(type)
-    console.log('type:', type, 'color: ', color)
+    // console.log('type:', type, 'color: ', color)
 
     // 为每个锁闭区创建独立的图形对象
     const areaGraphics = new Graphics()
 
     // 将多边形数据转换为drawLine需要的格式
-    const points = area.polygon.map((point) => [point.x, point.y])
+    const points: [number, number][] = area.polygon.map((point) => [point.x, point.y])
     // 如何首尾的点不相同，那么将第一个点加入到末尾中
     if (
       points[0][0] !== points[points.length - 1][0] ||
@@ -467,7 +505,6 @@ export class DataRenderer {
     ) {
       points.push(points[0])
     }
-
     // 使用drawLine方法绘制锁闭区
     this.manager.drawLine(
       areaGraphics,

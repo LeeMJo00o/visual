@@ -157,7 +157,7 @@ const togglePlay = () => {
 const play = () => {
   isPlaying.value = true
   timer.value = window.setInterval(() => {
-    currentTime.value += 1000 
+    currentTime.value += 1000
     if (currentTime.value >= endTime.value) {
       currentTime.value = endTime.value
       stop()
@@ -167,7 +167,7 @@ const play = () => {
     }
 
     updatePercent()
-  }, 1000/playbackRate.value)
+  }, 1000 / playbackRate.value)
 }
 
 const stop = () => {
@@ -261,20 +261,24 @@ const getReplayRangeData = () => {
           if (subtype === 'traffic_control') {
             appManager?.dataRenderer?.areas_update(data[i] as LockAreaUpdateData, 'limit')
           }
-        } else if (type === 'polygon' && subtype === 'selfarea') {
+        } else if (type === 'polygon' && subtype === 'self_area') {
           // 多边形
+         
+
+          appManager?.dataRenderer.demo_update_polygon({ data: data[i].data, type: subtype, subtype })
         } else if (type === 'polygon' && subtype === 'ga') {
           // GA
+          appManager?.dataRenderer.demo_update_polygon({ data: data[i].data, type: subtype, subtype })
         } else if (type === 'polygon' && subtype === 'pga') {
           // pga
+          appManager?.dataRenderer.demo_update_polygon({ data: data[i].data, type: subtype, subtype })
         } else if (type === 'polygon' && subtype === 'pla') {
           // pla
+          appManager?.dataRenderer.demo_update_polygon({ data: data[i].data, type: subtype, subtype })
         } else if (type === 'long' || type === 'short') {
           // 长路径数据 | 短路径数据
           appManager?.dataRenderer?.demo_update_path(data[i] as PathUpdateData)
         } else if (type === 'speed_config') {
-          console.log('speed config data: ', _data)
-
           // 速度配置 | 需要更新到store中
           globalStore.setSpeedConfig(_data)
         } else if (type === 'weight_config') {
@@ -291,6 +295,7 @@ const getReplayRangeData = () => {
   })
 }
 
+//
 /**
  * 查询回放文件列表
  */
