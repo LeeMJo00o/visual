@@ -105,6 +105,14 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
+        "UK": {
+            "rotation": -0.64,
+            "offset": [600, 500],
+            "use_back_image": False,
+            "scale": 0.8,
+            "mode": "test-demo",
+            "version": map_name
+        },
     }
 
     return get_config_by_prefix(config_map, map_name)
