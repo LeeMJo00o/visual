@@ -73,7 +73,7 @@ export default class ApplicationManager extends GraphicTools {
   public app: Application
   public agents: AgentMap = {}
   public dataRenderer: DataRenderer | null // 暴露给外部使用
-  public isSuspend: boolean = sessionStorage.getItem('isReplay') === 'true' ? true : false // 是否暂停数据渲染，回放时为true
+  public isSuspend: boolean = false // 是否暂停数据渲染，回放时为true
 
   constructor() {
     // 如果已经存在实例，返回现有实例
@@ -465,7 +465,7 @@ export default class ApplicationManager extends GraphicTools {
     clearGraphicsMap(this.gaAreas)
     clearGraphicsMap(this.plaAreas)
     clearGraphicsMap(this.pgaAreas)
-     clearGraphicsMap(this.self_area)
+    clearGraphicsMap(this.self_area)
 
     this.lockAreas = {}
     this.limitAreas = {}

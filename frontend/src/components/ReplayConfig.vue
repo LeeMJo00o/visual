@@ -14,15 +14,6 @@
         <span>{{ formatTime(startTime) }}</span>
         <!-- 控制区 -->
         <div class="controls">
-          <el-switch
-            v-model="isReplay"
-            class="ml-2"
-            inline-prompt
-            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-            active-text="回放开启"
-            inactive-text="回放禁用"
-            @change="handleChangeIsReplay"
-          />
           <el-select
             v-model="selectedFile"
             :disabled="!isReplay"
@@ -88,17 +79,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import {
   queryReplayDBFileList,
   queryReplayTimeRange,
-  queryReplayRangeData,
   queryReplayData,
   downloadReplayDBFile,
   uploadReplayDBFile,
 } from '@/api/index.js'
 import { ElMessage } from 'element-plus'
-import type { UploadProps, UploadUserFile } from 'element-plus'
 import { Refresh, ArrowLeft, ArrowRight, VideoPlay, VideoPause } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import type { PosUpdateData, LockAreaUpdateData, PathUpdateData } from '@/routing_map/types'
@@ -112,15 +101,9 @@ const globalStore = useGlobalStore()
 // const appManager = ApplicationManager.getInstance()
 const appManager = ApplicationManager.getInstance()
 
-const isReplay = ref<boolean>(false)
-
-watch(
-  () => globalStore.isReplay,
-  (newVal) => {
-    isReplay.value = newVal
-  },
-  { immediate: true },
-)
+const isReplay = computed(() => {
+  return globalStore.isReplay
+})
 
 const startTime = ref<number>(0)
 const endTime = ref<number>(0)
@@ -263,18 +246,33 @@ const getReplayRangeData = () => {
           }
         } else if (type === 'polygon' && subtype === 'self_area') {
           // 多边形
-         
 
-          appManager?.dataRenderer.demo_update_polygon({ data: data[i].data, type: subtype, subtype })
+          appManager?.dataRenderer.demo_update_polygon({
+            data: data[i].data,
+            type: subtype,
+            subtype,
+          })
         } else if (type === 'polygon' && subtype === 'ga') {
           // GA
-          appManager?.dataRenderer.demo_update_polygon({ data: data[i].data, type: subtype, subtype })
+          appManager?.dataRenderer.demo_update_polygon({
+            data: data[i].data,
+            type: subtype,
+            subtype,
+          })
         } else if (type === 'polygon' && subtype === 'pga') {
           // pga
-          appManager?.dataRenderer.demo_update_polygon({ data: data[i].data, type: subtype, subtype })
+          appManager?.dataRenderer.demo_update_polygon({
+            data: data[i].data,
+            type: subtype,
+            subtype,
+          })
         } else if (type === 'polygon' && subtype === 'pla') {
           // pla
-          appManager?.dataRenderer.demo_update_polygon({ data: data[i].data, type: subtype, subtype })
+          appManager?.dataRenderer.demo_update_polygon({
+            data: data[i].data,
+            type: subtype,
+            subtype,
+          })
         } else if (type === 'long' || type === 'short') {
           // 长路径数据 | 短路径数据
           appManager?.dataRenderer?.demo_update_path(data[i] as PathUpdateData)

@@ -184,7 +184,6 @@ const dynamic_weight_list = [
   { label: 'VPB_SCALE', key1: 'VPB_SCALE', key2: 'vpb_scale:' },
 ]
 
-
 function convertWeightConfig(data: WeightConfigData): WeightConfigData {
   const result: Partial<WeightConfigData> = {}
 
@@ -293,20 +292,18 @@ watch(
   () => globalStore.isReplay,
   (newVal) => {
     if (newVal === true) {
-      if (globalStore.weightConfig.weightConfigData) {
+      if (globalStore.weightConfig?.weightConfigData) {
         form.value = globalStore.weightConfig.weightConfigData
       }
-      NPA_SCALE.value = globalStore.weightConfig.NPA_SCALE
-      BS_CURVE_SCALE.value = globalStore.weightConfig.BS_CURVE_SCALE
-      STACK_BUSY_BUSY_SCALE.value = globalStore.weightConfig.STACK_BUSY_BUSY_SCALE
-      STACK_BUSY_CROWDED_SCALE.value = globalStore.weightConfig.STACK_BUSY_CROWDED_SCALE
+      NPA_SCALE.value = globalStore.weightConfig?.NPA_SCALE
+      BS_CURVE_SCALE.value = globalStore.weightConfig?.BS_CURVE_SCALE
+      STACK_BUSY_BUSY_SCALE.value = globalStore.weightConfig?.STACK_BUSY_BUSY_SCALE
+      STACK_BUSY_CROWDED_SCALE.value = globalStore.weightConfig?.STACK_BUSY_CROWDED_SCALE
     } else {
-        query()
+      query()
     }
   },
-  { immediate: true },
 )
-
 
 // 在组件卸载时清理资源
 onUnmounted(() => {

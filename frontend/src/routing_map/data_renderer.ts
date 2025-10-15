@@ -133,9 +133,11 @@ export class DataRenderer {
     const ws_self_area = new WebSocketClient(`${ws_prefix}/api/ws/demo/self_area`, {
       onMessage: (data: any) => {
         if (this.manager.isSuspend) return
-        this.demo_update_polygon(data)
-
-        console.log('ws_self_area', data)
+        this.demo_update_polygon({
+          data: data.data,
+          type: data.subtype,
+          subtype: data.subtype,
+        })
       },
     })
     ws_self_area.connect()
@@ -144,7 +146,11 @@ export class DataRenderer {
     const ws_ga = new WebSocketClient(`${ws_prefix}/api/ws/demo/ga`, {
       onMessage: (data: any) => {
         if (this.manager.isSuspend) return
-        // console.log('ws_ga', data)
+        this.demo_update_polygon({
+          data: data.data,
+          type: data.subtype,
+          subtype: data.subtype,
+        })
       },
     })
     ws_ga.connect()
@@ -153,7 +159,12 @@ export class DataRenderer {
     const ws_pga = new WebSocketClient(`${ws_prefix}/api/ws/demo/pga`, {
       onMessage: (data: any) => {
         if (this.manager.isSuspend) return
-        // console.log('ws_pga', data)
+
+        this.demo_update_polygon({
+          data: data.data,
+          type: data.subtype,
+          subtype: data.subtype,
+        })
       },
     })
     ws_pga.connect()
@@ -163,6 +174,11 @@ export class DataRenderer {
       onMessage: (data: any) => {
         if (this.manager.isSuspend) return
         // console.log('ws_pla', data)
+        this.demo_update_polygon({
+          data: data.data,
+          type: data.subtype,
+          subtype: data.subtype,
+        })
       },
     })
     ws_pla.connect()
@@ -235,9 +251,7 @@ export class DataRenderer {
    * @param param.type
    * @param param.subtype
    */
-  demo_update_polygon({ data, type, subtype}: any) {
-    // console.log(data, type, subtype)
-
+  demo_update_polygon({ data, type, subtype }: any) {
     const entriesArray = Object.entries(data).map((e) => {
       return {
         areaId: e[0],
@@ -251,8 +265,10 @@ export class DataRenderer {
     })
 
     const data_key = this.get_data_key(subtype)
+
     // 获取现有的区域ID集合
     const existingAreaIds = new Set(Object.keys(this.manager[data_key] || {}))
+
     const newAreaIds = new Set(Object.keys(data))
 
     // 移除不再存在的区域
@@ -260,6 +276,8 @@ export class DataRenderer {
       if (!newAreaIds.has(areaId)) {
         const areaGraphics = this.manager[data_key][areaId]
         if (areaGraphics && areaGraphics.parent) {
+          console.log('删除了不存在的区域')
+
           areaGraphics.parent.removeChild(areaGraphics)
           areaGraphics.destroy()
         }
@@ -373,6 +391,8 @@ export class DataRenderer {
       return 'plgAreas'
     } else if (type === 'ga') {
       return 'gaAreas'
+    } else if (type === 'pga') {
+      return 'pgaAreas'
     } else if (type === 'self_area') {
       return 'self_area'
     } else {
@@ -442,6 +462,8 @@ export class DataRenderer {
 
     if (!areaGraphics) {
       areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type)
+      // console.log(areaGraphics,data_key);
+      
     }
   }
 
@@ -487,7 +509,6 @@ export class DataRenderer {
     data_key: string,
     type: string,
   ): Graphics {
-
     // 根据区域的实际类型设置颜色
     const color =
       area.subtype === 'no_parking' ? getBorderColor('no_parking') : getBorderColor(type)

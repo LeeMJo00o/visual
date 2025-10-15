@@ -67,7 +67,7 @@ export class WebSocketClient {
     } catch (e) {
       // 非JSON消息直接传递
       // this.options.onMessage?.(data);
-      console.log('deal message error:', e);
+      // console.log('deal message error:', e);
     }
   }
 

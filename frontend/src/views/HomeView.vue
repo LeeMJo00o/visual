@@ -25,10 +25,12 @@ declare global {
 }
 
 const globalStore = useGlobalStore()
+
+const isReplay = ref<boolean>(false)
 watch(
   () => globalStore.isReplay,
   (newValue) => {
-    console.log('Positions isReplay:', newValue)
+    isReplay.value = newValue
   },
   { deep: true },
 )
@@ -77,8 +79,19 @@ const onAgentHide = () => {
   window.dispatchEvent(new CustomEvent('agent-hide-click'))
 }
 
+/**
+ * 显示隐藏 self_area | ga_area |  pga_area |  pla_area
+ */
+const handleVisibleAgent = (type: string) => {
+
+  window.dispatchEvent(new CustomEvent(type))
+}
+
 const onImageHide = () => {
   window.dispatchEvent(new CustomEvent('image-hide-click'))
+}
+const handleChangeIsReplay = () => {
+  globalStore.setIsReplay(!globalStore.isReplay)
 }
 </script>
 
@@ -139,115 +152,140 @@ const onImageHide = () => {
             <el-menu-item index="Infos">
               <span>Infos</span>
             </el-menu-item>
-            <el-menu-item index="replay-config">
-              <span>Replay Config</span>
-            </el-menu-item>
-
-            <!-- <el-sub-menu index="4">
-              <template #title>
-                <span>The func group</span>
-              </template>
-              <el-menu-item index="3-1">The func group's one</el-menu-item>
-              <el-menu-item index="3-2">The func group's two</el-menu-item>
-            </el-sub-menu> -->
           </el-menu>
         </div>
       </el-aside>
 
       <el-main>
         <el-container class="inner-container">
-          <div>
-            <div class="top-section">
-              <div v-if="currentMenu === 'main-map'">
-                <div class="slider-container">
-                  <div class="label-and-buttons">
-                    <el-button type="primary" plain id="map_hide" @click="onMapHide"
-                      >map show</el-button
-                    >
-                    <el-button type="primary" plain id="image_hide" @click="onImageHide"
-                      >image show</el-button
-                    >
-                    <el-button type="primary" plain id="agent_hide" @click="onAgentHide"
-                      >agent show</el-button
-                    >
-                    <span class="slider-label">set global sequece weight: </span>
-                    <span class="slider-value">{{ sliderValue.toFixed(1) }}</span>
-                  </div>
-                  <el-slider
-                    placement="right"
-                    :show-tooltip="true"
-                    class="slider-component"
-                    v-model="sliderValue"
-                    :min="0"
-                    :max="1"
-                    :step="0.1"
-                    @change="handleSliderChange"
+          <div class="top-section">
+            <div v-if="currentMenu === 'main-map'">
+              <div class="slider-container">
+                <div class="label-and-buttons">
+                  <el-button type="primary" plain id="map_hide" @click="onMapHide"
+                    >map show</el-button
+                  >
+                  <el-button type="primary" plain id="image_hide" @click="onImageHide"
+                    >image show</el-button
+                  >
+                  <el-button type="primary" plain id="agent_hide" @click="onAgentHide"
+                    >agent show</el-button
+                  >
+                  <el-button
+                    type="primary"
+                    plain
+                    id="agent_hide"
+                    @click="handleVisibleAgent('self_area_visible')"
+                    >self_area show</el-button
+                  >
+                  <el-button
+                    type="primary"
+                    plain
+                    id="agent_hide"
+                    @click="handleVisibleAgent('ga_area_visible')"
+                    >ga_area show</el-button
+                  >
+                  <el-button
+                    type="primary"
+                    plain
+                    id="agent_hide"
+                    @click="handleVisibleAgent('pga_area_visible')"
+                    >pga_area show</el-button
+                  >
+                  <el-button
+                    type="primary"
+                    plain
+                    id="agent_hide"
+                    @click="handleVisibleAgent('pla_area_visible')"
+                    >pla_area show</el-button
+                  >
+                  <el-switch
+                    v-model="isReplay"
+                    class="ml-2"
+                    inline-prompt
+                    style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+                    active-text="回放开启"
+                    inactive-text="回放禁用"
+                    @change="handleChangeIsReplay"
                   />
+                  <span class="slider-label">set global sequece weight: </span>
+                  <span class="slider-value">{{ sliderValue.toFixed(1) }}</span>
                 </div>
-              </div>
-
-              <div v-else-if="currentMenu === '2'">
-                <span>
-                  click:
-                  {{
-                    globalStore.positions.click
-                      ? `[${globalStore.positions.click[0].toFixed(4)}, ${globalStore.positions.click[1].toFixed(4)}]`
-                      : ''
-                  }}
-                </span>
-                <span style="margin-left: 20px">
-                  pointer:
-                  {{
-                    globalStore.positions.pointer
-                      ? `[${globalStore.positions.pointer[0].toFixed(4)}, ${globalStore.positions.pointer[1].toFixed(4)}]`
-                      : ''
-                  }}
-                </span>
-              </div>
-
-              <div v-else-if="currentMenu === 'agents-manager'">
-                <AgentsManager />
-              </div>
-
-              <div v-else-if="currentMenu === 'lock-area'">
-                <LockArea type="lock" text="Lock Area" />
-              </div>
-
-              <div v-else-if="currentMenu === 'limit-area'">
-                <LockArea type="limit" text="Traffic Control" />
-              </div>
-
-              <div v-else-if="currentMenu === 'geo-fence'">
-                <LockArea type="trigger" text="Geo-fence" />
-              </div>
-
-              <div v-else-if="currentMenu === 'weight-scale-config'">
-                <WeightScaleConfig />
-              </div>
-
-              <div v-else-if="currentMenu === 'priority-config'">
-                <PriorityConfig />
-              </div>
-              <div v-else-if="currentMenu === 'replay-config'">
-                <ReplayConfig />
-              </div>
-
-              <div v-else-if="currentMenu === 'speed-config'">
-                <SpeedFmsConfig />
-              </div>
-              <div v-else-if="currentMenu === 'Infos'">
-                <Infos />
-              </div>
-
-              <div v-else>
-                <!-- <h3>请选择一个功能</h3> -->
+                <el-slider
+                  placement="right"
+                  :show-tooltip="true"
+                  class="slider-component"
+                  v-model="sliderValue"
+                  :min="0"
+                  :max="1"
+                  :step="0.1"
+                  @change="handleSliderChange"
+                />
               </div>
             </div>
+
+            <div v-else-if="currentMenu === '2'">
+              <span>
+                click:
+                {{
+                  globalStore.positions.click
+                    ? `[${globalStore.positions.click[0].toFixed(4)}, ${globalStore.positions.click[1].toFixed(4)}]`
+                    : ''
+                }}
+              </span>
+              <span style="margin-left: 20px">
+                pointer:
+                {{
+                  globalStore.positions.pointer
+                    ? `[${globalStore.positions.pointer[0].toFixed(4)}, ${globalStore.positions.pointer[1].toFixed(4)}]`
+                    : ''
+                }}
+              </span>
+            </div>
+
+            <div v-else-if="currentMenu === 'agents-manager'">
+              <AgentsManager />
+            </div>
+
+            <div v-else-if="currentMenu === 'lock-area'">
+              <LockArea type="lock" text="Lock Area" />
+            </div>
+
+            <div v-else-if="currentMenu === 'limit-area'">
+              <LockArea type="limit" text="Traffic Control" />
+            </div>
+
+            <div v-else-if="currentMenu === 'geo-fence'">
+              <LockArea type="trigger" text="Geo-fence" />
+            </div>
+
+            <div v-else-if="currentMenu === 'weight-scale-config'">
+              <WeightScaleConfig />
+            </div>
+
+            <div v-else-if="currentMenu === 'priority-config'">
+              <PriorityConfig />
+            </div>
+
+            <div v-else-if="currentMenu === 'speed-config'">
+              <SpeedFmsConfig />
+            </div>
+            <div v-else-if="currentMenu === 'Infos'">
+              <Infos />
+            </div>
+
+            <div v-else>
+              <!-- <h3>请选择一个功能</h3> -->
+            </div>
           </div>
-          <div class="divider"></div>
           <!-- 下方主区域 -->
           <div class="main-map">
             <PixiGame />
+          </div>
+
+          <!-- <ReplayConfig /> -->
+          <div class="bottom-fotter" v-if="isReplay">
+            <ReplayConfig />
           </div>
         </el-container>
       </el-main>
@@ -272,10 +310,12 @@ const onImageHide = () => {
 .common-layout {
   height: 100vh;
   width: 100%;
+  display: flex;
 }
 
 .el-container {
   flex: 1;
+  display: flex;
 }
 
 /* 侧边栏 - 已隐藏 */
@@ -284,6 +324,7 @@ const onImageHide = () => {
 } */
 
 .el-main {
+  flex: 1;
   padding: 0;
   background-color: #fff;
   border-left: 2px solid #dcdfe6;
@@ -314,13 +355,15 @@ const onImageHide = () => {
 }
 
 .top-section {
-  height: 100%;
   margin-bottom: 10px;
 }
 
 .main-map {
   flex: 1;
-  height: calc(100% - 120px);
+  position: relative;
+}
+.bottom-fotter {
+  height: 80px;
 }
 
 /* 滑块相关样式 */
@@ -432,5 +475,8 @@ const onImageHide = () => {
   background: #f8f9fa;
   border-radius: 6px;
   border: 1px solid #e9ecef;
+}
+.bottom-fotter {
+  background-color: #fff;
 }
 </style>

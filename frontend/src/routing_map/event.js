@@ -154,5 +154,31 @@ export class EventManager {
     window.addEventListener('image-hide-click', () => {
       this.manager.toggleBackgroundImage()
     })
+
+    // self_area
+
+    window.addEventListener('self_area_visible', () => {
+      Object.values(this.manager.self_area).forEach((agent) => {
+        if (agent) agent.visible = !agent.visible
+      })
+    })
+    // ga_area
+    window.addEventListener('ga_area_visible', () => {
+      Object.values(this.manager.gaAreas).forEach((agent) => {
+        if (agent) agent.visible = !agent.visible
+      })
+    })
+    // pga_area
+    window.addEventListener('pga_area_visible', () => {
+      Object.values(this.manager.pgaAreas).forEach((agent) => {
+        if (agent) agent.visible = !agent.visible
+      })
+    })
+    // pla_area
+    window.addEventListener('pla_area_visible', () => {
+      Object.values(this.manager.plaAreas).forEach((agent) => {
+        if (agent) agent.visible = !agent.visible
+      })
+    })
   }
 }
