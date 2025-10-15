@@ -57,6 +57,8 @@ def gzip_decompress_to_str(content: bytes|str, encoding: str = 'utf-8') -> str:
         UnicodeDecodeError: 当内容既不是 gzip 压缩也无法用指定编码解码时
     """
     if not content or not isinstance(content, bytes):
+        if isinstance(content, bytes):
+            return content.decode("utf-8")  # 空bytes转成空字符串
         return content
     # 检查是否是 gzip 压缩的内容 (gzip 文件头是 0x1f 0x8b)
     if content and len(content) > 2 and content[:2] == b'\x1f\x8b':
