@@ -461,11 +461,12 @@ export class DataRenderer {
     }
     let areaGraphics = this.manager[data_key]?.[areaId]
 
+    const lineWidth =
+      ['pgaAreas','gaAreas', 'plaAreas', 'self_area'].indexOf(data_key) > -1 ? 0.2 : 1
     if (!areaGraphics) {
-      
-      areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type)
+      areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type, lineWidth)
     } else {
-      this.update_lock_area_graphics(areaGraphics, area, type)
+      this.update_lock_area_graphics(areaGraphics, area, type, lineWidth)
     }
   }
 
@@ -475,7 +476,12 @@ export class DataRenderer {
    * @param area - 区域数据
    * @param type - 区域类型
    */
-  private update_lock_area_graphics(areaGraphics: Graphics, area: LockArea, type: string): void {
+  private update_lock_area_graphics(
+    areaGraphics: Graphics,
+    area: LockArea,
+    type: string,
+    lineWidth: number,
+  ): void {
     // 根据区域的实际类型设置颜色
     const color = getBorderColor(type)
 
@@ -490,7 +496,7 @@ export class DataRenderer {
       points,
       true, // 使用虚线
       color, // 边框颜色
-      0.1, // 线宽
+      lineWidth, // 线宽
       1, // 透明度
     )
 
@@ -510,6 +516,7 @@ export class DataRenderer {
     area: LockArea,
     data_key: string,
     type: string,
+    line_width: number,
   ): Graphics {
     // 根据区域的实际类型设置颜色
     const color =
@@ -528,7 +535,7 @@ export class DataRenderer {
       points.push(points[0])
     }
 
-    console.log(data_key)
+    console.log('line_width',line_width)
     // 使用drawLine方法绘制锁闭区
     this.manager.drawLine(
       areaGraphics,
@@ -536,7 +543,7 @@ export class DataRenderer {
       points,
       true, // 使用虚线
       color, // 红色边框
-      1, // 线宽
+      line_width || 1, // 线宽
       1, // 透明度
     )
 
