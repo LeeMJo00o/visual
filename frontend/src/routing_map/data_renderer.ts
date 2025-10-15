@@ -289,6 +289,7 @@ export class DataRenderer {
     for (const { areaId, area } of entriesArray) {
       this.update_or_create_lock_area(areaId, area, data_key, type)
     }
+
     // this.update_or_create_lock_area()
   }
 
@@ -461,9 +462,10 @@ export class DataRenderer {
     let areaGraphics = this.manager[data_key]?.[areaId]
 
     if (!areaGraphics) {
-      areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type)
-      // console.log(areaGraphics,data_key);
       
+      areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type)
+    } else {
+      this.update_lock_area_graphics(areaGraphics, area, type)
     }
   }
 
@@ -488,7 +490,7 @@ export class DataRenderer {
       points,
       true, // 使用虚线
       color, // 边框颜色
-      1, // 线宽
+      0.1, // 线宽
       1, // 透明度
     )
 
@@ -512,7 +514,6 @@ export class DataRenderer {
     // 根据区域的实际类型设置颜色
     const color =
       area.subtype === 'no_parking' ? getBorderColor('no_parking') : getBorderColor(type)
-    // console.log('type:', type, 'color: ', color)
 
     // 为每个锁闭区创建独立的图形对象
     const areaGraphics = new Graphics()
@@ -526,6 +527,8 @@ export class DataRenderer {
     ) {
       points.push(points[0])
     }
+
+    console.log(data_key)
     // 使用drawLine方法绘制锁闭区
     this.manager.drawLine(
       areaGraphics,
