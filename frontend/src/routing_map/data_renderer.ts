@@ -462,7 +462,7 @@ export class DataRenderer {
     let areaGraphics = this.manager[data_key]?.[areaId]
 
     const lineWidth =
-      ['pgaAreas','gaAreas', 'plaAreas', 'self_area'].indexOf(data_key) > -1 ? 0.2 : 1
+      ['pgaAreas', 'gaAreas', 'plaAreas', 'self_area'].indexOf(data_key) > -1 ? 0.2 : 1
     if (!areaGraphics) {
       areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type, lineWidth)
     } else {
@@ -535,7 +535,6 @@ export class DataRenderer {
       points.push(points[0])
     }
 
-    console.log('line_width',line_width)
     // 使用drawLine方法绘制锁闭区
     this.manager.drawLine(
       areaGraphics,

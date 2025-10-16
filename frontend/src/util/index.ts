@@ -13,7 +13,8 @@ export function parseWKT(wkt: string): WKTResult {
   // 提取几何类型
   const typeMatch = wkt.match(/^(\w+)\s+/)
   if (!typeMatch) {
-    throw new Error('无法识别WKT几何类型')
+    return { coordinates: [], type: 'POLYGON' }
+    // throw new Error('无法识别WKT几何类型')
   }
 
   const geometryType = typeMatch[1] as GeometryType
