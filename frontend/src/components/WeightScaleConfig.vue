@@ -103,6 +103,7 @@ type WeightConfigData = {
   curve_big: { 'pptype:curve_big': number }
   QC_SLA: { 'road_type:QC_SLA': number }
   QC_SLA_EXIT: { 'road_type:QC_SLA_EXIT': number }
+  prefer: { 'prefer:prefer': number }
   // dynamic
   STOP_VEHICLE: { 'stop_scale:': number }
   GLOBAL_SEQUENCE: { 'global_sequence:': number }
@@ -131,6 +132,7 @@ function createDefaultConfig(): WeightConfigData {
     QC_SLA_EXIT: { 'road_type:QC_SLA_EXIT': 0 },
     STOP_VEHICLE: { 'stop_scale:': 0 },
     GLOBAL_SEQUENCE: { 'global_sequence:': 0 },
+    prefer: { 'prefer:prefer': 0 },
     VPB_SCALE: { 'vpb_scale:': 0 },
   }
 }
@@ -176,7 +178,7 @@ const static_weight_list = [
   { label: 'curve_big', key1: 'curve_big', key2: 'pptype:curve_big' },
   { label: 'QC_SLA', key1: 'QC_SLA', key2: 'road_type:QC_SLA' },
   { label: 'QC_SLA_EXIT', key1: 'QC_SLA_EXIT', key2: 'road_type:QC_SLA_EXIT' },
-  // {label: "prefer",           key1: "prefer",           key2: ""},
+  { label: 'prefer', key1: 'prefer', key2: 'prefer:prefer' },
 ]
 const dynamic_weight_list = [
   { label: 'STOP_VEHICLE', key1: 'STOP_VEHICLE', key2: 'stop_scale:' },
