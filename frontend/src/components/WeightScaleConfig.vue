@@ -216,7 +216,12 @@ const query = async () => {
   if (response.status === 200 && response.data.code === 200 && response.data.data) {
     let data = response.data.data
     if (data.weightConfigData) {
-      form.value = data.weightConfigData
+      for (const key in data.weightConfigData) {
+        if (key in form.value) {
+          form.value[key as keyof WeightConfigData] = data.weightConfigData[key];
+        }
+      }
+
     }
     NPA_SCALE.value = data.NPA_SCALE
     BS_CURVE_SCALE.value = data.BS_CURVE_SCALE
