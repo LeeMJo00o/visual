@@ -666,6 +666,10 @@ export class DataRenderer {
       const node = pathArray[i]
       const llt_id = node['lane_id']
       const the_road_path = mapPathInfo[llt_id]
+      if (!the_road_path) {
+        console.error('未找到对应的路:', llt_id)
+        continue
+      }
       const points = the_road_path.points
       // 如果只有一个节点，则直接使用start index 与end index截取即可
       if (i == 0 && pathLength == 1) {
@@ -743,7 +747,15 @@ export class DataRenderer {
       const node = pathArray[i]
       const llt_id = node['lane_id']
       const the_road_path = mapPathInfo[llt_id]
+      if (!the_road_path) {
+        console.error('未找到对应的路:', llt_id)
+        continue
+      }
       const points = the_road_path.points
+      if (!the_road_path) {
+        console.error('未找到对应的路:', llt_id)
+        continue
+      }
 
       if (llt_id === last_lane_id) {
         continue
