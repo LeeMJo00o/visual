@@ -42,9 +42,11 @@ def export_osm_path_info(osm_file: str):
     for area in routing.map.polygonLayer:
         if "subtype" in area.attributes and area.attributes["subtype"] == "no_stop_area":
             continue
-        if "specialtype" in area.attributes and area.attributes["specialtype"] != "junction":
+        if not ("area" in area.attributes and area.attributes["area"] == "true"):
             continue
-        if "area" in area.attributes and area.attributes["area"] == "true":
+            # specialtype=junction或pp_active=true 都解析为junction进行使用
+        if ("specialtype" in area.attributes and area.attributes["specialtype"] == "junction") \
+                or ("pp_active" in area.attributes and area.attributes["pp_active"] == "true"):
             road_info = {
                 "attrs": {},
                 "points": [[round(p.x, 3), round(p.y, 3)] for p in area],
