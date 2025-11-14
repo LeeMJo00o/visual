@@ -204,3 +204,19 @@ export async function get_path_info(url = '/api/map/path_info') {
     throw error;
   }
 }
+
+
+export async function get_vpb_info(url = '/api/map/vpb_info') {
+  try {
+    const response = await axios.post(url, {}, {
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('获取VPB信息失败:', error);
+    // throw error;
+    return null;
+  }
+}

@@ -18,11 +18,16 @@ import {
   get_svg_content,
   get_map_config,
   get_path_info,
+  get_vpb_info,
 } from './pp_backend.js'
 import { mapCache } from './map_cache.js' // 导入缓存模块
 import { EventManager } from './event.js' // 导入事件管理器
 import Agent from './agent.js' // 导入 Agent 类
 import { DataRenderer } from './data_renderer.ts' // 导入数据渲染管理器
+import { useMapSettings } from '@/composables/useLocalStorage'
+
+// 使用专门的快捷 Hook
+const mapSettings = useMapSettings()
 
 // const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
 // await Assets.load(fontDataUrl);
@@ -321,7 +326,10 @@ export default class ApplicationManager extends GraphicTools {
 
       this.mainContainer.addChild(this.longPathContainer)
 
-      this.map_container = await this.initMap()
+      // 获取vpb 信息
+      const vpb_info = await get_vpb_info()
+
+      this.map_container = await this.initMap(vpb_info)
       // 默认关闭地图显示
       this.map_container.visible = !this.map_config.use_back_image
       this.app.stage.addChild(this.mainContainer)
@@ -672,7 +680,7 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  async initMap() {
+  async initMap(vpb_info) {
     // console.log('map_path_info: ', this.map_path_info)
     const cons = new Container({
       isRenderGroup: true,
@@ -693,15 +701,38 @@ export default class ApplicationManager extends GraphicTools {
     `
     document.body.appendChild(this.path_tooltip)
 
+    const vpb_enter_list = vpb_info?.vpb_enter
+    const vpb_exit_list = vpb_info?.vpb_exit
+
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
+      let color = '#fff'
+      
+      if(!mapSettings.value.all_vpb_show) {
+        // 检查是否有vpb_enter或vpb_exit属性
+        const vpb_enter = one_path?.attrs?.vpb_enter
+        const vpb_exit = one_path?.attrs?.vpb_exit
+        if (vpb_enter && vpb_enter_list && !vpb_enter_list.includes(vpb_enter)) {
+          return; 
+        }
+        if (vpb_exit && vpb_exit_list && !vpb_exit_list.includes(vpb_exit)) {
+          return; 
+        }
+        // vpb color
+        if(vpb_enter) {color="blue"}
+        if(vpb_exit) {color="red"}
+      }
+
       // console.log(path_id, one_path);
       const points = one_path['points']
 
       const g = new Graphics()
       cons.addChild(g)
 
+      
+
+
       // 直接使用 drawLine 方法
-      this.draw_map_road(g, points, '#fff', 0.4)
+      this.draw_map_road(g, points, color, 0.4)
 
       g.on('pointerover', (e) => {
         this.draw_map_road(g, points, '#f0f', 0.8)
@@ -722,6 +753,8 @@ export default class ApplicationManager extends GraphicTools {
             'pptype',
             'cutin',
             'cutin_from',
+            'vpb_enter',
+            'vpb_exit',
           ]
           const filteredEntries = Object.entries(one_path['attrs']).filter(([key, value]) =>
             filteredAttrs.includes(key),
@@ -740,7 +773,7 @@ export default class ApplicationManager extends GraphicTools {
       })
       g.on('pointerout', (e) => {
         this.path_tooltip.style.display = 'none'
-        this.draw_map_road(g, points, '#fff')
+        this.draw_map_road(g, points, color)
       })
 
       g.interactive = true

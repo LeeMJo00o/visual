@@ -16,6 +16,11 @@ import Infos from '@/components/Infos.vue'
 
 import ReplayConfig from '@/components/ReplayConfig.vue'
 
+import { useMapSettings } from '@/composables/useLocalStorage'
+
+// 使用专门的快捷 Hook
+const mapSettings = useMapSettings()
+
 // 声明全局接口
 declare global {
   interface Window {
@@ -162,6 +167,24 @@ const handleChangeIsReplay = () => {
             <div v-if="currentMenu === 'main-map'">
               <div class="slider-container">
                 <div class="label-and-buttons">
+                  
+                  <el-tooltip
+                    effect="dark"
+                    content="切换刷新页面生效"
+                    placement="bottom"
+                  >
+                    <el-switch
+                      v-model="mapSettings.all_vpb_show"
+                      class="ml-2"
+                      inline-prompt
+                      style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+                      active-text="显示所有VPB"
+                      inactive-text="仅显示开启的VPB"
+                    />
+                  </el-tooltip>
+
+                  
+
                   <el-button type="primary" plain id="map_hide" @click="onMapHide"
                     >map show</el-button
                   >

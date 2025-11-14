@@ -1,3 +1,5 @@
+import traceback
+
 from chain_model.model import StdRes
 from fastapi import APIRouter, Body, Response
 from src.core.config import MAP_NAME
@@ -155,3 +157,17 @@ async def change_weight(req: dict = Body()) -> StdRes:
 async def reload_window(req: dict = Body()) -> StdRes:
     await PathWsServer.clear_display()
     return StdRes()
+
+
+@router.post('/vpb_info')
+async def get_vpb_info():
+    """获取开启的vpb数据"""
+    data = {}
+    try:
+        s = await redis_cli.get("pp4:vpbStatusData:fms")
+        if s:
+            data = json.loads(s)
+    except:
+        logger.error(f"get_vpb_info err: {traceback.format_exc()}")
+
+    return data
