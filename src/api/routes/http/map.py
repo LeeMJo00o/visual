@@ -18,8 +18,9 @@ router = APIRouter()
 
 
 def get_config_by_prefix(config_map: dict, src: str) -> dict:
+    _src = src.lower()
     for k, v in config_map.items():
-        if src.startswith(k):
+        if _src.startswith(k):
             return v
     return config_map.get("default")
 
@@ -37,7 +38,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "Abuzhabi_QP_VPB": {
+        "abuzhabi": {
             "rotation": -2.471,
             "offset": [450, 330],
             "offset_back_image": [0, 0],
@@ -46,7 +47,7 @@ async def get_config(req: MapInfo):
             "mode": "test-my-pp",
             "version": map_name
         },
-        "MapSingapore": {
+        "mapsingapore": {
             "rotation": -2.112,
             "offset": [990, 198],
             "offset_back_image": [0, 0],
@@ -75,7 +76,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "TangShan": {
+        "tangshan": {
             "rotation": 0,
             "offset": [350, 650],
             "use_back_image": False,
@@ -107,7 +108,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "UK": {
+        "uk": {
             "rotation": -0.64,
             "offset": [600, 500],
             "use_back_image": False,
