@@ -625,6 +625,12 @@ export default class ApplicationManager extends GraphicTools {
   calculateAngle(x1, y1, x2, y2) {
     return Math.atan2(y2 - y1, x2 - x1)
   }
+  matchIntNumber(s: string): number {
+    if(!s) return 0;
+    // 提取字符串中的第一组连续数字
+    const match = s.match(/\d+/); // 匹配第一个连续数字
+    return match ? parseInt(match[0], 10) : 0;
+}
 
   draw_map_road(g, points, color, alpha = 0.5) {
     const width = 1
@@ -701,16 +707,17 @@ export default class ApplicationManager extends GraphicTools {
     `
     document.body.appendChild(this.path_tooltip)
 
-    const vpb_enter_list = vpb_info?.vpb_enter
-    const vpb_exit_list = vpb_info?.vpb_exit
+    const vpb_enter_list = vpb_info?.vpb_enter?.map(item => this.matchIntNumber(item)).filter(num => num > 0) || [];
+    const vpb_exit_list = vpb_info?.vpb_exit?.map(item => this.matchIntNumber(item)).filter(num => num > 0) || [];
+
 
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
       let color = '#fff'
       
       if(!mapSettings.value.all_vpb_show) {
         // 检查是否有vpb_enter或vpb_exit属性
-        const vpb_enter = one_path?.attrs?.vpb_enter
-        const vpb_exit = one_path?.attrs?.vpb_exit
+        const vpb_enter = this.matchIntNumber(one_path?.attrs?.vpb_enter)
+        const vpb_exit = this.matchIntNumber(one_path?.attrs?.vpb_exit)
         if (vpb_enter && vpb_enter_list && !vpb_enter_list.includes(vpb_enter)) {
           return; 
         }
