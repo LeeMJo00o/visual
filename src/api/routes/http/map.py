@@ -71,7 +71,7 @@ async def get_config(req: MapInfo):
             "use_back_image": True,
             "offset_back_image": [-1131.5, -203.5],
             "scale_back": 0.28230378433981407,
-            "back_image_file": "taiguo.png", 
+            "back_image_file": "taiguo.png",
             "scale": 1.31,
             "mode": "test-demo",
             "version": map_name
@@ -116,6 +116,22 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
+        "luzhou": {
+            "rotation": 0.872,
+            "offset": [200, 100],
+            "use_back_image": False,
+            "scale": 0.6,
+            "mode": "test-demo",
+            "version": map_name
+        },
+        "fuzhou": {
+            "rotation": -0.447,
+            "offset": [600,350],
+            "use_back_image": False,
+            "scale": 0.4,
+            "mode": "test-demo",
+            "version": map_name
+        },
     }
 
     return get_config_by_prefix(config_map, map_name)
@@ -124,7 +140,6 @@ async def get_config(req: MapInfo):
 @router.post('/path_info')
 async def get_path_info(req: MapInfo):
     map_name = req.mapName
-
 
     map_path = f"map/{map_name}"
     path_file = f"map/raw_path_{map_name}.json"
