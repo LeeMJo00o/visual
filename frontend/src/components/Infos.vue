@@ -31,6 +31,13 @@
                                 </span>
                             </template>
                         </el-table-column>
+                        <el-table-column prop="map_data_version" label="map_data_version" >
+                            <template #default="{ row }">
+                                <span :style="{ color: is_same_with_mapgraph('map_data_version', row.map_data_version) ? 'green' : 'red' }">
+                                    {{ row.map_data_version }}
+                                </span>
+                            </template>
+                        </el-table-column>
                         <el-table-column prop="graph_version" label="graph_version" >
                             <template #default="{ row }">
                                 <span :style="{ color: is_same_with_mapgraph('graph_version', row.graph_version) ? 'green' : 'red' }">
@@ -64,7 +71,14 @@
 
                 <el-tab-pane label="MapGraph" name="MapGraph">
                     <el-form :model="form" label-width="auto" size="small" v-if="form && form.map_graph && form.map_graph.info">
-                        <el-form-item label="地图文件">
+                        <template v-for="(value, key) in form.map_graph.info" :key="key">
+                            <el-form-item :label="key">
+                                <el-input :value="value" readonly />
+                            </el-form-item>
+                        </template>
+                        
+                        
+                        <!-- <el-form-item label="地图文件">
                             <el-input v-model="form.map_graph.info.map_file_name" readonly />
                         </el-form-item>
                         
@@ -74,14 +88,20 @@
 
                         <el-form-item label="graph_version">
                             <el-input v-model="form.map_graph.info.graph_version" readonly />
-                        </el-form-item>
+                        </el-form-item> -->
                     </el-form>
 
                 </el-tab-pane>
 
                 <el-tab-pane label="Wellrouting" name="Wellrouting">
                       <el-form :model="form" label-width="auto" size="small" v-if="form && form.wellrouting && form.wellrouting.info">
-                        <el-form-item label="地图文件">
+                        <template v-for="(value, key) in form.wellrouting.info" :key="key">
+                            <el-form-item :label="key">
+                                <el-input :value="value" readonly />
+                            </el-form-item>
+                        </template>
+                        
+                        <!-- <el-form-item label="地图文件">
                             <el-input v-model="form.wellrouting.info.map_file_name" readonly />
                         </el-form-item>
                         
@@ -99,7 +119,7 @@
 
                         <el-form-item label="edges">
                             <el-input v-model="form.wellrouting.info.edges" readonly />
-                        </el-form-item>
+                        </el-form-item> -->
                     </el-form>  
 
                 </el-tab-pane>
@@ -144,6 +164,7 @@ type MapVersionData = {
     map_file_name: string;
     map_version: string;
     graph_version: string;
+    map_data_version: string;
     // map的数据 - lanelet数量
     map_lanelet_count: number;
 
@@ -170,6 +191,7 @@ const MapVersionData_list = computed(() => {
                 map_file_name: data?.info?.map_file_name || "",
                 map_version: data?.info?.map_version || "",
                 graph_version: data?.info?.graph_version || "",
+                map_data_version: data?.info?.map_data_version || "",
                 // map的数据 - lanelet数量
                 map_lanelet_count: data?.info?.lanelet_count || 0,
 
@@ -192,6 +214,7 @@ const mapgraph_info = computed(()=> {
                 map_file_name: data?.info?.map_file_name || "",
                 map_version: data?.info?.map_version || "",
                 graph_version: data?.info?.graph_version || "",
+                map_data_version: data?.info?.map_data_version || "",
                 // map的数据 - lanelet数量
                 map_lanelet_count: data?.info?.lanelet_count || 0,
 
