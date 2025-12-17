@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import ApplicationManager from '../routing_map/main'
+import { storeToRefs } from 'pinia'
+import { useGlobalSettingsStore } from '@/stores/useLocalStorage'
+
+const settingsStore = useGlobalSettingsStore()
+
+// 获取响应式的 settings（需要使用 storeToRefs 保持响应性）
+const { globalSettings } = storeToRefs(settingsStore)
 
 // 定义车辆接口
 export interface Vehicle {
@@ -56,11 +63,13 @@ export const useVehicleStore = defineStore('vehicle', () => {
         .map((agent) => {
           // 查找现有的车辆状态，保持isShow设置
           const existingVehicle = vehicles.value.find((v) => v.vehicle_id === agent.vehicle_id)
-          const isVisible = existingVehicle
-            ? existingVehicle.isShow
-            : agent.graphics
-              ? agent.graphics.visible
-              : true
+          // const isVisible = existingVehicle
+          //   ? existingVehicle.isShow
+          //   : agent.graphics
+          //     ? agent.graphics.visible
+          //     : true
+          const isVisible = settingsStore.getVehicleVisible(agent.vehicle_id)
+          // const isVisible = globalSettings.value.vehicle_visible[agent.vehicle_id] ?? true
 
           return {
             vehicle_id: agent.vehicle_id,
@@ -86,27 +95,36 @@ export const useVehicleStore = defineStore('vehicle', () => {
   // 处理状态变化
   function handleStatusChange(vehicle: Vehicle) {
     const manager = getApplicationManager()
-    if (manager && manager.agents && manager.agents[vehicle.vehicle_id]) {
-      const agent = manager.agents[vehicle.vehicle_id]
 
-      // 控制车辆及其相关元素的显示/隐藏
-      if (agent.graphics) {
-        agent.graphics.visible = vehicle.isShow
-      }
-      if (agent.graph_short_path) {
-        // 短路径的显示状态 = 车辆显示状态 AND 全局短路径开关状态
-        agent.graph_short_path.visible = vehicle.isShow && allShortPathsVisible.value
-      }
-      if (agent.graph_long_path) {
-        // 长路径的显示状态 = 车辆显示状态 AND 全局长路径开关状态
-        agent.graph_long_path.visible = vehicle.isShow && allLongPathsVisible.value
-      }
-      if (agent.text) {
-        agent.text.visible = vehicle.isShow
-      }
-
-      console.log(`车辆 ${vehicle.vehicle_id} ${vehicle.isShow ? '显示' : '隐藏'}`)
+    if(manager) {
+      console.log("handleStatusChange", vehicle)
+      settingsStore.updateVehicleVisible(vehicle.vehicle_id, vehicle.isShow)
+      manager.update_agent_visibility(vehicle.vehicle_id)
     }
+
+
+
+    // if (manager && manager.agents && manager.agents[vehicle.vehicle_id]) {
+    //   const agent = manager.agents[vehicle.vehicle_id]
+
+    //   // 控制车辆及其相关元素的显示/隐藏
+    //   if (agent.graphics) {
+    //     agent.graphics.visible = vehicle.isShow
+    //   }
+    //   if (agent.graph_short_path) {
+    //     // 短路径的显示状态 = 车辆显示状态 AND 全局短路径开关状态
+    //     agent.graph_short_path.visible = vehicle.isShow && allShortPathsVisible.value
+    //   }
+    //   if (agent.graph_long_path) {
+    //     // 长路径的显示状态 = 车辆显示状态 AND 全局长路径开关状态
+    //     agent.graph_long_path.visible = vehicle.isShow && allLongPathsVisible.value
+    //   }
+    //   if (agent.text) {
+    //     agent.text.visible = vehicle.isShow
+    //   }
+
+    //   console.log(`车辆 ${vehicle.vehicle_id} ${vehicle.isShow ? '显示' : '隐藏'}`)
+    // }
   }
 
   // 显示所有车辆

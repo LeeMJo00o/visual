@@ -3,12 +3,14 @@
     <!-- 时间轴 -->
     <div class="timeline">
       <el-slider
-        v-model="currentPercent"
-        :min="0"
-        :max="100"
+        v-model="currentTime"
+        :min="startTime"
+        :max="endTime"
+        :step="1000"
         @change="handleSeek"
         :disabled="!isReplay"
         style="width: 100%"
+        :format-tooltip="formatTime"
       />
       <div class="time-labels">
         <span>{{ formatTime(startTime) }}</span>
@@ -130,6 +132,7 @@ const formatTime = (time: number) => {
 
 // 播放/暂停
 const togglePlay = () => {
+  console.log('togglePlay=', isPlaying.value)
   if (isPlaying.value) {
     stop()
   } else {
@@ -149,7 +152,6 @@ const play = () => {
       getReplayRangeData()
     }
 
-    updatePercent()
   }, 1000 / playbackRate.value)
 }
 
@@ -161,38 +163,27 @@ const stop = () => {
   }
 }
 
-const handleChangeIsReplay = () => {
-  globalStore.setIsReplay(!globalStore.isReplay)
-}
 
 // 拖动/点击时间轴
 const handleSeek = (val: number) => {
-  const duration = endTime.value - startTime.value
-  currentTime.value = Math.floor((startTime.value + (val / 100) * duration) / 1000) * 1000
+  currentTime.value = val
   getReplayRangeData()
 }
 
-// 更新百分比
-const updatePercent = () => {
-  const duration = endTime.value - startTime.value
-  currentPercent.value = ((currentTime.value - startTime.value) / duration) * 100
-}
-
 // 前进后退
-const forward = () => {
-  currentTime.value = Math.min(endTime.value, currentTime.value + 5000)
-  updatePercent()
+const forward = (step: number=5000) => {
+  currentTime.value = Math.min(endTime.value, currentTime.value + step)
+  getReplayRangeData()
 }
-const rewind = () => {
-  currentTime.value = Math.max(startTime.value, currentTime.value - 5000)
-  updatePercent()
+const rewind = (step: number=5000) => {
+  currentTime.value = Math.max(startTime.value, currentTime.value - step)
+  getReplayRangeData()
 }
 
 // 重置
 const reset = () => {
   stop()
   currentTime.value = startTime.value
-  updatePercent()
 }
 
 /**
@@ -350,15 +341,41 @@ const handleChange = (uploadFile: any) => {
   })
   // fileList.value = fileList.value.slice(-3)
 }
-watch(currentTime, updatePercent)
+
+/**
+ * 监听按键 控制播放
+ */
+const handleKeyDown = (event: KeyboardEvent) => {
+  switch (event.code) {
+    case 'Space':
+      event.preventDefault()
+      // console.log('空格键按下')
+      togglePlay()
+      break
+    case 'ArrowLeft':
+      // console.log('左方向键按下')
+      rewind(1000)
+      break
+    case 'ArrowRight':
+      // console.log('右方向键按下')
+      forward(1000)
+      break
+  }
+}
+
 
 onMounted(() => {
   // appManager.value = ApplicationManager.getInstance()
   getReplayDBFileList()
+  window.addEventListener('keydown', handleKeyDown)
 })
 onUnmounted(() => {
   stop()
+  window.removeEventListener('keydown', handleKeyDown)
 })
+
+
+
 </script>
 
 <style scoped>

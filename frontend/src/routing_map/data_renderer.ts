@@ -456,13 +456,16 @@ export class DataRenderer {
     type: string,
   ): void {
     if (!area.polygon || area.polygon.length < 3) {
-      console.log('跳过无效的锁闭区:', areaId, area)
+      // console.log('跳过无效的锁闭区:', areaId, area)
       return
     }
     let areaGraphics = this.manager[data_key]?.[areaId]
 
     const lineWidth =
       ['pgaAreas', 'gaAreas', 'plaAreas', 'self_area'].indexOf(data_key) > -1 ? 0.2 : 1
+
+    // TODO: 查询pga/ga/pla/self_area对应的车辆是否显示
+    
     if (!areaGraphics) {
       areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type, lineWidth)
     } else {

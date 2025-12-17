@@ -24,10 +24,15 @@ import { mapCache } from './map_cache.js' // 导入缓存模块
 import { EventManager } from './event.js' // 导入事件管理器
 import Agent from './agent.js' // 导入 Agent 类
 import { DataRenderer } from './data_renderer.ts' // 导入数据渲染管理器
-import { useMapSettings } from '@/composables/useLocalStorage'
+import { storeToRefs } from 'pinia'
+import { useGlobalSettingsStore } from '@/stores/useLocalStorage.ts'
 
-// 使用专门的快捷 Hook
-const mapSettings = useMapSettings()
+console.log("test   111111")
+
+const settingsStore = useGlobalSettingsStore()
+
+// 获取响应式的 settings（需要使用 storeToRefs 保持响应性）
+const { globalSettings } = storeToRefs(settingsStore)
 
 // const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
 // await Assets.load(fontDataUrl);
@@ -79,6 +84,17 @@ export default class ApplicationManager extends GraphicTools {
   public agents: AgentMap = {}
   public dataRenderer: DataRenderer | null // 暴露给外部使用
   public isSuspend: boolean = false // 是否暂停数据渲染，回放时为true
+
+  // ga 图形对象
+  public gaAreas: Record<string, Graphics>  = {}
+
+  // pla 图形对象
+  public plaAreas: Record<string, Graphics>  = {}
+
+  // pga 图形对象
+  public pgaAreas: Record<string, Graphics>  = {}
+
+  public self_area: Record<string, Graphics>  = {}
 
   constructor() {
     // 如果已经存在实例，返回现有实例
@@ -319,7 +335,7 @@ export default class ApplicationManager extends GraphicTools {
         this.backgroundSprite.rotation = -this.g_rotation
         this.backgroundSprite.eventMode = 'none'
 
-        this.backgroundSprite.visible = this.backgroundImageConfig.visible
+        this.backgroundSprite.visible = globalSettings.value.background_image_show //this.backgroundImageConfig.visible
 
         this.mainContainer.addChildAt(this.backgroundSprite, 0)
       }
@@ -331,7 +347,7 @@ export default class ApplicationManager extends GraphicTools {
 
       this.map_container = await this.initMap(vpb_info)
       // 默认关闭地图显示
-      this.map_container.visible = !this.map_config.use_back_image
+      this.map_container.visible = globalSettings.value.map_show   //!this.map_config.use_back_image
       this.app.stage.addChild(this.mainContainer)
 
       this.app.stage.addChild(this.agentTextContainer)
@@ -714,7 +730,7 @@ export default class ApplicationManager extends GraphicTools {
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
       let color = '#fff'
       
-      if(!mapSettings.value.all_vpb_show) {
+      if(!globalSettings.value.all_vpb_show) {
         // 检查是否有vpb_enter或vpb_exit属性
         const vpb_enter = this.matchIntNumber(one_path?.attrs?.vpb_enter)
         const vpb_exit = this.matchIntNumber(one_path?.attrs?.vpb_exit)
@@ -852,9 +868,9 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   // 切换背景图片显示状态
-  toggleBackgroundImage() {
+  toggleBackgroundImage(visible: boolean) {
     if (this.backgroundSprite) {
-      this.backgroundImageConfig.visible = !this.backgroundImageConfig.visible
+      this.backgroundImageConfig.visible = visible
       this.backgroundSprite.visible = this.backgroundImageConfig.visible
       console.log('背景图片显示状态:', this.backgroundImageConfig.visible ? '显示' : '隐藏')
     }
@@ -907,5 +923,48 @@ export default class ApplicationManager extends GraphicTools {
     screenX = rotatedX + offsetX
     screenY = rotatedY + offsetY
     return [screenX, screenY]
+  }
+
+  // 更新车辆的显示状态, 包括: 车辆轮廓, id, 短路径, 长路径, selfarea, ga, pga, pla.
+  update_agent_visibility(vehicle_id: string) {
+    const agent = this.agents[vehicle_id]
+    if(!agent) return;
+    
+    if(!(vehicle_id in globalSettings.value.vehicle_visible)){
+      updateVehicleVisible(vehicle_id, true);
+      // globalSettings.value.vehicle_visible[vehicle_id] = true;
+    }
+
+    const visible = getVehicleVisible(vehicle_id) // globalSettings.value.vehicle_visible[vehicle_id]
+
+    agent.visible = visible
+    agent.text.visible = visible && globalSettings.value.vehicle_allIDsVisible
+    agent.graph_short_path.visible = visible && globalSettings.value.vehicle_allShortPathsVisible
+    agent.graph_long_path.visible = visible && globalSettings.value.vehicle_allLongPathsVisible
+
+    // area : let areaGraphics = this.manager[data_key]?.[areaId]
+    const g_self_area = this.self_area?.[vehicle_id]
+    if(g_self_area) {
+      g_self_area.visible = visible && globalSettings.value.vehicle_selfAreaVisible
+    }
+
+    // ga
+    const ga = this.gaAreas?.[vehicle_id]
+    if(ga) {
+      ga.visible = visible && globalSettings.value.vehicle_gaAreasVisible
+    }
+
+    // pga
+    const pga = this.pgaAreas?.[vehicle_id]
+    if(pga) {
+      pga.visible = visible && globalSettings.value.vehicle_pgaAreasVisible
+    }
+
+    // pla
+    const pla = this.plaAreas?.[vehicle_id]
+    if(pla) {
+      pla.visible = visible && globalSettings.value.vehicle_plaAreasVisible
+    }
+
   }
 }

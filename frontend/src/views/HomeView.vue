@@ -15,11 +15,17 @@ import SpeedFmsConfig from '@/components/SpeedFmsConfig.vue'
 import Infos from '@/components/Infos.vue'
 
 import ReplayConfig from '@/components/ReplayConfig.vue'
+import ApplicationManager from '../routing_map/main.ts'
+import { storeToRefs } from 'pinia'
+import { useGlobalSettingsStore } from '@/stores/useLocalStorage'
 
-import { useMapSettings } from '@/composables/useLocalStorage'
 
-// 使用专门的快捷 Hook
-const mapSettings = useMapSettings()
+
+
+const settingsStore = useGlobalSettingsStore()
+
+// 获取响应式的 settings（需要使用 storeToRefs 保持响应性）
+const { globalSettings } = storeToRefs(settingsStore)
 
 // 声明全局接口
 declare global {
@@ -39,6 +45,21 @@ watch(
   },
   { deep: true },
 )
+
+// 监听地图显示状态
+watch(() => globalSettings.value.map_show, (newValue, oldValue) => {
+  // 只处理地图相关的逻辑
+  const ins = ApplicationManager.getInstance()
+  ins.map_container.visible = newValue
+})
+
+
+// 监听底图显示状态
+watch(() => globalSettings.value.map_show, (newValue, oldValue) => {
+  // 只处理地图相关的逻辑
+  const ins = ApplicationManager.getInstance()
+  ins.toggleBackgroundImage(newValue)
+})
 
 // 添加当前选中的菜单项
 const currentMenu = ref('main-map')
@@ -92,9 +113,9 @@ const handleVisibleAgent = (type: string) => {
   window.dispatchEvent(new CustomEvent(type))
 }
 
-const onImageHide = () => {
-  window.dispatchEvent(new CustomEvent('image-hide-click'))
-}
+// const onImageHide = () => {
+//   window.dispatchEvent(new CustomEvent('image-hide-click'))
+// }
 const handleChangeIsReplay = () => {
   globalStore.setIsReplay(!globalStore.isReplay)
 }
@@ -167,30 +188,45 @@ const handleChangeIsReplay = () => {
             <div v-if="currentMenu === 'main-map'">
               <div class="slider-container">
                 <div class="label-and-buttons">
+                  <el-form :inline="true" size="mini">
+                    <el-form-item label="显示所有vpb">
+                      <el-tooltip
+                        effect="dark"
+                        content="切换刷新页面生效"
+                        placement="bottom"
+                      >
+                        <el-switch
+                          v-model="globalSettings.all_vpb_show"
+                          class="ml-2"
+                          inline-prompt
+                          style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+                        />
+                      </el-tooltip>
+                    </el-form-item>
+
+                    <el-form-item label="显示地图">
+                      <el-switch
+                        v-model="globalSettings.map_show"
+                        style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" />
+                    </el-form-item>
+
+                    <el-form-item label="显示底图">
+                      <el-switch
+                        v-model="globalSettings.background_image_show"
+                        style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" />
+                    </el-form-item>
+                  </el-form>
                   
-                  <el-tooltip
-                    effect="dark"
-                    content="切换刷新页面生效"
-                    placement="bottom"
-                  >
-                    <el-switch
-                      v-model="mapSettings.all_vpb_show"
-                      class="ml-2"
-                      inline-prompt
-                      style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-                      active-text="显示所有VPB"
-                      inactive-text="仅显示开启的VPB"
-                    />
-                  </el-tooltip>
+                  
 
                   
 
-                  <el-button type="primary" plain id="map_hide" @click="onMapHide"
+                  <!-- <el-button type="primary" plain id="map_hide" @click="onMapHide"
                     >map show</el-button
-                  >
-                  <el-button type="primary" plain id="image_hide" @click="onImageHide"
+                  > -->
+                  <!-- <el-button type="primary" plain id="image_hide" @click="onImageHide"
                     >image show</el-button
-                  >
+                  > -->
                   <el-button type="primary" plain id="agent_hide" @click="onAgentHide"
                     >agent show</el-button
                   >

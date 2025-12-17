@@ -140,9 +140,10 @@ export class EventManager {
     // 只保留自定义事件监听，删除原生button相关事件委托
     // window.addEventListener('map-hide-click', ...)
     // window.addEventListener('agent-hide-click', ...)
-    window.addEventListener('map-hide-click', () => {
-      this.manager.map_container.visible = !this.manager.map_container.visible
-    })
+    
+    // window.addEventListener('map-hide-click', () => {
+    //   this.manager.map_container.visible = !this.manager.map_container.visible
+    // })
     window.addEventListener('agent-hide-click', () => {
       Object.values(this.manager.agents).forEach((agent) => {
         if (agent.graphics) agent.graphics.visible = !agent.graphics.visible
@@ -151,9 +152,9 @@ export class EventManager {
         if (agent.text) agent.text.visible = !agent.text.visible
       })
     })
-    window.addEventListener('image-hide-click', () => {
-      this.manager.toggleBackgroundImage()
-    })
+    // window.addEventListener('image-hide-click', () => {
+    //   this.manager.toggleBackgroundImage()
+    // })
 
     // self_area
 
