@@ -18,7 +18,9 @@ import ReplayConfig from '@/components/ReplayConfig.vue'
 import ApplicationManager from '../routing_map/main.ts'
 import { storeToRefs } from 'pinia'
 import { useGlobalSettingsStore } from '@/stores/useLocalStorage'
+import { useDynamicVpbStore } from '@/stores/dynamicVpbStore'
 
+const dynamicVpbStore = useDynamicVpbStore()
 
 
 
@@ -188,7 +190,7 @@ const handleChangeIsReplay = () => {
             <div v-if="currentMenu === 'main-map'">
               <div class="slider-container">
                 <div class="label-and-buttons">
-                  <el-form :inline="true" size="mini">
+                  <el-form :inline="true" size="small">
                     <el-form-item label="显示所有vpb">
                       <el-tooltip
                         effect="dark"

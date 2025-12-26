@@ -30,7 +30,19 @@ interface OneLane {
   lcp_point?: {
     x: number
     y: number
-  }
+  },
+  start_point: {
+    x: number
+    y: number
+  },
+  end_point: {
+    x: number
+    y: number
+  },
+  is_broken: boolean,
+  offset_x: number,
+  offset_y: number,
+  original_lanelet_id: string
 }
 
 interface PathData {
@@ -42,7 +54,7 @@ interface PathData {
   end_pose: {
     x: number
     y: number
-  }
+  }  
 }
 
 interface PathUpdateData {
@@ -117,6 +129,9 @@ export class DataRenderer {
    * 初始化demo模式的WebSocket连接
    */
   private _init_demo_websockets(): void {
+
+    console.log("_init_demo_websockets")
+
     const ws_prefix = `ws://${window.location.hostname}:${window.location.port}`
 
     const ws_path = new WebSocketClient(`${ws_prefix}/api/ws/demo/path`, {
@@ -293,6 +308,154 @@ export class DataRenderer {
     // this.update_or_create_lock_area()
   }
 
+
+  /**
+   * 绘制动态vpb
+   * @param data
+   * @returns
+   */
+  update_dynamic_vpb(datas: Array<any>) {
+    if(datas == null) {return}
+    // console.log("update_dynamic_vpb", datas)
+
+    const _type = "dynamic_vpb"
+    // 从common graphics中获取对应的graphics
+    if(!(_type in this.manager.common_graphics)) {
+      this.manager.common_graphics[_type] = {}
+    }
+    const graphics = this.manager.common_graphics[_type]
+
+    // 获取现有的区域id
+    const existingIds = new Set(Object.keys(graphics || {}))
+
+    // 新的区域id
+    const newIds = new Set(datas.map(item => item.lanelet_id))
+
+    // 移除不再存在的区域
+    for (const eId of existingIds) {
+      if (!newIds.has(eId)) {
+        const g = graphics[eId]
+        if (g && g.parent) {
+          g.parent.removeChild(g)
+          g.destroy()
+        }
+        delete graphics[eId]
+      }
+    }
+
+    const mapPathInfo = this.manager.map_path_info
+
+
+
+    // 遍历进行绘制
+    for (const item of datas) {
+        // console.log("item ----", item)
+
+
+      const lanelet_id = item.lanelet_id
+      const original_lanelet_id = item.original_lanelet_id
+      const offset_x = item.offset_x
+      const offset_y = item.offset_y
+      const is_broken = item.is_broken
+      // 获取lanelet的中心点, 用于绘制
+      // const points: [number, number][] = []
+
+      const the_road_path = mapPathInfo[original_lanelet_id]
+      if(!the_road_path) {
+        console.error('未找到对应的路:', original_lanelet_id)
+        continue
+      }
+      let path_points: [number, number][] = the_road_path.points
+
+      // 如果是打断的路, 那么直接使用start/end point即可.
+      if(is_broken) {
+        path_points = [
+          [item.start_point.x, item.start_point.y],
+          [item.end_point.x, item.end_point.y]
+        ]
+      }
+
+      // console.log('the_road_path path_points', path_points)
+
+      const points: [number, number][] = path_points.map(([x, y]) => [x + offset_x, y + offset_y])
+      // console.log('points ------', points, "offset_x, offset_y", offset_x, offset_y)
+
+      // 获取类型: enter 或 exit
+      let color = "green"
+      if(item?.attrs?.dynamic_vpb_enter) {
+        color = "red"
+      }else if(item?.attrs?.dynamic_vpb_exit) {
+        color = "blue"
+      }
+
+      const alpha  = 0.5
+
+      // 如果不存在, 那么进行创建
+      if (!(lanelet_id in graphics)) {
+        const g = new Graphics()
+        graphics[lanelet_id] = g
+        g.interactive = true
+        g.cursor = 'pointer'
+        this.manager.mainContainer.addChild(g)
+
+        // tooltips
+        g.on('pointerover', (e: any) => {
+          console.log('pointerover e.currentTarget.data: ', e.currentTarget.data)
+
+          this.manager.draw_map_road(g, points, '#f0f', 0.8, 0.8)
+          // 将路径提升到最上层
+          this.manager.mainContainer.setChildIndex(g, this.manager.mainContainer.children.length - 1)
+
+          const _data = e.currentTarget.data
+
+          // 创建tooltip内容
+          const tooltipContent = `
+            <div style="font-weight: bold; margin-bottom: 4px;">Lanelet Detail</div>
+            <div>lanelet_id: ${_data.lanelet_id}</div>
+            <div>original_lanelet_id: ${_data.original_lanelet_id}</div>
+            <div>length: ${_data?.length || ''}</div>
+            <div>vpb_enter: ${_data?.attrs?.vpb_enter || ''}</div>
+            <div>vpb_exit: ${_data?.attrs?.vpb_exit || ''}</div>
+            <div>dynamic_vpb_enter: ${_data?.attrs?.dynamic_vpb_enter || ''}</div>
+            <div>dynamic_vpb_exit: ${_data?.attrs?.dynamic_vpb_exit || ''}</div>
+            <div>next_lanes: ${_data?.next_lanes || ''}</div>
+          `
+
+          if (this.manager.tooltip) {
+            this.manager.tooltip.innerHTML = tooltipContent
+            this.manager.tooltip.style.display = 'block'
+            this.manager.tooltip.style.left = e.clientX + 15 + 'px'
+            this.manager.tooltip.style.top = e.clientY + 10 + 'px'
+
+            // 鼠标离开时 事件监听
+            const onPointerOut = () => {
+              // console.log('鼠标离开锁闭区:', areaId)
+              // document.removeEventListener('mousemove', onMouseMove)
+              if (this.manager.tooltip) {
+                this.manager.tooltip.style.display = 'none'
+                this.manager.draw_map_road(g, points, color, 0.8, 0.8)
+              }
+
+              // 移除pointerout事件监听器，避免重复绑定
+              g.off('pointerout', onPointerOut)
+            }
+
+            // document.addEventListener('mousemove', onMouseMove)
+            g.on('pointerout', onPointerOut)
+          }
+
+
+        })
+      }
+
+      const g = graphics[lanelet_id]
+      ;(g as any).data = item
+      // 进行绘制更新
+      g.clear()
+      this.manager.draw_map_road(g, points, color, alpha, 0.8)
+    }
+  }
+
   demo_update_path(data) {
     let path_type = data['type']
     if (path_type == 'reload_window') {
@@ -303,6 +466,7 @@ export class DataRenderer {
     for (const [vehicleId, v] of Object.entries(data.data)) {
       if (!this.manager.agents.hasOwnProperty(vehicleId)) {
         this.manager.add_agent(vehicleId)
+        this.manager.update_agent_visibility(vehicleId)
       }
       let g = null
       let path_width = null
@@ -465,7 +629,7 @@ export class DataRenderer {
       ['pgaAreas', 'gaAreas', 'plaAreas', 'self_area'].indexOf(data_key) > -1 ? 0.2 : 1
 
     // TODO: 查询pga/ga/pla/self_area对应的车辆是否显示
-    
+
     if (!areaGraphics) {
       areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type, lineWidth)
     } else {
@@ -639,6 +803,7 @@ export class DataRenderer {
     const { vehicleId, x, y, theta, tx, ty, t_theta, priority } = data
     if (!this.manager.agents.hasOwnProperty(vehicleId)) {
       this.manager.add_agent(vehicleId, x, -y, theta, theta, tx, -ty, t_theta)
+      this.manager.update_agent_visibility(vehicleId)
     }
     this.manager.agents[vehicleId].setPosition(x, -y, theta, tx, -ty, t_theta)
     this.manager.agents[vehicleId].v_info.block = data.block
@@ -669,11 +834,26 @@ export class DataRenderer {
       const node = pathArray[i]
       const llt_id = node['lane_id']
       const the_road_path = mapPathInfo[llt_id]
-      if (!the_road_path) {
+      let points: [number, number][] = []
+      if(the_road_path) {
+        points = the_road_path.points
+      }
+      // 未找到对应路, 检查是否是打断的路, 或者平移的路
+      else if(node?.is_broken) {
+        points = [[node.start_point.x, node.start_point.y], 
+                  [node.end_point.x, node.end_point.y]]
+      }else if(node?.original_lanelet_id){
+        const _the_road_path = mapPathInfo[node.original_lanelet_id]
+        const path_points: [number, number][] = _the_road_path.points
+        const offset_x = node.offset_x || 0
+        const offset_y = node.offset_y || 0
+        points = path_points.map(([x, y]) => [x + offset_x, y + offset_y])
+      }
+      else {
         console.error('未找到对应的路:', llt_id)
         continue
       }
-      const points = the_road_path.points
+      
       // 如果只有一个节点，则直接使用start index 与end index截取即可
       if (i == 0 && pathLength == 1) {
         const projector = new PointProjection(points as Point[])
@@ -750,12 +930,22 @@ export class DataRenderer {
       const node = pathArray[i]
       const llt_id = node['lane_id']
       const the_road_path = mapPathInfo[llt_id]
-      if (!the_road_path) {
-        console.error('未找到对应的路:', llt_id)
-        continue
+      let points: [number, number][] = []
+      if(the_road_path) {
+        points = the_road_path.points
       }
-      const points = the_road_path.points
-      if (!the_road_path) {
+      // 未找到对应路, 检查是否是打断的路, 或者平移的路
+      else if(node?.is_broken) {
+        points = [[node.start_point.x, node.start_point.y], 
+                  [node.end_point.x, node.end_point.y]]
+      }else if(node?.original_lanelet_id){
+        const _the_road_path = mapPathInfo[node.original_lanelet_id]
+        const path_points: [number, number][] = _the_road_path.points
+        const offset_x = node.offset_x || 0
+        const offset_y = node.offset_y || 0
+        points = path_points.map(([x, y]) => [x + offset_x, y + offset_y])
+      }
+      else {
         console.error('未找到对应的路:', llt_id)
         continue
       }

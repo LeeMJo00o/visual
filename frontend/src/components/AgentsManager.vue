@@ -3,21 +3,21 @@
     <el-button type="success" plain @click="vehicleStore.toggleVehicleDialog">
       Vehicle List
     </el-button>
-    <div class="switch-container">
+    <!-- <div class="switch-container">
       <span class="switch-label">Show All</span>
-      <el-switch v-model="allVehiclesVisible" @change="toggleAllVehicles" size="default" />
-    </div>
+      <el-switch v-model="" @change="toggleAllVehicles" size="default" />
+    </div> -->
     <div class="switch-container">
       <span class="switch-label">Short Paths</span>
-      <el-switch v-model="allShortPathsVisible" @change="toggleAllShortPaths" size="default" />
+      <el-switch v-model="globalSettings.vehicle_allShortPathsVisible" @change="toggleAllVehicles" size="default" />
     </div>
     <div class="switch-container">
       <span class="switch-label">Long Paths</span>
-      <el-switch v-model="allLongPathsVisible" @change="toggleAllLongPaths" size="default" />
+      <el-switch v-model="globalSettings.vehicle_allLongPathsVisible" @change="toggleAllVehicles" size="default" />
     </div>
     <div class="switch-container">
       <span class="switch-label">Vehicle IDs</span>
-      <el-switch v-model="allVehicleIdsVisible" @change="toggleAllVehicleIds" size="default" />
+      <el-switch v-model="globalSettings.vehicle_allIDsVisible" @change="toggleAllVehicles" size="default" />
     </div>
   </div>
 </template>
@@ -25,6 +25,13 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
 import { useVehicleStore } from '../stores/vehicleStore'
+import { storeToRefs } from 'pinia'
+import { useGlobalSettingsStore } from '@/stores/useLocalStorage'
+
+const settingsStore = useGlobalSettingsStore()
+
+// 获取响应式的 settings（需要使用 storeToRefs 保持响应性）
+const { globalSettings } = storeToRefs(settingsStore)
 
 const vehicleStore = useVehicleStore()
 
@@ -56,12 +63,13 @@ const allLongPathsVisible = computed({
 })
 
 // 切换所有车辆的显示状态
-const toggleAllVehicles = (value: boolean) => {
-  if (value) {
-    vehicleStore.showAllVehicles()
-  } else {
-    vehicleStore.hideAllVehicles()
-  }
+const toggleAllVehicles = () => {
+  // if (value) {
+  //   vehicleStore.showAllVehicles()
+  // } else {
+  //   vehicleStore.hideAllVehicles()
+  // }
+  vehicleStore.updateAllVehiclesVisible()
 }
 
 // 切换所有短路径的显示状态

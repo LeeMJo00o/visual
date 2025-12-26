@@ -166,19 +166,9 @@ class PathWsServer(MulLinkServerEndpoint):
         await self.init_pub(websocket)
 
     @classmethod
-    def path_add_extra_info(cls, a_path):
-        if a_path["start_pose"] and a_path["path"]:
-            path_t = g_roads.trans_path(a_path)
-        else:
-            a_path["path"] = None
-            path_t = a_path
-        return path_t
-
-    @classmethod
     async def on_mq_message(cls, mess):
         a_path = json.loads(mess['data'])
-        path_t = cls.path_add_extra_info(a_path)
-
+        path_t = a_path
         await cls.ws_manager.broadcast_json({
             "type": path_t["type"],
             "data": {path_t["v"]: path_t}
@@ -195,7 +185,7 @@ class PathWsServer(MulLinkServerEndpoint):
             await websocket.send_json({
                 "type": "long",
                 "data": {
-                    k: self.path_add_extra_info(json.loads(v))
+                    k: json.loads(v)
                 }
             })
 
@@ -203,7 +193,7 @@ class PathWsServer(MulLinkServerEndpoint):
             await websocket.send_json({
                 "type": "short",
                 "data": {
-                    k: self.path_add_extra_info(json.loads(v))
+                    k: json.loads(v)
                 }
             })
 

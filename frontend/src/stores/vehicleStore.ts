@@ -4,11 +4,6 @@ import ApplicationManager from '../routing_map/main'
 import { storeToRefs } from 'pinia'
 import { useGlobalSettingsStore } from '@/stores/useLocalStorage'
 
-const settingsStore = useGlobalSettingsStore()
-
-// 获取响应式的 settings（需要使用 storeToRefs 保持响应性）
-const { globalSettings } = storeToRefs(settingsStore)
-
 // 定义车辆接口
 export interface Vehicle {
   vehicle_id: string
@@ -32,6 +27,7 @@ export const useVehicleStore = defineStore('vehicle', () => {
   const vehicleDialogVisible = ref(false)
   const vehicles = ref<Vehicle[]>([])
   const selectedVehicle = ref<Vehicle | null>(null)
+  const settingsStore = useGlobalSettingsStore()
 
   // 路径显示状态
   const allShortPathsVisible = ref(true)
@@ -250,6 +246,17 @@ export const useVehicleStore = defineStore('vehicle', () => {
     console.log('隐藏所有长路径')
   }
 
+
+  function updateAllVehiclesVisible() { 
+    const manager = getApplicationManager()
+    if (manager && manager.agents) {
+      Object.values(manager.agents).forEach((agent) => {
+        manager.update_agent_visibility(agent.vehicle_id)
+      })
+    }
+  }
+
+
   return {
     // 状态
     vehicleDialogVisible,
@@ -274,5 +281,6 @@ export const useVehicleStore = defineStore('vehicle', () => {
     showAllLongPaths,
     hideAllLongPaths,
     toggleVehicleDialog,
+    updateAllVehiclesVisible,
   }
 })

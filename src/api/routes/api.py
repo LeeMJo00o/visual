@@ -11,6 +11,7 @@ from src.api.routes.http.weight_config import router as weight_router
 from src.api.routes.http.priority_config import router as priority_router
 from src.api.routes.http.speed_fms import router as speed_fms_router
 from src.api.routes.http.info import router as info_router
+from src.api.routes.http.dynamic_vpb import router as dynamic_vpb_router
 
 router = APIRouter()
 
@@ -23,6 +24,8 @@ router.include_router(weight_router, tags=["weight"], prefix="/weight/config")
 router.include_router(priority_router, tags=["priority"], prefix="/priority/config")
 router.include_router(speed_fms_router, tags=["speed fms"], prefix="/speed/config")
 router.include_router(info_router, tags=["infos"], prefix="/infos")
+router.include_router(dynamic_vpb_router, tags=["dynamic_vpb"], prefix="/dynamic/vpb")
+
 
 # 转发collector的值
 router.include_router(proxy_router)

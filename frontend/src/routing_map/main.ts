@@ -27,12 +27,28 @@ import { DataRenderer } from './data_renderer.ts' // 导入数据渲染管理器
 import { storeToRefs } from 'pinia'
 import { useGlobalSettingsStore } from '@/stores/useLocalStorage.ts'
 
-console.log("test   111111")
 
-const settingsStore = useGlobalSettingsStore()
+// 延迟获取 store，避免在模块加载时 Pinia 还未初始化
+// 改为在类方法中需要时才获取 store 实例
+let _settingsStore: ReturnType<typeof useGlobalSettingsStore> | null = null
+let _globalSettings: any = null
 
-// 获取响应式的 settings（需要使用 storeToRefs 保持响应性）
-const { globalSettings } = storeToRefs(settingsStore)
+// 获取 store 的辅助函数，确保在 Pinia 初始化后才调用
+function getSettingsStore() {
+  if (!_settingsStore) {
+    _settingsStore = useGlobalSettingsStore()
+    const refs = storeToRefs(_settingsStore)
+    _globalSettings = refs.globalSettings
+  }
+  return _settingsStore
+}
+
+function getGlobalSettings() {
+  if (!_globalSettings) {
+    getSettingsStore()
+  }
+  return _globalSettings
+}
 
 // const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
 // await Assets.load(fontDataUrl);
@@ -95,6 +111,12 @@ export default class ApplicationManager extends GraphicTools {
   public pgaAreas: Record<string, Graphics>  = {}
 
   public self_area: Record<string, Graphics>  = {}
+
+  // 动态vpb图形对象, key为lanelt_id
+  public dynamic_vpb_lanes: Record<string, Record<string, Graphics>>  = {}
+
+  // 通用的图形对象, key为类型, 用于区分不同类型的图形; 值为, id: graphics的对象
+  public common_graphics: Record<string, Record<string, Graphics>> = {}
 
   constructor() {
     // 如果已经存在实例，返回现有实例
@@ -161,6 +183,9 @@ export default class ApplicationManager extends GraphicTools {
     this.pgaAreas = {}
 
     this.self_area = {}
+
+    // 通用的图形对象集合
+    this.common_graphics = {}
 
     // 存储画框处理方法（由LockArea.vue设置）
     this.drawingHandlers = null
@@ -335,7 +360,7 @@ export default class ApplicationManager extends GraphicTools {
         this.backgroundSprite.rotation = -this.g_rotation
         this.backgroundSprite.eventMode = 'none'
 
-        this.backgroundSprite.visible = globalSettings.value.background_image_show //this.backgroundImageConfig.visible
+        this.backgroundSprite.visible = getGlobalSettings().value.background_image_show //this.backgroundImageConfig.visible
 
         this.mainContainer.addChildAt(this.backgroundSprite, 0)
       }
@@ -347,7 +372,7 @@ export default class ApplicationManager extends GraphicTools {
 
       this.map_container = await this.initMap(vpb_info)
       // 默认关闭地图显示
-      this.map_container.visible = globalSettings.value.map_show   //!this.map_config.use_back_image
+      this.map_container.visible = getGlobalSettings().value.map_show   //!this.map_config.use_back_image
       this.app.stage.addChild(this.mainContainer)
 
       this.app.stage.addChild(this.agentTextContainer)
@@ -490,6 +515,10 @@ export default class ApplicationManager extends GraphicTools {
     clearGraphicsMap(this.plaAreas)
     clearGraphicsMap(this.pgaAreas)
     clearGraphicsMap(this.self_area)
+    
+    Object.values(this.common_graphics).forEach(items => {
+      clearGraphicsMap(items)
+    })
 
     this.lockAreas = {}
     this.limitAreas = {}
@@ -499,6 +528,7 @@ export default class ApplicationManager extends GraphicTools {
     this.plaAreas = {}
     this.pgaAreas = {}
     this.self_area = {}
+    this.common_graphics = {}
 
     // 重置其他状态
     this.agent_graphics = []
@@ -648,8 +678,8 @@ export default class ApplicationManager extends GraphicTools {
     return match ? parseInt(match[0], 10) : 0;
 }
 
-  draw_map_road(g, points, color, alpha = 0.5) {
-    const width = 1
+  draw_map_road(g, points, color, alpha = 0.5, width = 1) {
+    // const width = 1
     g.clear()
     this.drawLine(g, 'N/A', points, false, color, width, alpha)
     // 在路径中间点绘制箭头
@@ -730,7 +760,7 @@ export default class ApplicationManager extends GraphicTools {
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
       let color = '#fff'
       
-      if(!globalSettings.value.all_vpb_show) {
+      if(!getGlobalSettings().value.all_vpb_show) {
         // 检查是否有vpb_enter或vpb_exit属性
         const vpb_enter = this.matchIntNumber(one_path?.attrs?.vpb_enter)
         const vpb_exit = this.matchIntNumber(one_path?.attrs?.vpb_exit)
@@ -930,14 +960,20 @@ export default class ApplicationManager extends GraphicTools {
     const agent = this.agents[vehicle_id]
     if(!agent) return;
     
+    const settingsStore = getSettingsStore()
+    const globalSettings = getGlobalSettings()
+    
     if(!(vehicle_id in globalSettings.value.vehicle_visible)){
-      updateVehicleVisible(vehicle_id, true);
+      settingsStore.updateVehicleVisible(vehicle_id, true);
       // globalSettings.value.vehicle_visible[vehicle_id] = true;
     }
 
-    const visible = getVehicleVisible(vehicle_id) // globalSettings.value.vehicle_visible[vehicle_id]
+    const visible = settingsStore.getVehicleVisible(vehicle_id) // globalSettings.value.vehicle_visible[vehicle_id]
+
+    // console.log('更新车辆的显示状态:', vehicle_id, visible)
 
     agent.visible = visible
+    agent.graphics.visible = visible
     agent.text.visible = visible && globalSettings.value.vehicle_allIDsVisible
     agent.graph_short_path.visible = visible && globalSettings.value.vehicle_allShortPathsVisible
     agent.graph_long_path.visible = visible && globalSettings.value.vehicle_allLongPathsVisible

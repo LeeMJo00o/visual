@@ -111,17 +111,6 @@ class Roads():
             path_info = json.load(f)
         return path_info
 
-    def trans_path(self, path):
-        start_pose = path["start_pose"]["x"], path["start_pose"]["y"]
-        end_pose = path["end_pose"]["x"], path["end_pose"]["y"]
-        start_idx_info = self.get_point_road_index(start_pose, path["path"][0]["lane_id"])
-        end_idx_info = self.get_point_road_index(end_pose, path["path"][-1]["lane_id"])
-        path["start_pose"]["index"] = start_idx_info.index
-        path["end_pose"]["index"] = end_idx_info.index
-        path["start_pose"]["is_ahead"] = start_idx_info.is_projection_ahead
-        path["end_pose"]["is_ahead"] = end_idx_info.is_projection_ahead
-        return path
-
 
 # g_routing = Routing(f"map/{MAP_NAME}", gen_graph=False)
 g_roads = Roads()
