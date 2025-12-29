@@ -61,6 +61,29 @@
           </div>
         </template>
       </el-table-column>
+
+      <el-table-column label="清除锁闭区" width="120" align="center">
+        <template #default="{ row }">
+           <el-tooltip effect="light" content="清除车辆锁闭区" placement="bottom">
+              <el-popconfirm
+                :title="'确定清除'+row.vehicle_id+'的锁闭区吗？请谨慎做此操作！！！'"
+                :icon="InfoFilled"
+                icon-color="red"
+                @confirm="handleClear(row)">
+                  <template #reference>
+                    <el-button 
+                        type="danger" 
+                        size="small" 
+                        :icon="Delete"></el-button>
+                  </template>
+              </el-popconfirm>
+          </el-tooltip>
+
+
+        
+
+        </template>
+      </el-table-column>
     </el-table>
   </CustomDialog>
 </template>
@@ -69,6 +92,11 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useVehicleStore } from '../stores/vehicleStore'
 import CustomDialog from './CustomDialog.vue'
+import {
+  Delete, InfoFilled
+} from '@element-plus/icons-vue'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 const vehicleStore = useVehicleStore()
 
@@ -79,6 +107,26 @@ const vehicleCount = computed(() => vehicleStore.vehicleCount)
 const handleTableWheel = (e: WheelEvent) => {
   // 阻止事件冒泡，让表格自己处理滚动
   e.stopPropagation()
+}
+
+// 清楚ga
+const handleClear = async (row) => {
+  const vehicle_id = row.vehicle_id
+
+  try {
+    // 发送 HTTP 请求，将滑块值传递给服务器
+    const response = await axios.post('/api/arbiter/clear', {
+      vehicle_id: vehicle_id,
+    })
+    if(response.status == 200 && response.data.code==200) {
+      ElMessage({ message: `${vehicle_id} 清除成功!`, type: 'success' })
+    }else{
+      ElMessage({ message: `${vehicle_id} 清除失败!`, type: 'error' })
+    }
+  } catch (error) {
+    ElMessage({ message: `${vehicle_id} 清除失败! error: ${error}`, type: 'error' })
+    console.error('请求失败:', error)
+  }
 }
 
 // 定时更新车辆列表
@@ -97,6 +145,8 @@ onUnmounted(() => {
     clearInterval(updateInterval)
   }
 })
+
+
 </script>
 
 <style scoped>
