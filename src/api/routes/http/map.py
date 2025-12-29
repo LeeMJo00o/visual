@@ -2,13 +2,13 @@ import traceback
 
 from chain_model.model import StdRes
 from fastapi import APIRouter, Body, Response
-from src.core.config import MAP_NAME
+from src.core.config import MAP_NAME, pp_visual_DEVICE_MODE
 import json
 
 from src.entity.MapInfo import MapInfo
 from src.map_tools import export_osm_path_info
 import os
-from src.middlewares.redis_handler.connect import redis_cli
+from src.middlewares.redis_handler.connect import redis_cli, redis_cli_fms
 from src.core.config import PATH_REPORT_URL
 from src.core.log import logger
 from chain_http import aio_http
@@ -168,6 +168,37 @@ async def change_weight(req: dict = Body()) -> StdRes:
     logger.info(f"weight change: {req} => {res.status, res.text}")
     return StdRes()
 
+
+@router.get("/query/dynamic_weight_ratio")
+async def query_dynamic_weight_ratio() -> StdRes:
+    NAME = f"CONFIG:PP:{pp_visual_DEVICE_MODE}:WELLROUTING"
+    KEY = "wellrouting_GRAPH_DYNAMIC_WEIGHT_RATIO"
+    V = await redis_cli_fms.hget(NAME, KEY)
+    v = float(V) if V is not None else 0
+    logger.info(f"query dynamic weight ratio, value={v}")
+    return StdRes(data=v)
+
+
+@router.post("/update/dynamic_weight_ratio")
+async def update_dynamic_weight_ratio(req: dict = Body()) -> StdRes:
+    logger.info(f"update dynamic weight ratio, data={req}")
+    NAME = f"CONFIG:PP:{pp_visual_DEVICE_MODE}:WELLROUTING"
+    KEY = "wellrouting_GRAPH_DYNAMIC_WEIGHT_RATIO"
+    v = req["value"]
+    await redis_cli_fms.hset(NAME, KEY, v)
+
+    # 请求scenario - 触发重规划
+    url = f"{PATH_REPORT_URL}/api/chain/execute-chain"
+    req = {
+        "id": "wf_update_routing_weight",
+        "req_data": {
+            "weight": float(req["value"])
+        }
+    }
+    res = await aio_http.post(url, json=req, timeout=5)
+    logger.info(f"[scenario]weight change: {req} => {res.status, res.text}")
+
+    return StdRes()
 
 @router.post("/reload_window")
 async def reload_window(req: dict = Body()) -> StdRes:

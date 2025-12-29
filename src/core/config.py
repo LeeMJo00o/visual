@@ -41,7 +41,17 @@ pp_visual_REDIS_SENTINEL_PWD: str = config(
     "pp_visual_REDIS_SENTINEL_PWD", default="westwell"
 )
 
+# fms redis
+FMS_REDIS_MODE: str = config("FMS_REDIS_MODE", cast=str, default="single")
+FMS_REDIS_URL: str = config("FMS_REDIS_URL", cast=str, default="")
+FMS_REDIS_SENTINELS: str = config("FMS_REDIS_SENTINELS", cast=str, default="localhost:36379")
+FMS_REDIS_SENTINEL_PWD: str = config("FMS_REDIS_SENTINEL_PWD", cast=str, default="")
+
+
 # arbiter redis
+pp_visual_ARBITER_REDIS_MODE: str = config(
+    "pp_visual_ARBITER_REDIS_MODE", default="single"
+)
 # if redis mode id single, use this config
 pp_visual_ARBITER_REDIS_URL: str = config(
     "pp_visual_ARBITER_REDIS_URL", default="redis://127.0.0.1:6370/2"

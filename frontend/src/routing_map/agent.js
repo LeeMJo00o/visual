@@ -31,6 +31,8 @@ export default class Agent {
       task: null,
       device_mode: '',
       priority: null,
+      stop_du: null,
+      stop_du_re: null,
     }
 
     // 添加位置信息属性，用于tooltip显示

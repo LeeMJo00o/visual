@@ -19,6 +19,14 @@
       <span class="switch-label">Vehicle IDs</span>
       <el-switch v-model="globalSettings.vehicle_allIDsVisible" @change="toggleAllVehicles" size="default" />
     </div>
+    <div class="switch-container">
+      <span class="switch-label">Stop Time</span>
+      <el-switch v-model="vehicleStore.stopTimeVisible" size="default" />
+    </div>
+    <div class="switch-container">
+      <span class="switch-label">Recycle Stop Time</span>
+      <el-switch v-model="vehicleStore.reStopTimeVisible" size="default" />
+    </div>
   </div>
 </template>
 

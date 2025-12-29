@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
@@ -84,11 +84,25 @@ const handleMenuSelect = (index: string) => {
   currentMenu.value = index
 }
 
+
+// 挂载时执行, 从后台获取当前的global weight值
+onMounted(() => {
+  axios.get('/api/map/query/dynamic_weight_ratio')
+    .then(response => {
+      console.log('sliderValue 请求成功:', response.data)
+      sliderValue.value = response.data.data
+
+    })
+    .catch(error => {
+      console.error('请求失败:', error)
+    })
+})
+
 // 滑块变化处理函数
 const handleSliderChange = async (value: number) => {
   try {
     // 发送 HTTP 请求，将滑块值传递给服务器
-    const response = await axios.post('/api/map/change_weight', {
+    const response = await axios.post('/api/map/update/dynamic_weight_ratio', {
       value: value,
     })
     ElMessage({ message: `set global sequece weight to ${value} ok`, type: 'success' })
@@ -229,7 +243,7 @@ const handleChangeIsReplay = () => {
                   <!-- <el-button type="primary" plain id="image_hide" @click="onImageHide"
                     >image show</el-button
                   > -->
-                  <el-button type="primary" plain id="agent_hide" @click="onAgentHide"
+                  <el-button type="primary" plain id="agent_hide" size="small" @click="onAgentHide"
                     >agent show</el-button
                   >
                   <el-button
@@ -241,6 +255,7 @@ const handleChangeIsReplay = () => {
                   >
                   <el-button
                     type="primary"
+                    size="small"
                     plain
                     id="agent_hide"
                     @click="handleVisibleAgent('ga_area_visible')"
@@ -248,6 +263,7 @@ const handleChangeIsReplay = () => {
                   >
                   <el-button
                     type="primary"
+                    size="small"
                     plain
                     id="agent_hide"
                     @click="handleVisibleAgent('pga_area_visible')"
@@ -255,6 +271,7 @@ const handleChangeIsReplay = () => {
                   >
                   <el-button
                     type="primary"
+                    size="small"
                     plain
                     id="agent_hide"
                     @click="handleVisibleAgent('pla_area_visible')"
@@ -262,6 +279,7 @@ const handleChangeIsReplay = () => {
                   >
                   <el-switch
                     v-model="isReplay"
+                    size="small"
                     class="ml-2"
                     inline-prompt
                     style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
@@ -269,18 +287,23 @@ const handleChangeIsReplay = () => {
                     inactive-text="回放禁用"
                     @change="handleChangeIsReplay"
                   />
-                  <span class="slider-label">set global sequece weight: </span>
-                  <span class="slider-value">{{ sliderValue.toFixed(1) }}</span>
+                  
+                  <!-- <span class="slider-value">{{ sliderValue.toFixed(1) }}</span> -->
                 </div>
+                
+              </div>
+              <div class="slider-container">
+                <span class="slider-label">区域均匀分布:</span>
                 <el-slider
+                  style="max-width: 600px;"
                   placement="right"
                   :show-tooltip="true"
-                  class="slider-component"
                   v-model="sliderValue"
                   :min="0"
-                  :max="1"
+                  :max="1000"
                   :step="0.1"
                   @change="handleSliderChange"
+                  show-input size="small"
                 />
               </div>
             </div>

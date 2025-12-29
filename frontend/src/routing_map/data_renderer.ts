@@ -5,6 +5,7 @@ import { PointProjection, type Point } from './project.ts'
 import { getBorderColor, getFillColor } from '@/colors/lockarea_color.ts'
 import { usePriorityStore } from '@/stores/priority.ts'
 import { parseWKT } from '@/util/index.ts'
+import { useVehicleStore } from '@/stores/vehicleStore.ts'
 
 // 类型定义
 interface Position {
@@ -66,6 +67,8 @@ interface PoseData {
   y: number
   yaw: number
   priority?: number
+  stop_du?: number,
+  stop_du_re?: number,
 }
 
 interface PoseUpdateData {
@@ -106,6 +109,8 @@ export class DataRenderer {
   private short_path_width: number
 
   private priorityStore = usePriorityStore()
+  private vehicleStore = useVehicleStore()
+
 
   /**
    * @param manager - ApplicationManager实例
@@ -536,6 +541,8 @@ export class DataRenderer {
         task: v.task,
         device_mode: v.device_mode,
         priority: v.priority,
+        stop_du: v.stop_du,
+        stop_du_re: v.stop_du_re,
       })
     }
   }
@@ -800,7 +807,7 @@ export class DataRenderer {
    * @param data - 车辆数据
    */
   draw_one_agent(data: AgentData): void {
-    const { vehicleId, x, y, theta, tx, ty, t_theta, priority } = data
+    const { vehicleId, x, y, theta, tx, ty, t_theta, priority, stop_du, stop_du_re } = data
     if (!this.manager.agents.hasOwnProperty(vehicleId)) {
       this.manager.add_agent(vehicleId, x, -y, theta, theta, tx, -ty, t_theta)
       this.manager.update_agent_visibility(vehicleId)
@@ -811,12 +818,23 @@ export class DataRenderer {
     this.manager.agents[vehicleId].v_info.task = data.task
     this.manager.agents[vehicleId].v_info.device_mode = data.device_mode
     this.manager.agents[vehicleId].v_info.priority = priority
+    this.manager.agents[vehicleId].v_info.stop_du = stop_du
+    this.manager.agents[vehicleId].v_info.stop_du_re = stop_du_re
 
     // 更新车辆文本，包含优先级
     let displayText = vehicleId
     if (this.priorityStore.visible && priority !== null && priority !== undefined) {
       displayText = `${vehicleId} (${priority})`
     }
+    // 停车时长
+    if(this.vehicleStore.stopTimeVisible && stop_du && stop_du > 0) {
+      displayText = `${displayText} (${stop_du}s)`
+    }
+    // 路径回收停车时长
+    if(this.vehicleStore.reStopTimeVisible && stop_du_re && stop_du_re > 0) {
+      displayText = `${displayText} (r${stop_du_re}s)`
+    }
+    
     this.manager.agents[vehicleId].text.text = displayText
   }
 

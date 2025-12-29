@@ -33,6 +33,12 @@ export const useVehicleStore = defineStore('vehicle', () => {
   const allShortPathsVisible = ref(true)
   const allLongPathsVisible = ref(true)
 
+  // 停车时长显示
+  const stopTimeVisible = ref(true)
+  // 路径回收停车时长显示
+  const reStopTimeVisible = ref(false)
+
+
   // 计算属性
   const vehicleCount = computed(() => vehicles.value.length)
 
@@ -264,6 +270,8 @@ export const useVehicleStore = defineStore('vehicle', () => {
     selectedVehicle,
     allShortPathsVisible,
     allLongPathsVisible,
+    stopTimeVisible,
+    reStopTimeVisible,
 
     // 计算属性
     vehicleCount,
