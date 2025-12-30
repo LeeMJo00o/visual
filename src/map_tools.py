@@ -62,6 +62,9 @@ def lanelet_filter(llt_s):
     for llt in llt_s:
         if "drivable" in llt.attributes and llt.attributes["drivable"].lower() == "false":
             continue
+        # 过滤 road_type=scanline的lanelet
+        if "road_type" in llt.attributes and llt.attributes["road_type"].lower() == "scanline":
+            continue
         t.append(llt)
     return t
 
