@@ -21,6 +21,7 @@
             :disabled="!isReplay"
             @change="handleFileChange"
             placeholder="Please select"
+            filterable
             style="width: 200px; margin-right: 20px"
           >
             <el-option

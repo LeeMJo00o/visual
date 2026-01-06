@@ -38,7 +38,7 @@ export class EventManager {
     this.app.stage.addEventListener('wheel', wheelHandler)
 
     // 添加文档级别的事件监听器
-    document.addEventListener('wheel', (e) => e.preventDefault(), { passive: false })
+    // document.addEventListener('wheel', (e) => e.preventDefault(), { passive: false })
 
     // 设置UI控件事件监听器
     this.setupUIControls()
