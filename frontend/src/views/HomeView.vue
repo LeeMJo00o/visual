@@ -231,6 +231,20 @@ const handleChangeIsReplay = () => {
                         v-model="globalSettings.background_image_show"
                         style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" />
                     </el-form-item>
+                    
+                    <el-form-item label="回放">
+                      <el-switch
+                        v-model="isReplay"
+                        size="small"
+                        class="ml-2"
+                        inline-prompt
+                        style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+                        active-text="回放开启"
+                        inactive-text="回放禁用"
+                        @change="handleChangeIsReplay"
+                      />
+                    </el-form-item>
+                    
                   </el-form>
                   
                   
@@ -243,10 +257,10 @@ const handleChangeIsReplay = () => {
                   <!-- <el-button type="primary" plain id="image_hide" @click="onImageHide"
                     >image show</el-button
                   > -->
-                  <el-button type="primary" plain id="agent_hide" size="small" @click="onAgentHide"
+                  <!-- <el-button type="primary" plain id="agent_hide" size="small" @click="onAgentHide"
                     >agent show</el-button
-                  >
-                  <el-button
+                  > -->
+                  <!-- <el-button
                     type="primary"
                     plain
                     id="agent_hide"
@@ -276,17 +290,8 @@ const handleChangeIsReplay = () => {
                     id="agent_hide"
                     @click="handleVisibleAgent('pla_area_visible')"
                     >pla_area show</el-button
-                  >
-                  <el-switch
-                    v-model="isReplay"
-                    size="small"
-                    class="ml-2"
-                    inline-prompt
-                    style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-                    active-text="回放开启"
-                    inactive-text="回放禁用"
-                    @change="handleChangeIsReplay"
-                  />
+                  > -->
+                  
                   
                   <!-- <span class="slider-value">{{ sliderValue.toFixed(1) }}</span> -->
                 </div>

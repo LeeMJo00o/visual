@@ -632,8 +632,9 @@ export class DataRenderer {
     }
     let areaGraphics = this.manager[data_key]?.[areaId]
 
-    const lineWidth =
-      ['pgaAreas', 'gaAreas', 'plaAreas', 'self_area'].indexOf(data_key) > -1 ? 0.2 : 1
+    const vehicle_area = ['pgaAreas', 'gaAreas', 'plaAreas', 'self_area'].indexOf(data_key) > -1
+
+    const lineWidth = vehicle_area ? 0.2 : 1
 
     // TODO: 查询pga/ga/pla/self_area对应的车辆是否显示
 
@@ -641,6 +642,9 @@ export class DataRenderer {
       areaGraphics = this.create_lock_area_graphics(areaId, area, data_key, type, lineWidth)
     } else {
       this.update_lock_area_graphics(areaGraphics, area, type, lineWidth)
+    }
+    if(vehicle_area) {
+      this.vehicleStore.updateVehicleVisibility(areaId)
     }
   }
 

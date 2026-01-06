@@ -14,6 +14,10 @@
   >
     <div class="vehicle-list-header">
       <h4>Vehicles ({{ ` ${vehicleCount} ` }})</h4>
+      <div style="float: right">
+        <el-button @click="showAll" type="primary" size="small">show all</el-button>
+        <el-button @click="hideAll" size="small">hide all</el-button>
+      </div>
     </div>
 
     <div v-if="vehicleStore.vehicles.length === 0" class="no-vehicles">
@@ -109,7 +113,7 @@ const handleTableWheel = (e: WheelEvent) => {
   e.stopPropagation()
 }
 
-// 清楚ga
+// 清除ga
 const handleClear = async (row) => {
   const vehicle_id = row.vehicle_id
 
@@ -128,6 +132,17 @@ const handleClear = async (row) => {
     console.error('请求失败:', error)
   }
 }
+
+// 显示所有
+const showAll = async () => {
+  vehicleStore.showAllVehicles()
+}
+
+// 隐藏所有
+const hideAll = async () => { 
+  vehicleStore.hideAllVehicles()
+}
+
 
 // 定时更新车辆列表
 let updateInterval: number | null = null

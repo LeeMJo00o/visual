@@ -1,32 +1,59 @@
 <template>
   <div class="vehicle-controls">
-    <el-button type="success" plain @click="vehicleStore.toggleVehicleDialog">
+    <el-button type="success" plain @click="vehicleStore.toggleVehicleDialog" size="small">
       Vehicle List
     </el-button>
     <!-- <div class="switch-container">
       <span class="switch-label">Show All</span>
       <el-switch v-model="" @change="toggleAllVehicles" size="default" />
     </div> -->
+
+    <el-button @click="showAll" type="primary" size="small">show all</el-button>
+    <el-button @click="hideAll" size="small">hide all</el-button>
+
     <div class="switch-container">
       <span class="switch-label">Short Paths</span>
-      <el-switch v-model="globalSettings.vehicle_allShortPathsVisible" @change="toggleAllVehicles" size="default" />
+      <el-switch v-model="globalSettings.vehicle_allShortPathsVisible" @change="toggleAllVehicles" size="small" />
     </div>
     <div class="switch-container">
       <span class="switch-label">Long Paths</span>
-      <el-switch v-model="globalSettings.vehicle_allLongPathsVisible" @change="toggleAllVehicles" size="default" />
+      <el-switch v-model="globalSettings.vehicle_allLongPathsVisible" @change="toggleAllVehicles" size="small" />
     </div>
     <div class="switch-container">
       <span class="switch-label">Vehicle IDs</span>
-      <el-switch v-model="globalSettings.vehicle_allIDsVisible" @change="toggleAllVehicles" size="default" />
+      <el-switch v-model="globalSettings.vehicle_allIDsVisible" @change="toggleAllVehicles" size="small" />
     </div>
     <div class="switch-container">
       <span class="switch-label">Stop Time</span>
-      <el-switch v-model="vehicleStore.stopTimeVisible" size="default" />
+      <el-switch v-model="vehicleStore.stopTimeVisible" size="small" />
     </div>
     <div class="switch-container">
       <span class="switch-label">Recycle Stop Time</span>
-      <el-switch v-model="vehicleStore.reStopTimeVisible" size="default" />
+      <el-switch v-model="vehicleStore.reStopTimeVisible" size="small" />
     </div>
+
+    <el-divider direction="vertical" />
+
+    <div class="switch-container">
+      <span class="switch-label">self_area</span>
+      <el-switch v-model="globalSettings.vehicle_selfAreaVisible" @change="toggleAllVehicles" size="small" />
+    </div>
+
+    <div class="switch-container">
+      <span class="switch-label">ga_area</span>
+      <el-switch v-model="globalSettings.vehicle_gaAreasVisible" @change="toggleAllVehicles" size="small" />
+    </div>
+
+    <div class="switch-container">
+      <span class="switch-label">pga_area</span>
+      <el-switch v-model="globalSettings.vehicle_pgaAreasVisible" @change="toggleAllVehicles" size="small" />
+    </div>
+
+    <div class="switch-container">
+      <span class="switch-label">pla_area</span>
+      <el-switch v-model="globalSettings.vehicle_plaAreasVisible" @change="toggleAllVehicles" size="small" />
+    </div>
+
   </div>
 </template>
 
@@ -79,6 +106,17 @@ const toggleAllVehicles = () => {
   // }
   vehicleStore.updateAllVehiclesVisible()
 }
+
+// 显示所有
+const showAll = () => {
+  vehicleStore.showAllVehicles()
+}
+
+// 隐藏所有
+const hideAll = () => {
+  vehicleStore.hideAllVehicles()
+}
+
 
 // 切换所有短路径的显示状态
 const toggleAllShortPaths = (value: boolean) => {

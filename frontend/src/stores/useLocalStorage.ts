@@ -36,10 +36,10 @@ export const defaultGlobalSettings: GlobalSettings = {
     vehicle_allLongPathsVisible: true,
     vehicle_allIDsVisible: true,
 
-    vehicle_selfAreaVisible: true,
+    vehicle_selfAreaVisible: false,
     vehicle_gaAreasVisible: true,
-    vehicle_plaAreasVisible: true,
-    vehicle_pgaAreasVisible: true,
+    vehicle_plaAreasVisible: false,
+    vehicle_pgaAreasVisible: false,
 }
 
 // localStorage 键名
@@ -138,6 +138,16 @@ export const useGlobalSettingsStore = defineStore('globalSettings', () => {
     }
     
     /**
+     * 更新所有车辆的可见性
+     */
+    const updateAllVehicleVisible = (visible: boolean): void => {
+        Object.entries(globalSettings.value.vehicle_visible).forEach(([key]) => {
+            globalSettings.value.vehicle_visible[key] = visible;
+        });
+    }
+
+
+    /**
      * 获取车辆可见性（带默认值）
      */
     const getVehicleVisible = (vehicleId: string): boolean => {
@@ -209,6 +219,7 @@ export const useGlobalSettingsStore = defineStore('globalSettings', () => {
         initVehicleVisible,
         toggleVehicleVisible,
         resetToDefault,
-        updateAllSettings
+        updateAllSettings,
+        updateAllVehicleVisible
     }
 })
