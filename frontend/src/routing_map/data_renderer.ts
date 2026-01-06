@@ -55,7 +55,7 @@ interface PathData {
   end_pose: {
     x: number
     y: number
-  }  
+  }
 }
 
 interface PathUpdateData {
@@ -665,6 +665,13 @@ export class DataRenderer {
 
     // 将多边形数据转换为drawLine需要的格式
     const points = area.polygon.map((point) => [point.x, point.y])
+    // 如何首尾的点不相同，那么将第一个点加入到末尾中
+    if (
+      points[0][0] !== points[points.length - 1][0] ||
+      points[0][1] !== points[points.length - 1][1]
+    ) {
+      points.push(points[0])
+    }
 
     // 清除现有内容并重新绘制
     areaGraphics.clear()
@@ -838,7 +845,7 @@ export class DataRenderer {
     if(this.vehicleStore.reStopTimeVisible && stop_du_re && stop_du_re > 0) {
       displayText = `${displayText} (r${stop_du_re}s)`
     }
-    
+
     this.manager.agents[vehicleId].text.text = displayText
   }
 
@@ -862,7 +869,7 @@ export class DataRenderer {
       }
       // 未找到对应路, 检查是否是打断的路, 或者平移的路
       else if(node?.is_broken) {
-        points = [[node.start_point.x, node.start_point.y], 
+        points = [[node.start_point.x, node.start_point.y],
                   [node.end_point.x, node.end_point.y]]
       }else if(node?.original_lanelet_id){
         const _the_road_path = mapPathInfo[node.original_lanelet_id]
@@ -875,7 +882,7 @@ export class DataRenderer {
         console.error('未找到对应的路:', llt_id)
         continue
       }
-      
+
       // 如果只有一个节点，则直接使用start index 与end index截取即可
       if (i == 0 && pathLength == 1) {
         const projector = new PointProjection(points as Point[])
@@ -958,7 +965,7 @@ export class DataRenderer {
       }
       // 未找到对应路, 检查是否是打断的路, 或者平移的路
       else if(node?.is_broken) {
-        points = [[node.start_point.x, node.start_point.y], 
+        points = [[node.start_point.x, node.start_point.y],
                   [node.end_point.x, node.end_point.y]]
       }else if(node?.original_lanelet_id){
         const _the_road_path = mapPathInfo[node.original_lanelet_id]
