@@ -16,12 +16,14 @@ else:
 redis_cli: AioRedis = _redis_cli
 
 # fms redis
+_redis_cli_fms = None
 if FMS_REDIS_MODE == "SENTINEL":
     sentinels = [i.split(":") for i in FMS_REDIS_SENTINELS.split(",")]
     _redis_cli_fms = get_sentinel_master(sentinels, FMS_REDIS_SENTINEL_PWD,
                                              ext_config={"decode_responses": False})
 else:
-    _redis_cli_fms = get_single(FMS_REDIS_URL, ext_config={"decode_responses": False})
+    if FMS_REDIS_URL:
+        _redis_cli_fms = get_single(FMS_REDIS_URL, ext_config={"decode_responses": False})
 
 redis_cli_fms: AioRedis = _redis_cli_fms
 
