@@ -259,19 +259,20 @@ const sendDrawingRequest = async (
     // 创建闭合多边形（添加第一个点作为最后一个点）
     const polygon = [...mapVertices, mapVertices[0]]
     let name = ''
+    let _subtype = lockAreaType.value  ? lockAreaType.value : props.type   // 有则使用lockAreaType 否则使用type作为subtype
     if (props.type === 'trigger') {
       name = lockAreaName.value
     }else {
       name = props.type === 'lock' && lockAreaType.value === 'no_parking'
           ? 'no_parking_' + Date.now()
-          : props.type + '_area_' + Date.now() // 禁停区使用no_parking_xxxx格式
+          : _subtype + '_area_' + Date.now() // 禁停区使用no_parking_xxxx格式
     }
-
+    
     const requestData = {
       name: name,
       subtype:
-        props.type === 'lock' && lockAreaType.value === 'no_parking' ? 'no_parking' : props.type, // 禁停区的subtype使用no_parking
-      type: props.type === 'lock' ? lockAreaType.value : props.type, // 根据锁闭区类型设置正确的type
+        props.type === 'lock' && lockAreaType.value === 'no_parking' ? 'no_parking' : _subtype, // 禁停区的subtype使用no_parking
+      type: props.type, // 根据锁闭区类型设置正确的type
       created_by: 'pp-visual',
       describe: '',
       polygon: polygon,
@@ -330,6 +331,7 @@ onUnmounted(() => {
         <el-select v-model="lockAreaType" placeholder="请选择锁闭区类型">
           <el-option label="禁行区" value="lock" />
           <el-option label="禁停区" value="no_parking" />
+          <el-option label="均匀分布区" value="uniform_region" />
         </el-select>
       </el-form-item>
       <template v-if="type === 'trigger'">

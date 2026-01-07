@@ -18,11 +18,37 @@ import {
   get_svg_content,
   get_map_config,
   get_path_info,
+  get_vpb_info,
 } from './pp_backend.js'
 import { mapCache } from './map_cache.js' // 导入缓存模块
 import { EventManager } from './event.js' // 导入事件管理器
 import Agent from './agent.js' // 导入 Agent 类
 import { DataRenderer } from './data_renderer.ts' // 导入数据渲染管理器
+import { storeToRefs } from 'pinia'
+import { useGlobalSettingsStore } from '@/stores/useLocalStorage.ts'
+
+
+// 延迟获取 store，避免在模块加载时 Pinia 还未初始化
+// 改为在类方法中需要时才获取 store 实例
+let _settingsStore: ReturnType<typeof useGlobalSettingsStore> | null = null
+let _globalSettings: any = null
+
+// 获取 store 的辅助函数，确保在 Pinia 初始化后才调用
+function getSettingsStore() {
+  if (!_settingsStore) {
+    _settingsStore = useGlobalSettingsStore()
+    const refs = storeToRefs(_settingsStore)
+    _globalSettings = refs.globalSettings
+  }
+  return _settingsStore
+}
+
+function getGlobalSettings() {
+  if (!_globalSettings) {
+    getSettingsStore()
+  }
+  return _globalSettings
+}
 
 // const fontDataUrl = `data:application/json;base64,${btoa(fontFile)}`;
 // await Assets.load(fontDataUrl);
@@ -73,7 +99,24 @@ export default class ApplicationManager extends GraphicTools {
   public app: Application
   public agents: AgentMap = {}
   public dataRenderer: DataRenderer | null // 暴露给外部使用
-  public isSuspend: boolean = sessionStorage.getItem('isReplay') === 'true' ? true : false // 是否暂停数据渲染，回放时为true
+  public isSuspend: boolean = false // 是否暂停数据渲染，回放时为true
+
+  // ga 图形对象
+  public gaAreas: Record<string, Graphics>  = {}
+
+  // pla 图形对象
+  public plaAreas: Record<string, Graphics>  = {}
+
+  // pga 图形对象
+  public pgaAreas: Record<string, Graphics>  = {}
+
+  public self_area: Record<string, Graphics>  = {}
+
+  // 动态vpb图形对象, key为lanelt_id
+  public dynamic_vpb_lanes: Record<string, Record<string, Graphics>>  = {}
+
+  // 通用的图形对象, key为类型, 用于区分不同类型的图形; 值为, id: graphics的对象
+  public common_graphics: Record<string, Record<string, Graphics>> = {}
 
   constructor() {
     // 如果已经存在实例，返回现有实例
@@ -129,6 +172,20 @@ export default class ApplicationManager extends GraphicTools {
 
     // 存储电子围栏图形对象
     this.geoFences = {}
+
+    // ga 图形对象
+    this.gaAreas = {}
+
+    // pla 图形对象
+    this.plaAreas = {}
+
+    // pga 图形对象
+    this.pgaAreas = {}
+
+    this.self_area = {}
+
+    // 通用的图形对象集合
+    this.common_graphics = {}
 
     // 存储画框处理方法（由LockArea.vue设置）
     this.drawingHandlers = null
@@ -303,16 +360,19 @@ export default class ApplicationManager extends GraphicTools {
         this.backgroundSprite.rotation = -this.g_rotation
         this.backgroundSprite.eventMode = 'none'
 
-        this.backgroundSprite.visible = this.backgroundImageConfig.visible
+        this.backgroundSprite.visible = getGlobalSettings().value.background_image_show //this.backgroundImageConfig.visible
 
         this.mainContainer.addChildAt(this.backgroundSprite, 0)
       }
 
       this.mainContainer.addChild(this.longPathContainer)
 
-      this.map_container = await this.initMap()
+      // 获取vpb 信息
+      const vpb_info = await get_vpb_info()
+
+      this.map_container = await this.initMap(vpb_info)
       // 默认关闭地图显示
-      this.map_container.visible = !this.map_config.use_back_image
+      this.map_container.visible = getGlobalSettings().value.map_show   //!this.map_config.use_back_image
       this.app.stage.addChild(this.mainContainer)
 
       this.app.stage.addChild(this.agentTextContainer)
@@ -382,26 +442,37 @@ export default class ApplicationManager extends GraphicTools {
    * 2. 长短路径
    * 3.区域绘制
    */
- // ...existing code...
+  // ...existing code...
   private clearDynamicData() {
-    console.log('clearDynamicData: clearing dynamic data, agents count=', Object.keys(this.agents).length)
+    console.log(
+      'clearDynamicData: clearing dynamic data, agents count=',
+      Object.keys(this.agents).length,
+    )
 
     // 先销毁/移除所有 agent 相关显示对象
     Object.values(this.agents).forEach((agent: any) => {
       try {
         // 从父容器移除
-        if (agent.graphics && agent.graphics.parent) agent.graphics.parent.removeChild(agent.graphics)
-        if (agent.graph_long_path && agent.graph_long_path.parent) agent.graph_long_path.parent.removeChild(agent.graph_long_path)
-        if (agent.graph_short_path && agent.graph_short_path.parent) agent.graph_short_path.parent.removeChild(agent.graph_short_path)
+        if (agent.graphics && agent.graphics.parent)
+          agent.graphics.parent.removeChild(agent.graphics)
+        if (agent.graph_long_path && agent.graph_long_path.parent)
+          agent.graph_long_path.parent.removeChild(agent.graph_long_path)
+        if (agent.graph_short_path && agent.graph_short_path.parent)
+          agent.graph_short_path.parent.removeChild(agent.graph_short_path)
         if (agent.text && agent.text.parent) agent.text.parent.removeChild(agent.text)
 
         // 销毁对象（防止内存泄露）
         const destroyOpts = { children: true, texture: false, baseTexture: false }
-        if (agent.graphics && typeof agent.graphics.destroy === 'function') agent.graphics.destroy(destroyOpts)
-        if (agent.graphics_head && typeof agent.graphics_head.destroy === 'function') agent.graphics_head.destroy(destroyOpts)
-        if (agent.graphics_trailer && typeof agent.graphics_trailer.destroy === 'function') agent.graphics_trailer.destroy(destroyOpts)
-        if (agent.graph_long_path && typeof agent.graph_long_path.destroy === 'function') agent.graph_long_path.destroy(destroyOpts)
-        if (agent.graph_short_path && typeof agent.graph_short_path.destroy === 'function') agent.graph_short_path.destroy(destroyOpts)
+        if (agent.graphics && typeof agent.graphics.destroy === 'function')
+          agent.graphics.destroy(destroyOpts)
+        if (agent.graphics_head && typeof agent.graphics_head.destroy === 'function')
+          agent.graphics_head.destroy(destroyOpts)
+        if (agent.graphics_trailer && typeof agent.graphics_trailer.destroy === 'function')
+          agent.graphics_trailer.destroy(destroyOpts)
+        if (agent.graph_long_path && typeof agent.graph_long_path.destroy === 'function')
+          agent.graph_long_path.destroy(destroyOpts)
+        if (agent.graph_short_path && typeof agent.graph_short_path.destroy === 'function')
+          agent.graph_short_path.destroy(destroyOpts)
         if (agent.text && typeof agent.text.destroy === 'function') agent.text.destroy()
       } catch (e) {
         console.warn('clearDynamicData: error destroying agent', agent && agent.vehicle_id, e)
@@ -419,8 +490,11 @@ export default class ApplicationManager extends GraphicTools {
 
     // 清理应用级别的 graphics（如果存在）
     if (this.graphics_path_apply_area) {
-      if (this.graphics_path_apply_area.parent) this.graphics_path_apply_area.parent.removeChild(this.graphics_path_apply_area)
-      try { this.graphics_path_apply_area.clear() } catch (e) {}
+      if (this.graphics_path_apply_area.parent)
+        this.graphics_path_apply_area.parent.removeChild(this.graphics_path_apply_area)
+      try {
+        this.graphics_path_apply_area.clear()
+      } catch (e) {}
     }
 
     // 清理锁闭区 / 流控 / 围栏 等
@@ -436,9 +510,25 @@ export default class ApplicationManager extends GraphicTools {
     clearGraphicsMap(this.lockAreas)
     clearGraphicsMap(this.limitAreas)
     clearGraphicsMap(this.geoFences)
+
+    clearGraphicsMap(this.gaAreas)
+    clearGraphicsMap(this.plaAreas)
+    clearGraphicsMap(this.pgaAreas)
+    clearGraphicsMap(this.self_area)
+    
+    Object.values(this.common_graphics).forEach(items => {
+      clearGraphicsMap(items)
+    })
+
     this.lockAreas = {}
     this.limitAreas = {}
     this.geoFences = {}
+
+    this.gaAreas = {}
+    this.plaAreas = {}
+    this.pgaAreas = {}
+    this.self_area = {}
+    this.common_graphics = {}
 
     // 重置其他状态
     this.agent_graphics = []
@@ -452,7 +542,7 @@ export default class ApplicationManager extends GraphicTools {
 
     console.log('clearDynamicData: done')
   }
-// ...existing code...
+  // ...existing code...
 
   // 坐标变换，注意 pixijs 的变换顺序是 缩放、旋转、平移
   // 考虑地图坐标 (raw_x, raw_y) 则点击位置 (x, y) 与原位置的关系为：
@@ -581,9 +671,15 @@ export default class ApplicationManager extends GraphicTools {
   calculateAngle(x1, y1, x2, y2) {
     return Math.atan2(y2 - y1, x2 - x1)
   }
+  matchIntNumber(s: string): number {
+    if(!s) return 0;
+    // 提取字符串中的第一组连续数字
+    const match = s.match(/\d+/); // 匹配第一个连续数字
+    return match ? parseInt(match[0], 10) : 0;
+}
 
-  draw_map_road(g, points, color, alpha = 0.5) {
-    const width = 1
+  draw_map_road(g, points, color, alpha = 0.5, width = 1) {
+    // const width = 1
     g.clear()
     this.drawLine(g, 'N/A', points, false, color, width, alpha)
     // 在路径中间点绘制箭头
@@ -636,7 +732,7 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  async initMap() {
+  async initMap(vpb_info) {
     // console.log('map_path_info: ', this.map_path_info)
     const cons = new Container({
       isRenderGroup: true,
@@ -657,15 +753,39 @@ export default class ApplicationManager extends GraphicTools {
     `
     document.body.appendChild(this.path_tooltip)
 
+    const vpb_enter_list = vpb_info?.vpb_enter?.map(item => this.matchIntNumber(item)).filter(num => num > 0) || [];
+    const vpb_exit_list = vpb_info?.vpb_exit?.map(item => this.matchIntNumber(item)).filter(num => num > 0) || [];
+
+
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
+      let color = '#fff'
+      
+      if(!getGlobalSettings().value.all_vpb_show) {
+        // 检查是否有vpb_enter或vpb_exit属性
+        const vpb_enter = this.matchIntNumber(one_path?.attrs?.vpb_enter)
+        const vpb_exit = this.matchIntNumber(one_path?.attrs?.vpb_exit)
+        if (vpb_enter && vpb_enter_list && !vpb_enter_list.includes(vpb_enter)) {
+          return; 
+        }
+        if (vpb_exit && vpb_exit_list && !vpb_exit_list.includes(vpb_exit)) {
+          return; 
+        }
+        // vpb color
+        if(vpb_enter) {color="blue"}
+        if(vpb_exit) {color="red"}
+      }
+
       // console.log(path_id, one_path);
       const points = one_path['points']
 
       const g = new Graphics()
       cons.addChild(g)
 
+      
+
+
       // 直接使用 drawLine 方法
-      this.draw_map_road(g, points, '#fff', 0.4)
+      this.draw_map_road(g, points, color, 0.4)
 
       g.on('pointerover', (e) => {
         this.draw_map_road(g, points, '#f0f', 0.8)
@@ -686,6 +806,8 @@ export default class ApplicationManager extends GraphicTools {
             'pptype',
             'cutin',
             'cutin_from',
+            'vpb_enter',
+            'vpb_exit',
           ]
           const filteredEntries = Object.entries(one_path['attrs']).filter(([key, value]) =>
             filteredAttrs.includes(key),
@@ -704,7 +826,7 @@ export default class ApplicationManager extends GraphicTools {
       })
       g.on('pointerout', (e) => {
         this.path_tooltip.style.display = 'none'
-        this.draw_map_road(g, points, '#fff')
+        this.draw_map_road(g, points, color)
       })
 
       g.interactive = true
@@ -776,9 +898,9 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   // 切换背景图片显示状态
-  toggleBackgroundImage() {
+  toggleBackgroundImage(visible: boolean) {
     if (this.backgroundSprite) {
-      this.backgroundImageConfig.visible = !this.backgroundImageConfig.visible
+      this.backgroundImageConfig.visible = visible
       this.backgroundSprite.visible = this.backgroundImageConfig.visible
       console.log('背景图片显示状态:', this.backgroundImageConfig.visible ? '显示' : '隐藏')
     }
@@ -831,5 +953,54 @@ export default class ApplicationManager extends GraphicTools {
     screenX = rotatedX + offsetX
     screenY = rotatedY + offsetY
     return [screenX, screenY]
+  }
+
+  // 更新车辆的显示状态, 包括: 车辆轮廓, id, 短路径, 长路径, selfarea, ga, pga, pla.
+  update_agent_visibility(vehicle_id: string) {
+    const agent = this.agents[vehicle_id]
+    if(!agent) return;
+    
+    const settingsStore = getSettingsStore()
+    const globalSettings = getGlobalSettings()
+    
+    if(!(vehicle_id in globalSettings.value.vehicle_visible)){
+      settingsStore.updateVehicleVisible(vehicle_id, true);
+      // globalSettings.value.vehicle_visible[vehicle_id] = true;
+    }
+
+    const visible = settingsStore.getVehicleVisible(vehicle_id) // globalSettings.value.vehicle_visible[vehicle_id]
+
+    // console.log('更新车辆的显示状态:', vehicle_id, visible)
+
+    agent.visible = visible
+    agent.graphics.visible = visible
+    agent.text.visible = visible && globalSettings.value.vehicle_allIDsVisible
+    agent.graph_short_path.visible = visible && globalSettings.value.vehicle_allShortPathsVisible
+    agent.graph_long_path.visible = visible && globalSettings.value.vehicle_allLongPathsVisible
+
+    // area : let areaGraphics = this.manager[data_key]?.[areaId]
+    const g_self_area = this.self_area?.[vehicle_id]
+    if(g_self_area) {
+      g_self_area.visible = visible && globalSettings.value.vehicle_selfAreaVisible
+    }
+
+    // ga
+    const ga = this.gaAreas?.[vehicle_id]
+    if(ga) {
+      ga.visible = visible && globalSettings.value.vehicle_gaAreasVisible
+    }
+
+    // pga
+    const pga = this.pgaAreas?.[vehicle_id]
+    if(pga) {
+      pga.visible = visible && globalSettings.value.vehicle_pgaAreasVisible
+    }
+
+    // pla
+    const pla = this.plaAreas?.[vehicle_id]
+    if(pla) {
+      pla.visible = visible && globalSettings.value.vehicle_plaAreasVisible
+    }
+
   }
 }

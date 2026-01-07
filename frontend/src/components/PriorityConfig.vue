@@ -58,9 +58,7 @@
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="handleCancel" :disabled="submitLoading "
-          >取消</el-button
-        >
+        <el-button @click="handleCancel" :disabled="submitLoading">取消</el-button>
         <el-button
           :disabled="globalStore.isReplay"
           type="primary"
@@ -101,7 +99,6 @@ watch(
       form.value = globalStore.priorityConfig
     }
   },
-  { immediate: true },
 )
 type PriorityConfigData = {
   hasStopLinePriority: number

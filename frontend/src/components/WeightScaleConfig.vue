@@ -103,6 +103,7 @@ type WeightConfigData = {
   curve_big: { 'pptype:curve_big': number }
   QC_SLA: { 'road_type:QC_SLA': number }
   QC_SLA_EXIT: { 'road_type:QC_SLA_EXIT': number }
+  prefer: { 'prefer:prefer': number }
   // dynamic
   STOP_VEHICLE: { 'stop_scale:': number }
   GLOBAL_SEQUENCE: { 'global_sequence:': number }
@@ -131,6 +132,7 @@ function createDefaultConfig(): WeightConfigData {
     QC_SLA_EXIT: { 'road_type:QC_SLA_EXIT': 0 },
     STOP_VEHICLE: { 'stop_scale:': 0 },
     GLOBAL_SEQUENCE: { 'global_sequence:': 0 },
+    prefer: { 'prefer:prefer': 0 },
     VPB_SCALE: { 'vpb_scale:': 0 },
   }
 }
@@ -176,14 +178,13 @@ const static_weight_list = [
   { label: 'curve_big', key1: 'curve_big', key2: 'pptype:curve_big' },
   { label: 'QC_SLA', key1: 'QC_SLA', key2: 'road_type:QC_SLA' },
   { label: 'QC_SLA_EXIT', key1: 'QC_SLA_EXIT', key2: 'road_type:QC_SLA_EXIT' },
-  // {label: "prefer",           key1: "prefer",           key2: ""},
+  { label: 'prefer', key1: 'prefer', key2: 'prefer:prefer' },
 ]
 const dynamic_weight_list = [
   { label: 'STOP_VEHICLE', key1: 'STOP_VEHICLE', key2: 'stop_scale:' },
   { label: 'GLOBAL_SEQUENCE', key1: 'GLOBAL_SEQUENCE', key2: 'global_sequence:' },
   { label: 'VPB_SCALE', key1: 'VPB_SCALE', key2: 'vpb_scale:' },
 ]
-
 
 function convertWeightConfig(data: WeightConfigData): WeightConfigData {
   const result: Partial<WeightConfigData> = {}
@@ -215,7 +216,12 @@ const query = async () => {
   if (response.status === 200 && response.data.code === 200 && response.data.data) {
     let data = response.data.data
     if (data.weightConfigData) {
-      form.value = data.weightConfigData
+      for (const key in data.weightConfigData) {
+        if (key in form.value) {
+          form.value[key as keyof WeightConfigData] = data.weightConfigData[key];
+        }
+      }
+
     }
     NPA_SCALE.value = data.NPA_SCALE
     BS_CURVE_SCALE.value = data.BS_CURVE_SCALE
@@ -293,20 +299,18 @@ watch(
   () => globalStore.isReplay,
   (newVal) => {
     if (newVal === true) {
-      if (globalStore.weightConfig.weightConfigData) {
+      if (globalStore.weightConfig?.weightConfigData) {
         form.value = globalStore.weightConfig.weightConfigData
       }
-      NPA_SCALE.value = globalStore.weightConfig.NPA_SCALE
-      BS_CURVE_SCALE.value = globalStore.weightConfig.BS_CURVE_SCALE
-      STACK_BUSY_BUSY_SCALE.value = globalStore.weightConfig.STACK_BUSY_BUSY_SCALE
-      STACK_BUSY_CROWDED_SCALE.value = globalStore.weightConfig.STACK_BUSY_CROWDED_SCALE
+      NPA_SCALE.value = globalStore.weightConfig?.NPA_SCALE
+      BS_CURVE_SCALE.value = globalStore.weightConfig?.BS_CURVE_SCALE
+      STACK_BUSY_BUSY_SCALE.value = globalStore.weightConfig?.STACK_BUSY_BUSY_SCALE
+      STACK_BUSY_CROWDED_SCALE.value = globalStore.weightConfig?.STACK_BUSY_CROWDED_SCALE
     } else {
-        query()
+      query()
     }
   },
-  { immediate: true },
 )
-
 
 // 在组件卸载时清理资源
 onUnmounted(() => {

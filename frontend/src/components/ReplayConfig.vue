@@ -3,31 +3,25 @@
     <!-- 时间轴 -->
     <div class="timeline">
       <el-slider
-        v-model="currentPercent"
-        :min="0"
-        :max="100"
+        v-model="currentTime"
+        :min="startTime"
+        :max="endTime"
+        :step="1000"
         @change="handleSeek"
         :disabled="!isReplay"
         style="width: 100%"
+        :format-tooltip="formatTime"
       />
       <div class="time-labels">
         <span>{{ formatTime(startTime) }}</span>
         <!-- 控制区 -->
         <div class="controls">
-          <el-switch
-            v-model="isReplay"
-            class="ml-2"
-            inline-prompt
-            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-            active-text="回放开启"
-            inactive-text="回放禁用"
-            @change="handleChangeIsReplay"
-          />
           <el-select
             v-model="selectedFile"
             :disabled="!isReplay"
             @change="handleFileChange"
             placeholder="Please select"
+            filterable
             style="width: 200px; margin-right: 20px"
           >
             <el-option
@@ -88,17 +82,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import {
   queryReplayDBFileList,
   queryReplayTimeRange,
-  queryReplayRangeData,
   queryReplayData,
   downloadReplayDBFile,
   uploadReplayDBFile,
 } from '@/api/index.js'
 import { ElMessage } from 'element-plus'
-import type { UploadProps, UploadUserFile } from 'element-plus'
 import { Refresh, ArrowLeft, ArrowRight, VideoPlay, VideoPause } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import type { PosUpdateData, LockAreaUpdateData, PathUpdateData } from '@/routing_map/types'
@@ -112,15 +104,9 @@ const globalStore = useGlobalStore()
 // const appManager = ApplicationManager.getInstance()
 const appManager = ApplicationManager.getInstance()
 
-const isReplay = ref<boolean>(false)
-
-watch(
-  () => globalStore.isReplay,
-  (newVal) => {
-    isReplay.value = newVal
-  },
-  { immediate: true },
-)
+const isReplay = computed(() => {
+  return globalStore.isReplay
+})
 
 const startTime = ref<number>(0)
 const endTime = ref<number>(0)
@@ -147,6 +133,7 @@ const formatTime = (time: number) => {
 
 // 播放/暂停
 const togglePlay = () => {
+  console.log('togglePlay=', isPlaying.value)
   if (isPlaying.value) {
     stop()
   } else {
@@ -157,7 +144,7 @@ const togglePlay = () => {
 const play = () => {
   isPlaying.value = true
   timer.value = window.setInterval(() => {
-    currentTime.value += 1000 * playbackRate.value
+    currentTime.value += 1000
     if (currentTime.value >= endTime.value) {
       currentTime.value = endTime.value
       stop()
@@ -166,8 +153,7 @@ const play = () => {
       getReplayRangeData()
     }
 
-    updatePercent()
-  }, 1000)
+  }, 1000 / playbackRate.value)
 }
 
 const stop = () => {
@@ -178,38 +164,27 @@ const stop = () => {
   }
 }
 
-const handleChangeIsReplay = () => {
-  globalStore.setIsReplay(!globalStore.isReplay)
-}
 
 // 拖动/点击时间轴
 const handleSeek = (val: number) => {
-  const duration = endTime.value - startTime.value
-  currentTime.value = Math.floor((startTime.value + (val / 100) * duration) / 1000) * 1000
+  currentTime.value = val
   getReplayRangeData()
 }
 
-// 更新百分比
-const updatePercent = () => {
-  const duration = endTime.value - startTime.value
-  currentPercent.value = ((currentTime.value - startTime.value) / duration) * 100
-}
-
 // 前进后退
-const forward = () => {
-  currentTime.value = Math.min(endTime.value, currentTime.value + 5000)
-  updatePercent()
+const forward = (step: number=5000) => {
+  currentTime.value = Math.min(endTime.value, currentTime.value + step)
+  getReplayRangeData()
 }
-const rewind = () => {
-  currentTime.value = Math.max(startTime.value, currentTime.value - 5000)
-  updatePercent()
+const rewind = (step: number=5000) => {
+  currentTime.value = Math.max(startTime.value, currentTime.value - step)
+  getReplayRangeData()
 }
 
 // 重置
 const reset = () => {
   stop()
   currentTime.value = startTime.value
-  updatePercent()
 }
 
 /**
@@ -261,20 +236,39 @@ const getReplayRangeData = () => {
           if (subtype === 'traffic_control') {
             appManager?.dataRenderer?.areas_update(data[i] as LockAreaUpdateData, 'limit')
           }
-        } else if (type === 'polygon' && subtype === 'selfarea') {
+        } else if (type === 'polygon' && subtype === 'self_area') {
           // 多边形
+
+          appManager?.dataRenderer.demo_update_polygon({
+            data: data[i].data,
+            type: subtype,
+            subtype,
+          })
         } else if (type === 'polygon' && subtype === 'ga') {
           // GA
+          appManager?.dataRenderer.demo_update_polygon({
+            data: data[i].data,
+            type: subtype,
+            subtype,
+          })
         } else if (type === 'polygon' && subtype === 'pga') {
           // pga
+          appManager?.dataRenderer.demo_update_polygon({
+            data: data[i].data,
+            type: subtype,
+            subtype,
+          })
         } else if (type === 'polygon' && subtype === 'pla') {
           // pla
+          appManager?.dataRenderer.demo_update_polygon({
+            data: data[i].data,
+            type: subtype,
+            subtype,
+          })
         } else if (type === 'long' || type === 'short') {
           // 长路径数据 | 短路径数据
           appManager?.dataRenderer?.demo_update_path(data[i] as PathUpdateData)
         } else if (type === 'speed_config') {
-          console.log('speed config data: ', _data)
-
           // 速度配置 | 需要更新到store中
           globalStore.setSpeedConfig(_data)
         } else if (type === 'weight_config') {
@@ -291,6 +285,7 @@ const getReplayRangeData = () => {
   })
 }
 
+//
 /**
  * 查询回放文件列表
  */
@@ -304,6 +299,8 @@ const getReplayDBFileList = () => {
 
 const handleChangeRate = (value: number) => {
   playbackRate.value = value
+  stop()
+  play()
 }
 
 /**
@@ -345,15 +342,41 @@ const handleChange = (uploadFile: any) => {
   })
   // fileList.value = fileList.value.slice(-3)
 }
-watch(currentTime, updatePercent)
+
+/**
+ * 监听按键 控制播放
+ */
+const handleKeyDown = (event: KeyboardEvent) => {
+  switch (event.code) {
+    case 'Space':
+      event.preventDefault()
+      // console.log('空格键按下')
+      togglePlay()
+      break
+    case 'ArrowLeft':
+      // console.log('左方向键按下')
+      rewind(1000)
+      break
+    case 'ArrowRight':
+      // console.log('右方向键按下')
+      forward(1000)
+      break
+  }
+}
+
 
 onMounted(() => {
   // appManager.value = ApplicationManager.getInstance()
   getReplayDBFileList()
+  window.addEventListener('keydown', handleKeyDown)
 })
 onUnmounted(() => {
   stop()
+  window.removeEventListener('keydown', handleKeyDown)
 })
+
+
+
 </script>
 
 <style scoped>

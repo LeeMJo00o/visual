@@ -67,7 +67,7 @@ export class WebSocketClient {
     } catch (e) {
       // 非JSON消息直接传递
       // this.options.onMessage?.(data);
-      console.log('deal message error:', e);
+      // console.log('deal message error:', e);
     }
   }
 
@@ -202,5 +202,21 @@ export async function get_path_info(url = '/api/map/path_info') {
   } catch (error) {
     console.error('获取路径信息失败:', error);
     throw error;
+  }
+}
+
+
+export async function get_vpb_info(url = '/api/map/vpb_info') {
+  try {
+    const response = await axios.post(url, {}, {
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('获取VPB信息失败:', error);
+    // throw error;
+    return null;
   }
 }

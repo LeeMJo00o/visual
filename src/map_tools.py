@@ -38,6 +38,21 @@ def export_osm_path_info(osm_file: str):
                 road_info["points"].append([round(llt.centerline[-1].x, 3), round(llt.centerline[-1].y, 3)])
         map_info[llt.id] = road_info
 
+    # area - junction
+    for area in routing.map.polygonLayer:
+        if "subtype" in area.attributes and area.attributes["subtype"] == "no_stop_area":
+            continue
+        if not ("area" in area.attributes and area.attributes["area"] == "true"):
+            continue
+            # specialtype=junction或pp_active=true 都解析为junction进行使用
+        if ("specialtype" in area.attributes and area.attributes["specialtype"] == "junction") \
+                or ("pp_active" in area.attributes and area.attributes["pp_active"] == "true"):
+            road_info = {
+                "attrs": {},
+                "points": [[round(p.x, 3), round(p.y, 3)] for p in area],
+            }
+            map_info[f"junction_{area.id}"] = road_info
+
     with open(to_raw_path, "w") as f:
         json.dump(map_info, f, separators=(',', ':'))
 
@@ -46,6 +61,9 @@ def lanelet_filter(llt_s):
     t = []
     for llt in llt_s:
         if "drivable" in llt.attributes and llt.attributes["drivable"].lower() == "false":
+            continue
+        # 过滤 road_type=scanline的lanelet
+        if "road_type" in llt.attributes and llt.attributes["road_type"].lower() == "scanline":
             continue
         t.append(llt)
     return t
@@ -95,17 +113,6 @@ class Roads():
         with open(path_file, "r") as f:
             path_info = json.load(f)
         return path_info
-
-    def trans_path(self, path):
-        start_pose = path["start_pose"]["x"], path["start_pose"]["y"]
-        end_pose = path["end_pose"]["x"], path["end_pose"]["y"]
-        start_idx_info = self.get_point_road_index(start_pose, path["path"][0]["lane_id"])
-        end_idx_info = self.get_point_road_index(end_pose, path["path"][-1]["lane_id"])
-        path["start_pose"]["index"] = start_idx_info.index
-        path["end_pose"]["index"] = end_idx_info.index
-        path["start_pose"]["is_ahead"] = start_idx_info.is_projection_ahead
-        path["end_pose"]["is_ahead"] = end_idx_info.is_projection_ahead
-        return path
 
 
 # g_routing = Routing(f"map/{MAP_NAME}", gen_graph=False)

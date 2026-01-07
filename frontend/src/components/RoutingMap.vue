@@ -33,7 +33,6 @@ watch(
   },
 )
 
-
 // 组件挂载时初始化游戏
 onMounted(async () => {
   // 使用单例模式获取应用管理器实例
@@ -63,21 +62,16 @@ onUnmounted(() => {
     <div id="map_main_container" ref="gameContainer">
       <!-- PixiJS 会在这里渲染游戏画布 -->
     </div>
-    <div class="vertical-line"></div>
   </div>
 </template>
 
 <style scoped>
 .map-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  /* border-top: 1px solid #acacac; */
-}
-
-.game-container {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   overflow: hidden;
 }
 </style>

@@ -636,5 +636,6 @@ def test_req_path():
 
 if __name__ == "__main__":
     # test_req_path()
-    t = g_routing.trans_path(l)
-    print(t)
+    # t = g_routing.trans_path(l)
+    # print(t)
+    pass

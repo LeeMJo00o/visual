@@ -52,7 +52,8 @@ class PoseWsServer(MulLinkServerEndpoint):
                 pipe.hgetall("scenario:long_path:req_task")
                 pipe.get("scenario:priority:real_val")
                 pipe.hgetall("pp4:vehicle:device_mode")
-                all_v_pose, all_v_be_blame, all_v_blame, all_v_task,  _all_priority, all_v_mode = await pipe.execute()
+                pipe.hgetall("pp4:vehicle:stop_info")
+                all_v_pose, all_v_be_blame, all_v_blame, all_v_task,  _all_priority, all_v_mode, all_v_stop_info = await pipe.execute()
                 all_priority = json.loads(_all_priority) if _all_priority else {}
                 for v_id, pose in all_v_pose.items():
                     pose_data = json.loads(pose)
@@ -62,6 +63,10 @@ class PoseWsServer(MulLinkServerEndpoint):
                     all_v_pose_t[v_id]["task"] = True if all_v_task.get(v_id, None) else False
                     all_v_pose_t[v_id]["device_mode"] = str(all_v_mode.get(v_id, pp_visual_DEVICE_MODE)).lower()
                     all_v_pose_t[v_id]["priority"] = all_priority.get(v_id, -1)
+                    # stop info
+                    stop_info = json.loads(s) if (s := all_v_stop_info.get(v_id)) else {}
+                    all_v_pose_t[v_id]["stop_du"] = stop_info.get("stop_du", 0)  # 停车时长
+                    all_v_pose_t[v_id]["stop_du_re"] = stop_info.get("stop_du_re", 0)  # recycle 停车时长
 
                 await cls.ws_manager.broadcast_json({
                     "type": "pose",
@@ -166,19 +171,9 @@ class PathWsServer(MulLinkServerEndpoint):
         await self.init_pub(websocket)
 
     @classmethod
-    def path_add_extra_info(cls, a_path):
-        if a_path["start_pose"] and a_path["path"]:
-            path_t = g_roads.trans_path(a_path)
-        else:
-            a_path["path"] = None
-            path_t = a_path
-        return path_t
-
-    @classmethod
     async def on_mq_message(cls, mess):
         a_path = json.loads(mess['data'])
-        path_t = cls.path_add_extra_info(a_path)
-
+        path_t = a_path
         await cls.ws_manager.broadcast_json({
             "type": path_t["type"],
             "data": {path_t["v"]: path_t}
@@ -195,7 +190,7 @@ class PathWsServer(MulLinkServerEndpoint):
             await websocket.send_json({
                 "type": "long",
                 "data": {
-                    k: self.path_add_extra_info(json.loads(v))
+                    k: json.loads(v)
                 }
             })
 
@@ -203,7 +198,7 @@ class PathWsServer(MulLinkServerEndpoint):
             await websocket.send_json({
                 "type": "short",
                 "data": {
-                    k: self.path_add_extra_info(json.loads(v))
+                    k: json.loads(v)
                 }
             })
 

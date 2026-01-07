@@ -38,7 +38,7 @@ export class EventManager {
     this.app.stage.addEventListener('wheel', wheelHandler)
 
     // 添加文档级别的事件监听器
-    document.addEventListener('wheel', (e) => e.preventDefault(), { passive: false })
+    // document.addEventListener('wheel', (e) => e.preventDefault(), { passive: false })
 
     // 设置UI控件事件监听器
     this.setupUIControls()
@@ -140,9 +140,10 @@ export class EventManager {
     // 只保留自定义事件监听，删除原生button相关事件委托
     // window.addEventListener('map-hide-click', ...)
     // window.addEventListener('agent-hide-click', ...)
-    window.addEventListener('map-hide-click', () => {
-      this.manager.map_container.visible = !this.manager.map_container.visible
-    })
+    
+    // window.addEventListener('map-hide-click', () => {
+    //   this.manager.map_container.visible = !this.manager.map_container.visible
+    // })
     window.addEventListener('agent-hide-click', () => {
       Object.values(this.manager.agents).forEach((agent) => {
         if (agent.graphics) agent.graphics.visible = !agent.graphics.visible
@@ -151,8 +152,34 @@ export class EventManager {
         if (agent.text) agent.text.visible = !agent.text.visible
       })
     })
-    window.addEventListener('image-hide-click', () => {
-      this.manager.toggleBackgroundImage()
+    // window.addEventListener('image-hide-click', () => {
+    //   this.manager.toggleBackgroundImage()
+    // })
+
+    // self_area
+
+    window.addEventListener('self_area_visible', () => {
+      Object.values(this.manager.self_area).forEach((agent) => {
+        if (agent) agent.visible = !agent.visible
+      })
+    })
+    // ga_area
+    window.addEventListener('ga_area_visible', () => {
+      Object.values(this.manager.gaAreas).forEach((agent) => {
+        if (agent) agent.visible = !agent.visible
+      })
+    })
+    // pga_area
+    window.addEventListener('pga_area_visible', () => {
+      Object.values(this.manager.pgaAreas).forEach((agent) => {
+        if (agent) agent.visible = !agent.visible
+      })
+    })
+    // pla_area
+    window.addEventListener('pla_area_visible', () => {
+      Object.values(this.manager.plaAreas).forEach((agent) => {
+        if (agent) agent.visible = !agent.visible
+      })
     })
   }
 }

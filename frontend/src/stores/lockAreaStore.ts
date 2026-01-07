@@ -36,7 +36,6 @@ const createLockAreaStore = (storeId: string, manager_key: string, type: string)
 
     // 获取ApplicationManager实例
     function getApplicationManager(): ApplicationManager | null {
-      debugger
       return (
         (window as Window & { __applicationManagerInstance?: ApplicationManager })
           .__applicationManagerInstance || null
@@ -54,7 +53,6 @@ const createLockAreaStore = (storeId: string, manager_key: string, type: string)
       const manager = getApplicationManager()
       const lockAreas_key = manager_key as keyof typeof manager;
       if (manager && manager?.[lockAreas_key]) {
-        debugger
         lockAreas.value = Object.entries(manager[lockAreas_key])
           .map(([id, graphics]) => {
             console.log("map", id, graphics)

@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import ApplicationManager from '../routing_map/main'
+import { storeToRefs } from 'pinia'
+import { useGlobalSettingsStore } from '@/stores/useLocalStorage'
 
 // 定义车辆接口
 export interface Vehicle {
@@ -25,10 +27,17 @@ export const useVehicleStore = defineStore('vehicle', () => {
   const vehicleDialogVisible = ref(false)
   const vehicles = ref<Vehicle[]>([])
   const selectedVehicle = ref<Vehicle | null>(null)
+  const settingsStore = useGlobalSettingsStore()
 
   // 路径显示状态
   const allShortPathsVisible = ref(true)
   const allLongPathsVisible = ref(true)
+
+  // 停车时长显示
+  const stopTimeVisible = ref(true)
+  // 路径回收停车时长显示
+  const reStopTimeVisible = ref(false)
+
 
   // 计算属性
   const vehicleCount = computed(() => vehicles.value.length)
@@ -56,11 +65,13 @@ export const useVehicleStore = defineStore('vehicle', () => {
         .map((agent) => {
           // 查找现有的车辆状态，保持isShow设置
           const existingVehicle = vehicles.value.find((v) => v.vehicle_id === agent.vehicle_id)
-          const isVisible = existingVehicle
-            ? existingVehicle.isShow
-            : agent.graphics
-              ? agent.graphics.visible
-              : true
+          // const isVisible = existingVehicle
+          //   ? existingVehicle.isShow
+          //   : agent.graphics
+          //     ? agent.graphics.visible
+          //     : true
+          const isVisible = settingsStore.getVehicleVisible(agent.vehicle_id)
+          // const isVisible = globalSettings.value.vehicle_visible[agent.vehicle_id] ?? true
 
           return {
             vehicle_id: agent.vehicle_id,
@@ -86,86 +97,101 @@ export const useVehicleStore = defineStore('vehicle', () => {
   // 处理状态变化
   function handleStatusChange(vehicle: Vehicle) {
     const manager = getApplicationManager()
-    if (manager && manager.agents && manager.agents[vehicle.vehicle_id]) {
-      const agent = manager.agents[vehicle.vehicle_id]
 
-      // 控制车辆及其相关元素的显示/隐藏
-      if (agent.graphics) {
-        agent.graphics.visible = vehicle.isShow
-      }
-      if (agent.graph_short_path) {
-        // 短路径的显示状态 = 车辆显示状态 AND 全局短路径开关状态
-        agent.graph_short_path.visible = vehicle.isShow && allShortPathsVisible.value
-      }
-      if (agent.graph_long_path) {
-        // 长路径的显示状态 = 车辆显示状态 AND 全局长路径开关状态
-        agent.graph_long_path.visible = vehicle.isShow && allLongPathsVisible.value
-      }
-      if (agent.text) {
-        agent.text.visible = vehicle.isShow
-      }
-
-      console.log(`车辆 ${vehicle.vehicle_id} ${vehicle.isShow ? '显示' : '隐藏'}`)
+    if(manager) {
+      console.log("handleStatusChange", vehicle)
+      settingsStore.updateVehicleVisible(vehicle.vehicle_id, vehicle.isShow)
+      manager.update_agent_visibility(vehicle.vehicle_id)
     }
   }
 
   // 显示所有车辆
   function showAllVehicles() {
     // 将所有车辆的isShow设置为true
+    settingsStore.updateAllVehicleVisible(true)
+   
     vehicles.value.forEach((vehicle) => {
       vehicle.isShow = true
     })
+   
 
-    // 更新实际的显示状态
-    const manager = getApplicationManager()
-    if (manager && manager.agents) {
-      Object.values(manager.agents).forEach((agent) => {
-        if (agent.graphics) {
-          agent.graphics.visible = true
-        }
-        if (agent.graph_short_path) {
-          // 短路径的显示状态 = 车辆显示状态 AND 全局短路径开关状态
-          agent.graph_short_path.visible = allShortPathsVisible.value
-        }
-        if (agent.graph_long_path) {
-          // 长路径的显示状态 = 车辆显示状态 AND 全局长路径开关状态
-          agent.graph_long_path.visible = allLongPathsVisible.value
-        }
-        if (agent.text) {
-          agent.text.visible = true
-        }
-      })
-    }
+    updateAllVehiclesVisible()
+
+    // const manager = getApplicationManager()
+    // if(manager) {
+    //    vehicles.value.forEach((vehicle) => {
+    //       vehicle.isShow = true
+    //       manager.update_agent_visibility(vehicle.vehicle_id)
+    //     })
+    // }
+    
+
+    // // 更新实际的显示状态
+    // const manager = getApplicationManager()
+    // if (manager && manager.agents) {
+    //   Object.values(manager.agents).forEach((agent) => {
+    //     if (agent.graphics) {
+    //       agent.graphics.visible = true
+    //     }
+    //     if (agent.graph_short_path) {
+    //       // 短路径的显示状态 = 车辆显示状态 AND 全局短路径开关状态
+    //       agent.graph_short_path.visible = allShortPathsVisible.value
+    //     }
+    //     if (agent.graph_long_path) {
+    //       // 长路径的显示状态 = 车辆显示状态 AND 全局长路径开关状态
+    //       agent.graph_long_path.visible = allLongPathsVisible.value
+    //     }
+    //     if (agent.text) {
+    //       agent.text.visible = true
+    //     }
+    //   })
+    // }
     console.log('显示所有车辆')
   }
 
   // 隐藏所有车辆
   function hideAllVehicles() {
-    // 将所有车辆的isShow设置为false
+
+    settingsStore.updateAllVehicleVisible(false)
+
     vehicles.value.forEach((vehicle) => {
       vehicle.isShow = false
     })
 
-    // 更新实际的显示状态
-    const manager = getApplicationManager()
-    if (manager && manager.agents) {
-      Object.values(manager.agents).forEach((agent) => {
-        if (agent.graphics) {
-          agent.graphics.visible = false
-        }
-        if (agent.graph_short_path) {
-          // 当车辆隐藏时，路径也必须隐藏
-          agent.graph_short_path.visible = false
-        }
-        if (agent.graph_long_path) {
-          // 当车辆隐藏时，路径也必须隐藏
-          agent.graph_long_path.visible = false
-        }
-        if (agent.text) {
-          agent.text.visible = false
-        }
-      })
-    }
+    updateAllVehiclesVisible()
+      // const manager = getApplicationManager()
+      // if(manager) {
+      //   vehicles.value.forEach((vehicle) => {
+      //       vehicle.isShow = false
+      //       manager.update_agent_visibility(vehicle.vehicle_id)
+      //     })
+      // }
+
+    // // 将所有车辆的isShow设置为false
+    // vehicles.value.forEach((vehicle) => {
+    //   vehicle.isShow = false
+    // })
+
+    // // 更新实际的显示状态
+    // const manager = getApplicationManager()
+    // if (manager && manager.agents) {
+    //   Object.values(manager.agents).forEach((agent) => {
+    //     if (agent.graphics) {
+    //       agent.graphics.visible = false
+    //     }
+    //     if (agent.graph_short_path) {
+    //       // 当车辆隐藏时，路径也必须隐藏
+    //       agent.graph_short_path.visible = false
+    //     }
+    //     if (agent.graph_long_path) {
+    //       // 当车辆隐藏时，路径也必须隐藏
+    //       agent.graph_long_path.visible = false
+    //     }
+    //     if (agent.text) {
+    //       agent.text.visible = false
+    //     }
+    //   })
+    // }
     console.log('隐藏所有车辆')
   }
 
@@ -232,6 +258,30 @@ export const useVehicleStore = defineStore('vehicle', () => {
     console.log('隐藏所有长路径')
   }
 
+
+  function updateAllVehiclesVisible() { 
+    const manager = getApplicationManager()
+    if (manager && manager.agents) {
+      Object.values(manager.agents).forEach((agent) => {
+        manager.update_agent_visibility(agent.vehicle_id)
+      })
+    }
+  }
+
+  /**
+   * 刷新单辆车的显示
+   */
+  function updateVehicleVisibility(vehicleId: string) {
+    const manager = getApplicationManager()
+    if (manager && manager.agents) {
+      const agent = manager.agents[vehicleId]
+      if (agent) {
+        manager.update_agent_visibility(agent.vehicle_id)
+      }
+    }
+  }
+
+
   return {
     // 状态
     vehicleDialogVisible,
@@ -239,6 +289,8 @@ export const useVehicleStore = defineStore('vehicle', () => {
     selectedVehicle,
     allShortPathsVisible,
     allLongPathsVisible,
+    stopTimeVisible,
+    reStopTimeVisible,
 
     // 计算属性
     vehicleCount,
@@ -256,5 +308,7 @@ export const useVehicleStore = defineStore('vehicle', () => {
     showAllLongPaths,
     hideAllLongPaths,
     toggleVehicleDialog,
+    updateAllVehiclesVisible,
+    updateVehicleVisibility,
   }
 })

@@ -56,7 +56,6 @@ watch(
       form.value = newVal
     }
   },
-  { immediate: true },
 )
 // 弹窗
 const dialogFormLoading = ref(false) // 加载数据
