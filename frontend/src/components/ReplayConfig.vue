@@ -47,7 +47,7 @@
             </el-button>
           </el-tooltip>
           <el-tooltip class="box-item" content="后退5秒">
-            <el-button :disabled="!isReplay" @click="rewind" size="small" circle>
+            <el-button :disabled="!isReplay" @click="rewind(5000)" size="small" circle>
               <el-icon><ArrowLeft /></el-icon>
             </el-button>
           </el-tooltip>
@@ -58,7 +58,7 @@
             </el-button>
           </el-tooltip>
           <el-tooltip class="box-item" content="前进5秒">
-            <el-button :disabled="!isReplay" @click="forward" size="small" circle>
+            <el-button :disabled="!isReplay" @click="forward(5000)" size="small" circle>
               <el-icon><ArrowRight /></el-icon>
             </el-button>
           </el-tooltip>
