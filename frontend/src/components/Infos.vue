@@ -70,7 +70,7 @@
                 </el-tab-pane>
 
                 <el-tab-pane label="MapGraph" name="MapGraph">
-                    <el-form :model="form" label-width="auto" size="small" v-if="form && form.map_graph && form.map_graph.info">
+                    <el-form :model="form" label-width="150px" size="small" v-if="form && form.map_graph && form.map_graph.info">
                         <template v-for="(value, key) in form.map_graph.info" :key="key">
                             <el-form-item :label="key">
                                 <el-input :value="value" readonly />
@@ -94,7 +94,7 @@
                 </el-tab-pane>
 
                 <el-tab-pane label="Wellrouting" name="Wellrouting">
-                      <el-form :model="form" label-width="auto" size="small" v-if="form && form.wellrouting && form.wellrouting.info">
+                      <el-form :model="form" label-width="150px" size="small" v-if="form && form.wellrouting && form.wellrouting.info">
                         <template v-for="(value, key) in form.wellrouting.info" :key="key">
                             <el-form-item :label="key">
                                 <el-input :value="value" readonly />
@@ -241,10 +241,10 @@ const query = async () => {
     if (response.status === 200 && response.data.code === 200 && response.data.data) {
         let data = response.data.data
         form.value = data
-        ElMessage({ message: '加载成功', type: 'success' })
+        ElMessage({ message: '查询系统信息成功', type: 'success' })
     } else {
         form.value = null
-        ElMessage({ message: '加载失败', type: 'error' })
+        ElMessage({ message: '查询系统信息出错', type: 'error' })
     }
 }
 
@@ -266,6 +266,11 @@ const handleOpen = async () => {
     dialogFormVisible.value = true
     handleRefresh()
 }
+
+// 暴露方法供父组件调用
+defineExpose({
+    handleOpen
+})
 
 // 在组件卸载时清理资源
 onUnmounted(() => {

@@ -347,6 +347,10 @@ watch(
   (newVal) => {
     if (newVal) {
       centerDialog()
+    } else {
+      // 对话框关闭时，确保恢复地图交互
+      const ins = ApplicationManager.getInstance()
+      ins.mainContainer.eventMode = 'static'
     }
   },
 )

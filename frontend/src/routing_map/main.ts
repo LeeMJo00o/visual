@@ -119,6 +119,26 @@ export default class ApplicationManager extends GraphicTools {
   // 通用的图形对象, key为类型, 用于区分不同类型的图形; 值为, id: graphics的对象
   public common_graphics: Record<string, Record<string, Graphics>> = {}
 
+  // 测量点图形对象
+  public g_p1: Graphics | null = null
+  public g_p2: Graphics | null = null
+
+  // 测量点相关
+  public measurePointsContainer: Container | null = null
+  public measurePointGraphics: {
+    point1: Graphics | null
+    point2: Graphics | null
+    line: Graphics | null
+    label1: Text | null
+    label2: Text | null
+  } = {
+    point1: null,
+    point2: null,
+    line: null,
+    label1: null,
+    label2: null,
+  }
+
   constructor() {
     // 如果已经存在实例，返回现有实例
     const existingInstance = getGlobalInstance()
@@ -218,6 +238,128 @@ export default class ApplicationManager extends GraphicTools {
       this.updateTimeDisplay()
     }
 
+    /**
+     * 初始化测量点容器
+     */
+    initMeasurePointsContainer() {
+      console.log("this is ", this)
+      if (!this.g_p1) {
+        this.g_p1 = new Graphics()
+        this.g_p2 = new Graphics()
+        this.mainContainer.addChild(this.g_p1)
+        this.mainContainer.addChild(this.g_p2)
+      }
+    }
+
+    /**
+     * 绘制或更新测量点
+     */
+    updateMeasurePoint(pointId: 'point1' | 'point2', x: number, y: number) {
+      this.initMeasurePointsContainer()
+
+      // 将地图坐标转换为应用坐标（翻转y轴）
+      const [appX, appY] = this.map_xy_to_app([x, y])
+
+      const color = pointId === 'point1' ? 0x00bfff : 0x9370db // 深天蓝和中紫色
+      const label = pointId === 'point1' ? 'P1' : 'P2'
+      const g = pointId === 'point1' ? this.g_p1 : this.g_p2
+    //   // 绘制圆点（使用转换后的坐标）
+    //   const g = new Graphics()
+    //   g.circle(0, 0, 0.3).fill({ color: color, alpha: 0.8 }).stroke({
+    //     width: 2,
+    //     color: 0xff0000
+    // }); // 2px red stroke
+
+    //   g.circle(0, 0, 0.15).fill({ color: 0xffffff, alpha: 1 }).stroke({
+    //     width: 2,
+    //     color: 0xff0000
+    // }); // 2px red stroke
+      g.clear()
+      // this.g_p1.rect(appX, appY, 100, 100)
+      g.circle(appX, appY, 1)
+      .fill({ color: color, alpha: 0.8 })
+
+      // 添加文字标签（使用转换后的坐标）
+      const text = new Text({
+        text: label,
+        style: {
+          fontSize: 14,
+          fill: color,
+          fontWeight: 'bold',
+        },
+      })
+      text.anchor.set(0.5, 1.2)
+      text.position.set(appX, appY)
+      text.scale.set(0.02) // 缩放以适应地图坐标系
+
+      // 更新连接线
+      // this.updateMeasureLine()
+    }
+
+    /**
+     * 更新两点之间的连接线
+     */
+    updateMeasureLine() {
+      // 移除旧线
+      if (this.measurePointGraphics.line) {
+        this.measurePointsContainer.removeChild(this.measurePointGraphics.line)
+        this.measurePointGraphics.line.destroy()
+        this.measurePointGraphics.line = null
+      }
+
+      // 如果两个点都存在，绘制连接线
+      const p1 = this.measurePointGraphics.point1
+      const p2 = this.measurePointGraphics.point2
+      if (p1 && p2) {
+        const g = new Graphics()
+        // 获取两点位置（从圆心）
+        const bounds1 = p1.getBounds()
+        const bounds2 = p2.getBounds()
+        const x1 = bounds1.x + bounds1.width / 2
+        const y1 = bounds1.y + bounds1.height / 2
+        const x2 = bounds2.x + bounds2.width / 2
+        const y2 = bounds2.y + bounds2.height / 2
+
+        g.moveTo(x1, y1)
+        g.lineTo(x2, y2)
+        g.stroke({ width: 0.05, color: 0xffff00, alpha: 0.8 })
+
+        // 绘制虚线效果（用小段实线模拟）
+        this.measurePointsContainer.addChild(g)
+        this.measurePointGraphics.line = g
+      }
+    }
+
+    /**
+     * 清除所有测量点
+     */
+    clearMeasurePoints() {
+      if (this.measurePointsContainer) {
+        // 清除所有子元素
+        const keys = ['point1', 'point2', 'line', 'label1', 'label2'] as const
+        for (const key of keys) {
+          const item = this.measurePointGraphics[key]
+          if (item) {
+            this.measurePointsContainer.removeChild(item)
+            item.destroy()
+            this.measurePointGraphics[key] = null
+          }
+        }
+      }
+    }
+
+    /**
+     * 设置测量点显示/隐藏
+     */
+    setMeasurePointsVisible(visible: boolean) {
+      if (this.g_p1) {
+        this.g_p1.visible = visible
+      }
+      if (this.g_p2) {
+        this.g_p2.visible = visible
+      }
+    }
+
   // 获取单例实例
   static getInstance() {
     const existingInstance = getGlobalInstance()
@@ -281,7 +423,15 @@ export default class ApplicationManager extends GraphicTools {
       // preference: "webgpu" # webgl / webgpu
     })
     const game_container = document.getElementById('map_main_container')
-    game_container.appendChild(this.app.canvas)
+    if (game_container) {
+      game_container.appendChild(this.app.canvas)
+      
+      // 阻止地图容器的滚轮事件传播到页面，避免页面滚动
+      game_container.addEventListener('wheel', (e) => {
+        e.preventDefault()
+      }, { passive: false })
+    }
+    
     this.mainContainer = new Container()
     this.agentContainer = new Container()
     this.longPathContainer = new Container()

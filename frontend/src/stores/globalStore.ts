@@ -87,6 +87,40 @@ export const useGlobalStore = defineStore('global', () => {
     })
   }
 
+  // 测量点功能：两个点用于计算距离和角度
+  const measurePoints = ref<{
+    point1: { x: number; y: number } | null
+    point2: { x: number; y: number } | null
+  }>({
+    point1: null,
+    point2: null,
+  })
+
+  function setMeasurePoint(pointId: 'point1' | 'point2', x: number, y: number) {
+    measurePoints.value[pointId] = { x, y }
+  }
+
+  function clearMeasurePoints() {
+    measurePoints.value.point1 = null
+    measurePoints.value.point2 = null
+  }
+
+  // 计算两点距离
+  function getMeasureDistance(): number | null {
+    const p1 = measurePoints.value.point1
+    const p2 = measurePoints.value.point2
+    if (!p1 || !p2) return null
+    return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2))
+  }
+
+  // 计算两点角度（弧度，从p1指向p2）
+  function getMeasureAngle(): number | null {
+    const p1 = measurePoints.value.point1
+    const p2 = measurePoints.value.point2
+    if (!p1 || !p2) return null
+    return Math.atan2(p2.y - p1.y, p2.x - p1.x)
+  }
+
   return {
     priorityConfig,
     setPriorityConfig,
@@ -110,5 +144,12 @@ export const useGlobalStore = defineStore('global', () => {
     setPosition,
     getPosition,
     clearPositions,
+
+    // 测量点
+    measurePoints,
+    setMeasurePoint,
+    clearMeasurePoints,
+    getMeasureDistance,
+    getMeasureAngle,
   }
 })

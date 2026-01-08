@@ -1,6 +1,6 @@
 <template>
-  <div class="control-cell">
-    <el-button type="success" plain @click="vehicleStore.toggleVehicleDialog" size="small">
+  <div class="agents-controls">
+    <el-button type="primary" plain @click="vehicleStore.toggleVehicleDialog" size="small">
       Vehicle List
     </el-button>
     <!-- <div class="switch-container">
@@ -8,8 +8,8 @@
       <el-switch v-model="" @change="toggleAllVehicles" size="default" />
     </div> -->
 
-      <el-button @click="showAll" type="primary" size="small">show all</el-button>
-      <el-button @click="hideAll" size="small">hide all</el-button>
+      <el-button @click="showAll" type="primary" plain size="small">show all</el-button>
+      <el-button @click="hideAll" type="primary" plain size="small">hide all</el-button>
 
       <span class="switch-label">Short Path</span>
       <el-switch v-model="globalSettings.vehicle_allShortPathsVisible" @change="toggleAllVehicles" size="small" />
@@ -112,6 +112,13 @@ const hideAll = () => {
 
 
 <style scoped>
+.agents-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 /* .vehicle-controls {
   display: flex;
   gap: 12px;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
@@ -148,6 +148,93 @@ const copyClickPosition = () => {
     })
   }
 }
+
+// 测量点功能
+const measurePoint1 = ref('')
+const measurePoint2 = ref('')
+const showMeasurePoints = ref(true) // 控制测量点显示/隐藏
+
+// 计算距离
+const measureDistance = computed(() => {
+  const p1 = globalStore.measurePoints.point1
+  const p2 = globalStore.measurePoints.point2
+  if (!p1 || !p2) return null
+  return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2))
+})
+
+// 计算角度（弧度）
+const measureAngle = computed(() => {
+  const p1 = globalStore.measurePoints.point1
+  const p2 = globalStore.measurePoints.point2
+  if (!p1 || !p2) return null
+  return Math.atan2(p2.y - p1.y, p2.x - p1.x)
+})
+
+// 解析坐标字符串 "x,y" 或 "x, y"
+const parseCoordinate = (input: string): { x: number; y: number } | null => {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  
+  // 支持逗号、空格、制表符等分隔符
+  const parts = trimmed.split(/[,\s]+/).filter(p => p.length > 0)
+  if (parts.length !== 2) return null
+  
+  const x = parseFloat(parts[0])
+  const y = parseFloat(parts[1])
+  
+  if (isNaN(x) || isNaN(y)) return null
+  return { x, y }
+}
+
+// 监听点1输入变化
+watch(measurePoint1, (newValue) => {
+  const coord = parseCoordinate(newValue)
+  if (coord) {
+    globalStore.setMeasurePoint('point1', coord.x, coord.y)
+    const appManager = ApplicationManager.getInstance()
+    appManager.updateMeasurePoint('point1', coord.x, coord.y)
+  }
+})
+
+// 监听点2输入变化
+watch(measurePoint2, (newValue) => {
+  const coord = parseCoordinate(newValue)
+  if (coord) {
+    globalStore.setMeasurePoint('point2', coord.x, coord.y)
+    const appManager = ApplicationManager.getInstance()
+    appManager.updateMeasurePoint('point2', coord.x, coord.y)
+  }
+})
+
+// 清除测量点
+const clearMeasurePoints = () => {
+  globalStore.clearMeasurePoints()
+  measurePoint1.value = ''
+  measurePoint2.value = ''
+  const appManager = ApplicationManager.getInstance()
+  appManager.clearMeasurePoints()
+}
+
+// 切换测量点显示
+const toggleMeasurePoints = (visible: boolean) => {
+  const appManager = ApplicationManager.getInstance()
+  appManager.setMeasurePointsVisible(visible)
+}
+
+// 监听显示开关变化
+watch(showMeasurePoints, (newValue) => {
+  toggleMeasurePoints(newValue)
+})
+
+// Infos 组件引用
+const infosRef = ref<InstanceType<typeof Infos> | null>(null)
+
+// 打开 Infos 对话框
+const openInfosDialog = () => {
+  if (infosRef.value) {
+    infosRef.value.handleOpen()
+  }
+}
 </script>
 
 <template>
@@ -199,9 +286,9 @@ const copyClickPosition = () => {
               <span>Speed Config</span>
             </el-menu-item>
 
-            <el-menu-item index="Infos">
+            <!-- <el-menu-item index="Infos">
               <span>Infos</span>
-            </el-menu-item>
+            </el-menu-item> -->
           </el-menu>
         </div>
       </el-aside>
@@ -245,6 +332,8 @@ const copyClickPosition = () => {
                   <span class="cell-label">底图</span>
                   <el-switch v-model="globalSettings.background_image_show" size="small"/>
                   
+                  <el-button type="primary" plain size="small" @click="openInfosDialog">sys-info</el-button>
+
                   <span class="click-position">
                     click-p:
                     {{
@@ -257,11 +346,26 @@ const copyClickPosition = () => {
                       <CopyDocument />
                     </el-icon>
                   </span>
+
                 </div>
 
-                <!-- 右上：Agent控制 -->
-                <div class="control-cell">
-
+                <!-- 右上：测量点 -->
+                <div class="control-cell measure-cell">
+                  <span class="cell-label">测量:</span>
+                  <div class="measure-input-group">
+                    <span class="point-label p1">P1</span>
+                    <el-input v-model="measurePoint1" placeholder="x, y" size="small" class="coord-input-single" />
+                  </div>
+                  <div class="measure-input-group">
+                    <span class="point-label p2">P2</span>
+                    <el-input v-model="measurePoint2" placeholder="x, y" size="small" class="coord-input-single" />
+                  </div>
+                  <span class="cell-label">显示</span>
+                  <el-switch v-model="showMeasurePoints" size="small" />
+                  <div class="measure-result" v-if="measureDistance !== null">
+                    <span>距离: {{ measureDistance.toFixed(3) }}</span>
+                    <span>角度: {{ measureAngle?.toFixed(3) }}</span>
+                  </div>
                 </div>
 
                 <!-- 下方：跨两列 -->
@@ -325,9 +429,6 @@ const copyClickPosition = () => {
             <div v-else-if="currentMenu === 'speed-config'">
               <SpeedFmsConfig />
             </div>
-            <div v-else-if="currentMenu === 'Infos'">
-              <Infos />
-            </div>
 
             <div v-else>
               <!-- <h3>请选择一个功能</h3> -->
@@ -358,6 +459,9 @@ const copyClickPosition = () => {
 
   <!-- 电子围栏区域列表对话框 -->
   <LockAreaList type="trigger" />
+
+  <!-- Infos 信息对话框 -->
+  <Infos ref="infosRef" />
 </template>
 
 <style scoped>
@@ -474,6 +578,52 @@ const copyClickPosition = () => {
 
 .control-cell .click-position .copy-icon:hover {
   color: #409eff;
+}
+
+/* 测量点样式 */
+.measure-cell {
+  flex-wrap: wrap;
+}
+
+.measure-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.measure-input-group .point-label {
+  font-weight: bold;
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+
+.measure-input-group .point-label.p1 {
+  color: #00bfff;
+}
+
+.measure-input-group .point-label.p2 {
+  color: #9370db;
+}
+
+.measure-input-group .coord-input-single {
+  width: 140px;
+}
+
+.measure-input-group :deep(.el-input__inner) {
+  text-align: center;
+  font-size: 14px;
+}
+
+.measure-result {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: #606266;
+  background-color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
 }
 
 /* 滑块相关样式 */
