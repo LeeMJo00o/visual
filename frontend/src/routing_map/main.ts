@@ -26,6 +26,7 @@ import Agent from './agent.js' // 导入 Agent 类
 import { DataRenderer } from './data_renderer.ts' // 导入数据渲染管理器
 import { storeToRefs } from 'pinia'
 import { useGlobalSettingsStore } from '@/stores/useLocalStorage.ts'
+import { useGlobalStore } from '@/stores/globalStore'
 
 
 // 延迟获取 store，避免在模块加载时 Pinia 还未初始化
@@ -200,33 +201,48 @@ export default class ApplicationManager extends GraphicTools {
     this.timeUpdateInterval = null
   }
 
+    /**
+     * 直接设置顶部时间文本（同步、无延迟）。
+     * 回放模式下由回放控件主动调用，避免等待 1s 定时器。
+     */
+    setTopTimeText(text: string) {
+      if (this.timeText) {
+        this.timeText.text = text
+      }
+    }
+
+    /**
+     * 立即刷新顶部时间显示（同步读取 store 的回放/实时状态）。
+     */
+    updateTopTimeDisplayNow() {
+      this.updateTimeDisplay()
+    }
+
   // 获取单例实例
   static getInstance() {
     const existingInstance = getGlobalInstance()
     if (!existingInstance) {
-      console.log('创建新的ApplicationManager实例')
+      console.log('create new ApplicationManager !')
       return new ApplicationManager()
     } else {
-      console.log('返回现有的ApplicationManager实例')
-      // 确保canvas正确显示
       existingInstance.ensureCanvasDisplay()
       return existingInstance
     }
   }
+
 
   // 确保canvas正确显示
   ensureCanvasDisplay() {
     if (this.app && this.app.canvas) {
       const game_container = document.getElementById('map_main_container')
       if (game_container && !game_container.contains(this.app.canvas)) {
-        console.log('重新添加canvas到DOM')
+        console.log('re add canvas to DOM')
         game_container.appendChild(this.app.canvas)
       }
 
       // 确保应用正常渲染
-      if (this.app.renderer) {
-        console.log('强制重新渲染PIXI应用')
-        this.app.renderer.render(this.app.stage)
+      if (!this.app.renderer) {
+        console.log('no render!')
       }
     }
   }
@@ -914,6 +930,39 @@ export default class ApplicationManager extends GraphicTools {
   // 更新时间显示
   updateTimeDisplay() {
     if (this.timeText) {
+      // 回放模式下顶部时间显示规则：
+      // 1) 回放中且已选择文件：显示 [RE] + 回放时间点
+      // 2) 回放中但未选择文件：仅显示 [RE]
+      // 3) 非回放：显示实时时间
+
+      const globalStore = useGlobalStore()
+
+      if (globalStore.isReplay) {
+        const t = globalStore.replayCurrentTime
+        const hasFile = !!globalStore.replaySelectedFile
+
+        if (!hasFile) {
+          this.timeText.text = '[RE]'
+          return
+        }
+
+        if (t) {
+          const dt = new Date(t)
+          const dateString = dt.toISOString().split('T')[0]
+          const timeString = dt.toLocaleTimeString('zh-CN', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })
+          this.timeText.text = `[RE] ${dateString} ${timeString}`
+        } else {
+          // 已选择文件但时间点尚未设置（例如刚切换模式/刚选文件）
+          this.timeText.text = '[RE]'
+        }
+        return
+      }
+
       const now = new Date()
       const dateString = now.toISOString().split('T')[0] // 获取日期部分 YYYY-MM-DD
       const timeString = now.toLocaleTimeString('zh-CN', {

@@ -6,7 +6,6 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.models.demo import DemoTable
 from src.db.connect import db_conn_manager
-from src.core.config import DEMO_REDIS_URL, PATH_REPORT_URL
 import json
 import asyncio
 import traceback

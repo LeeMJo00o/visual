@@ -1,5 +1,5 @@
 <template>
-  <div class="vehicle-controls">
+  <div class="control-cell">
     <el-button type="success" plain @click="vehicleStore.toggleVehicleDialog" size="small">
       Vehicle List
     </el-button>
@@ -8,29 +8,19 @@
       <el-switch v-model="" @change="toggleAllVehicles" size="default" />
     </div> -->
 
-    <el-button @click="showAll" type="primary" size="small">show all</el-button>
-    <el-button @click="hideAll" size="small">hide all</el-button>
+      <el-button @click="showAll" type="primary" size="small">show all</el-button>
+      <el-button @click="hideAll" size="small">hide all</el-button>
 
-    <div class="switch-container">
-      <span class="switch-label">Short Paths</span>
+      <span class="switch-label">Short Path</span>
       <el-switch v-model="globalSettings.vehicle_allShortPathsVisible" @change="toggleAllVehicles" size="small" />
-    </div>
-    <div class="switch-container">
-      <span class="switch-label">Long Paths</span>
+      <span class="switch-label">Long Path</span>
       <el-switch v-model="globalSettings.vehicle_allLongPathsVisible" @change="toggleAllVehicles" size="small" />
-    </div>
-    <div class="switch-container">
-      <span class="switch-label">Vehicle IDs</span>
+      <span class="switch-label">Id</span>
       <el-switch v-model="globalSettings.vehicle_allIDsVisible" @change="toggleAllVehicles" size="small" />
-    </div>
-    <div class="switch-container">
       <span class="switch-label">Stop Time</span>
       <el-switch v-model="vehicleStore.stopTimeVisible" size="small" />
-    </div>
-    <div class="switch-container">
       <span class="switch-label">Recycle Stop Time</span>
       <el-switch v-model="vehicleStore.reStopTimeVisible" size="small" />
-    </div>
 
     <el-divider direction="vertical" />
 
@@ -117,37 +107,12 @@ const hideAll = () => {
   vehicleStore.hideAllVehicles()
 }
 
-
-// 切换所有短路径的显示状态
-const toggleAllShortPaths = (value: boolean) => {
-  if (value) {
-    vehicleStore.showAllShortPaths()
-  } else {
-    vehicleStore.hideAllShortPaths()
-  }
-}
-
-// 切换所有长路径的显示状态
-const toggleAllLongPaths = (value: boolean) => {
-  if (value) {
-    vehicleStore.showAllLongPaths()
-  } else {
-    vehicleStore.hideAllLongPaths()
-  }
-}
-
-// 切换所有车辆号码的显示状态
-const toggleAllVehicleIds = (value: boolean) => {
-  const manager = vehicleStore.getApplicationManager()
-  if (manager && manager.agentTextContainer) {
-    manager.agentTextContainer.visible = value
-    console.log(`车辆号码 ${value ? '显示' : '隐藏'}`)
-  }
-}
 </script>
 
+
+
 <style scoped>
-.vehicle-controls {
+/* .vehicle-controls {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -159,11 +124,13 @@ const toggleAllVehicleIds = (value: boolean) => {
   display: flex;
   align-items: center;
   gap: 8px;
-}
+} */
 
 .switch-label {
+  font-weight: 500;
   font-size: 14px;
-  color: #606266;
   white-space: nowrap;
+  margin-right: 4px;
+  flex-shrink: 0;
 }
 </style>

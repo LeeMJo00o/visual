@@ -1,7 +1,7 @@
 <!-- 权重系数配置 -->
 <template>
   <div class="lock-area-func">
-    <el-button type="success" plain @click="handleOpen">Set</el-button>
+    <el-button type="success" plain @click="handleOpen">SetScale</el-button>
   </div>
   <el-dialog
     v-model="dialogFormVisible"

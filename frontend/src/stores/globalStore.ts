@@ -12,6 +12,12 @@ export const useGlobalStore = defineStore('global', () => {
 
   const isReplay = ref<boolean>(sessionStorage.getItem('isReplay') === 'true' ? true : false)
 
+  // 回放模式下用于顶部时间显示的状态
+  // 当前回放时间点（毫秒时间戳）。当未选择回放文件时为 null。
+  const replayCurrentTime = ref<number | null>(null)
+  // 当前选择的回放文件名。为空表示尚未选择文件。
+  const replaySelectedFile = ref<string>('')
+
   //  回放数据
   const replayData = ref<any[]>([])
   const speedConfig = ref<any>(null)
@@ -40,6 +46,24 @@ export const useGlobalStore = defineStore('global', () => {
   function setIsReplay(value?: boolean) {
     sessionStorage.setItem('isReplay', (value ? value : !isReplay.value).toString())
     isReplay.value = value ? value : !isReplay.value
+
+    // 退出回放时清理回放显示状态，避免顶部时间残留
+    if (!isReplay.value) {
+      replayCurrentTime.value = null
+      replaySelectedFile.value = ''
+    }
+  }
+
+  function setReplaySelectedFile(fileName: string) {
+    replaySelectedFile.value = fileName || ''
+    // 未选择文件时，顶部只显示 [RE]，不显示时间
+    if (!replaySelectedFile.value) {
+      replayCurrentTime.value = null
+    }
+  }
+
+  function setReplayCurrentTime(t: number | null) {
+    replayCurrentTime.value = t
   }
 
   function getIsReplay() {
@@ -76,6 +100,12 @@ export const useGlobalStore = defineStore('global', () => {
     isReplay,
     setIsReplay,
     getIsReplay,
+
+  // replay time display state
+  replayCurrentTime,
+  replaySelectedFile,
+  setReplayCurrentTime,
+  setReplaySelectedFile,
     positions,
     setPosition,
     getPosition,

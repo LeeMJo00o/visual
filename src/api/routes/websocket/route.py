@@ -8,7 +8,7 @@ from chain_websocket.server import ConnectionManager, MulLinkServerEndpoint
 from src.middlewares.mq import mq_route
 import json
 from src.middlewares.redis_handler.connect import redis_cli
-from src.core.config import DEMO_REDIS_URL, pp_visual_DEVICE_MODE
+from src.core.config import pp_visual_DEVICE_MODE
 from src.core.log import logger
 import traceback
 from src.map_tools import g_roads

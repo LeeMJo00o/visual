@@ -48,7 +48,7 @@
       <el-table-column label="Pose" min-width="120">
         <template #default="{ row }">
           <div class="position-info">
-            <span>{{ row.position.x.toFixed(2) }}, {{ row.position.y.toFixed(2) }}</span>
+            <span>{{ row.position.x.toFixed(2) }}, {{- row.position.y.toFixed(2) }}</span>
           </div>
         </template>
       </el-table-column>

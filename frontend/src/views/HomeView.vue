@@ -3,6 +3,7 @@ import { ref, watch, onMounted } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { CopyDocument } from '@element-plus/icons-vue'
 import { useGlobalStore } from '../stores/globalStore'
 // import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import LockArea from '@/components/LockArea.vue'
@@ -135,6 +136,18 @@ const handleVisibleAgent = (type: string) => {
 const handleChangeIsReplay = () => {
   globalStore.setIsReplay(!globalStore.isReplay)
 }
+
+// 复制坐标到剪贴板
+const copyClickPosition = () => {
+  if (globalStore.positions.click) {
+    const text = `${globalStore.positions.click[0].toFixed(3)}, ${globalStore.positions.click[1].toFixed(3)}`
+    navigator.clipboard.writeText(text).then(() => {
+      ElMessage({ message: '坐标已复制', type: 'success', duration: 1500 })
+    }).catch(() => {
+      ElMessage({ message: '复制失败', type: 'error' })
+    })
+  }
+}
 </script>
 
 <template>
@@ -147,24 +160,19 @@ const handleChangeIsReplay = () => {
           </el-icon>
         </div>
         <div class="el-menu-wrapper">
-          <el-menu
-            :default-active="currentMenu"
-            background-color="#f5f5f5"
-            text-color="#333"
-            @select="handleMenuSelect"
-            :collapse="isSidebarCollapsed"
-          >
+          <el-menu :default-active="currentMenu" background-color="#f5f5f5" @select="handleMenuSelect"
+            :collapse="isSidebarCollapsed">
             <el-menu-item index="main-map">
               <span>Main Map</span>
             </el-menu-item>
 
-            <el-menu-item index="2">
+            <!-- <el-menu-item index="2">
               <span>Map Tools</span>
             </el-menu-item>
 
             <el-menu-item index="agents-manager">
               <span>Agent List</span>
-            </el-menu-item>
+            </el-menu-item> -->
 
             <el-menu-item index="lock-area">
               <span>Lock Area</span>
@@ -201,119 +209,69 @@ const handleChangeIsReplay = () => {
       <el-main>
         <el-container class="inner-container">
           <div class="top-section">
-            <div v-if="currentMenu === 'main-map'">
-              <div class="slider-container">
-                <div class="label-and-buttons">
-                  <el-form :inline="true" size="small">
-                    <el-form-item label="显示所有vpb">
-                      <el-tooltip
-                        effect="dark"
-                        content="切换刷新页面生效"
-                        placement="bottom"
-                      >
-                        <el-switch
-                          v-model="globalSettings.all_vpb_show"
-                          class="ml-2"
-                          inline-prompt
-                          style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-                        />
-                      </el-tooltip>
-                    </el-form-item>
+            <div v-if="currentMenu === 'main-map'" class="main-map-controls">
+              <!-- 两列布局 -->
+              <div class="control-grid">
+                <!-- 左上：坐标信息 -->
+                <div class="control-cell">
 
-                    <el-form-item label="显示地图">
-                      <el-switch
-                        v-model="globalSettings.map_show"
-                        style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" />
-                    </el-form-item>
-
-                    <el-form-item label="显示底图">
-                      <el-switch
-                        v-model="globalSettings.background_image_show"
-                        style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" />
-                    </el-form-item>
-                    
-                    <el-form-item label="回放">
-                      <el-switch
+                  <!-- <span class="cell-label">显示控制:</span>
+                  <el-switch v-model="globalSettings.all_vpb_show" size="small" inline-prompt active-text="VPB"
+                    inactive-text="VPB" />
+                  <el-switch v-model="globalSettings.map_show" size="small" inline-prompt active-text="地图"
+                    inactive-text="地图" />
+                  <el-switch v-model="globalSettings.background_image_show" size="small" inline-prompt active-text="底图"
+                    inactive-text="底图" />
+                  <el-button type="primary" size="small" plain>刷新地图</el-button>
+                  <el-button type="success" size="small" plain>重置视图</el-button> -->
+                  <span class="cell-label">回放</span>    
+                  <el-switch
                         v-model="isReplay"
                         size="small"
                         class="ml-2"
                         inline-prompt
-                        style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-                        active-text="回放开启"
-                        inactive-text="回放禁用"
+                        style="--el-switch-off-color: rgb(64, 158, 255)"
+                        active-text="回放"
+                        inactive-text="实时"
                         @change="handleChangeIsReplay"
                       />
-                    </el-form-item>
-                    
-                  </el-form>
-                  
-                  
 
+                  <span class="cell-label">all-vpb</span>
+                  <el-tooltip effect="dark" content="切换刷新页面生效" placement="bottom">
+                    <el-switch v-model="globalSettings.all_vpb_show" class="ml-2" inline-prompt size="small" />
+                  </el-tooltip>
+                  <span class="cell-label">地图</span>
+                  <el-switch v-model="globalSettings.map_show" size="small"/>
+                  <span class="cell-label">底图</span>
+                  <el-switch v-model="globalSettings.background_image_show" size="small"/>
                   
-
-                  <!-- <el-button type="primary" plain id="map_hide" @click="onMapHide"
-                    >map show</el-button
-                  > -->
-                  <!-- <el-button type="primary" plain id="image_hide" @click="onImageHide"
-                    >image show</el-button
-                  > -->
-                  <!-- <el-button type="primary" plain id="agent_hide" size="small" @click="onAgentHide"
-                    >agent show</el-button
-                  > -->
-                  <!-- <el-button
-                    type="primary"
-                    plain
-                    id="agent_hide"
-                    @click="handleVisibleAgent('self_area_visible')"
-                    >self_area show</el-button
-                  >
-                  <el-button
-                    type="primary"
-                    size="small"
-                    plain
-                    id="agent_hide"
-                    @click="handleVisibleAgent('ga_area_visible')"
-                    >ga_area show</el-button
-                  >
-                  <el-button
-                    type="primary"
-                    size="small"
-                    plain
-                    id="agent_hide"
-                    @click="handleVisibleAgent('pga_area_visible')"
-                    >pga_area show</el-button
-                  >
-                  <el-button
-                    type="primary"
-                    size="small"
-                    plain
-                    id="agent_hide"
-                    @click="handleVisibleAgent('pla_area_visible')"
-                    >pla_area show</el-button
-                  > -->
-                  
-                  
-                  <!-- <span class="slider-value">{{ sliderValue.toFixed(1) }}</span> -->
+                  <span class="click-position">
+                    click-p:
+                    {{
+                      globalStore.positions.click
+                        ? `[ ${globalStore.positions.click[0].toFixed(3)}, ${globalStore.positions.click[1].toFixed(3)} ]`
+                        : ''
+                    }}
+                    <el-icon v-if="globalStore.positions.click" class="copy-icon" @click="copyClickPosition"
+                      title="复制坐标">
+                      <CopyDocument />
+                    </el-icon>
+                  </span>
                 </div>
-                
-              </div>
-              <div class="slider-container">
-                <span class="slider-label">区域均匀分布:</span>
-                <el-slider
-                  style="max-width: 600px;"
-                  placement="right"
-                  :show-tooltip="true"
-                  v-model="sliderValue"
-                  :min="0"
-                  :max="1000"
-                  :step="0.1"
-                  @change="handleSliderChange"
-                  show-input size="small"
-                />
+
+                <!-- 右上：Agent控制 -->
+                <div class="control-cell">
+
+                </div>
+
+                <!-- 下方：跨两列 -->
+                <div class="control-cell full-width">
+                  <AgentsManager />
+                </div>
               </div>
             </div>
 
-            <div v-else-if="currentMenu === '2'">
+            <!-- <div v-else-if="currentMenu === '2'">
               <span>
                 click:
                 {{
@@ -334,7 +292,7 @@ const handleChangeIsReplay = () => {
 
             <div v-else-if="currentMenu === 'agents-manager'">
               <AgentsManager />
-            </div>
+            </div> -->
 
             <div v-else-if="currentMenu === 'lock-area'">
               <LockArea type="lock" text="Lock Area" />
@@ -349,7 +307,15 @@ const handleChangeIsReplay = () => {
             </div>
 
             <div v-else-if="currentMenu === 'weight-scale-config'">
-              <WeightScaleConfig />
+              <div style="display: flex; align-items: center; gap: 20px;">
+                <WeightScaleConfig />
+                <div class="slider-container">
+                  <span class="slider-label">区域均匀分布:</span>
+                  <el-slider style="max-width: 600px;min-width: 400px;" placement="right" :show-tooltip="true"
+                    v-model="sliderValue" :min="0" :max="1000" :step="0.1" @change="handleSliderChange" show-input
+                    size="small" />
+                </div>
+              </div>
             </div>
 
             <div v-else-if="currentMenu === 'priority-config'">
@@ -451,8 +417,63 @@ const handleChangeIsReplay = () => {
   flex: 1;
   position: relative;
 }
+
 .bottom-fotter {
   height: 80px;
+}
+
+/* Main Map 控制面板样式 */
+.main-map-controls {
+  width: 100%;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: minmax(auto, max-content) minmax(0, 1fr);
+  gap: 4px;
+}
+
+.control-cell.full-width {
+  grid-column: 1 / -1;
+}
+
+.control-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.control-cell .cell-label {
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.control-cell .click-position {
+  display: inline-flex;
+  align-items: center;
+  width: 240px;
+  /* font-family: monospace; */
+  flex-shrink: 0;
+}
+
+.control-cell .click-position .copy-icon {
+  margin-left: 4px;
+  cursor: pointer;
+  color: #909399;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.control-cell .click-position .copy-icon:hover {
+  color: #409eff;
 }
 
 /* 滑块相关样式 */
@@ -460,7 +481,14 @@ const handleChangeIsReplay = () => {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-wrap: nowrap;
 }
+
+.slider-container .slider-label {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .label-and-buttons {
   display: flex;
   align-items: center;
@@ -473,13 +501,15 @@ const handleChangeIsReplay = () => {
   align-items: center;
 }
 
-.el-slider {
+/* .el-slider {
   max-width: 200px;
-}
+} */
 .slider-demo-block .el-slider {
   margin-top: 0;
   margin-left: 12px;
+  max-width: 200px;
 }
+
 .slider-demo-block .demonstration {
   font-size: 14px;
   /* color: var(--el-text-color-secondary); */
@@ -490,7 +520,8 @@ const handleChangeIsReplay = () => {
   white-space: nowrap;
   margin-bottom: 0;
 }
-.slider-demo-block .demonstration + .el-slider {
+
+.slider-demo-block .demonstration+.el-slider {
   flex: 0 0 70%;
 }
 
@@ -565,6 +596,7 @@ const handleChangeIsReplay = () => {
   border-radius: 6px;
   border: 1px solid #e9ecef;
 }
+
 .bottom-fotter {
   background-color: #fff;
 }

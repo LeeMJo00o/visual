@@ -132,6 +132,14 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
+        "zhoukou": {
+            "rotation": -0.844,
+            "offset": [1000, 920],
+            "use_back_image": False,
+            "scale": 1.7,
+            "mode": "test-demo",
+            "version": map_name
+        }
     }
 
     return get_config_by_prefix(config_map, map_name)

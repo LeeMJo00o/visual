@@ -121,7 +121,7 @@ const timer = ref<number | null>(null)
 const playbackRate = ref(1)
 const speedOptions = ref([0.5, 1, 2, 4])
 
-const fileListOption = ref([])
+const fileListOption = ref<Array<{ name: string }>>([])
 
 const selectedFile = ref('')
 
@@ -130,6 +130,34 @@ const formatTime = (time: number) => {
   if (!time) return '00:00:00'
   return dayjs(time).format('YYYY-MM-DD HH:mm:ss')
 }
+
+// 同步当前回放状态到全局 store，用于顶部时间显示
+watch(
+  () => selectedFile.value,
+  (file) => {
+    globalStore.setReplaySelectedFile(file)
+
+    // 立即刷新顶部回放时间显示（避免等待 1s 定时器）
+    appManager?.updateTopTimeDisplayNow?.()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => currentTime.value,
+  (t) => {
+    // 未选择文件时不显示时间，只显示 [RE]
+    if (!selectedFile.value) {
+      globalStore.setReplayCurrentTime(null)
+      return
+    }
+    globalStore.setReplayCurrentTime(t)
+
+    // 立即刷新顶部回放时间显示（拖动/播放都要无延迟同步）
+    appManager?.updateTopTimeDisplayNow?.()
+  },
+  { immediate: true },
+)
 
 // 播放/暂停
 const togglePlay = () => {
@@ -191,7 +219,7 @@ const reset = () => {
  * 查询当前文件的使劲按范围
  */
 const handleFileChange = (value: string) => {
-  queryReplayTimeRange({ fileName: value }).then((res) => {
+  queryReplayTimeRange({ fileName: value }).then((res: any) => {
     if (res.data.code === 200) {
       currentTime.value = dayjs(res.data.data.start).valueOf()
       startTime.value = dayjs(res.data.data.start).valueOf()
@@ -208,7 +236,7 @@ const handleFileChange = (value: string) => {
  */
 const getReplayRangeData = () => {
   const _startTime = currentTime.value
-  queryReplayData({ fileName: selectedFile.value, t: _startTime }).then((res) => {
+  queryReplayData({ fileName: selectedFile.value, t: _startTime }).then((res: any) => {
     if (res.status === 200) {
       const { data }: any = res.data.data
       for (let i = 0; i < data.length; i++) {
@@ -290,7 +318,7 @@ const getReplayRangeData = () => {
  * 查询回放文件列表
  */
 const getReplayDBFileList = () => {
-  queryReplayDBFileList().then((res) => {
+  queryReplayDBFileList().then((res: any) => {
     if (res.data.code === 200) {
       fileListOption.value = res.data.data
     }
@@ -311,7 +339,7 @@ const downLoadFile = () => {
     ElMessage.warning('请选择要下载的文件')
     return
   }
-  downloadReplayDBFile({ fileName: selectedFile.value }).then((res) => {
+  downloadReplayDBFile({ fileName: selectedFile.value }).then((res: any) => {
     if (res.status === 200) {
       const blob = new Blob([res.data], { type: 'application/octet-stream' })
       const link = document.createElement('a')
@@ -332,7 +360,7 @@ const handleChange = (uploadFile: any) => {
   console.log('上传文件', uploadFile.file)
   // debugger
 
-  uploadReplayDBFile(uploadFile.file).then((res) => {
+  uploadReplayDBFile(uploadFile.file).then((res: any) => {
     if (res.data.code === 200) {
       ElMessage.success('上传成功')
       getReplayDBFileList()
@@ -412,7 +440,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 5px;
 }
-/deep/ .el-upload-list {
+:deep(.el-upload-list) {
   margin: 0;
 }
 </style>
