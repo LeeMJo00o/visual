@@ -18,7 +18,8 @@ class MapCache {
 
       request.onsuccess = (event) => {
         this.db = event.target.result
-        console.log('数据库连接成功')
+        
+        console.log('open indexed db ok')
         resolve()
       }
 
