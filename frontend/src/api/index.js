@@ -87,10 +87,10 @@ export const downloadReplayDBFile = (params) => {
 /**
  * 上传回放文件
  * @param {File} file - 文件对象 (必填)
- * @param {string} [filename] - 文件名 (必填)
+ * @param {Function} [onUploadProgress] - 上传进度回调函数 (选填)
  * @returns {Promise}
  */
-export const uploadReplayDBFile = (file) => {
+export const uploadReplayDBFile = (file, onUploadProgress) => {
   const formData = new FormData()
   formData.append('file', file)
   // if (filename) {
@@ -101,5 +101,6 @@ export const uploadReplayDBFile = (file) => {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    onUploadProgress: onUploadProgress,
   })
 }

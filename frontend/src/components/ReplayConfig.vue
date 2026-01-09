@@ -33,13 +33,21 @@
           </el-select>
           <el-button :disabled="!isReplay" @click="downLoadFile">Download File</el-button>
           <el-upload
-            :disabled="!isReplay"
+            :disabled="!isReplay || isUploading"
             action="#"
             :show-file-list="false"
             :http-request="handleChange"
           >
-            <el-button :disabled="!isReplay">Upload DB File</el-button>
+            <el-button :disabled="!isReplay || isUploading">Upload DB File</el-button>
           </el-upload>
+          
+          <!-- 上传进度条 -->
+          <el-progress
+            v-if="isUploading"
+            :percentage="uploadProgress"
+            :stroke-width="10"
+            style="width: 200px; margin-left: 10px"
+          />
 
           <el-tooltip class="box-item" content="重置">
             <el-button :disabled="!isReplay" @click="reset" size="small" circle>
@@ -116,6 +124,10 @@ const isPlaying = ref(false)
 const currentTime = ref<number>(0) // 毫秒
 const currentPercent = ref(0)
 const timer = ref<number | null>(null)
+
+// 上传状态
+const isUploading = ref(false)
+const uploadProgress = ref(0)
 
 // 播放速度
 const playbackRate = ref(1)
@@ -358,17 +370,30 @@ const downLoadFile = () => {
  */
 const handleChange = (uploadFile: any) => {
   console.log('上传文件', uploadFile.file)
-  // debugger
+  
+  // 重置上传状态
+  isUploading.value = true
+  uploadProgress.value = 0
 
-  uploadReplayDBFile(uploadFile.file).then((res: any) => {
+  uploadReplayDBFile(uploadFile.file, (progressEvent: any) => {
+    // 计算上传进度百分比
+    if (progressEvent.total) {
+      uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+    }
+  }).then((res: any) => {
     if (res.data.code === 200) {
       ElMessage.success('上传成功')
       getReplayDBFileList()
     } else {
       ElMessage.error(res.data.message || '上传失败')
     }
+  }).catch((err: any) => {
+    ElMessage.error('上传失败: ' + (err.message || '网络错误'))
+  }).finally(() => {
+    // 上传完成，重置状态
+    isUploading.value = false
+    uploadProgress.value = 0
   })
-  // fileList.value = fileList.value.slice(-3)
 }
 
 /**
