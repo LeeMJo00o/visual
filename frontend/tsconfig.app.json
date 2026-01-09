@@ -5,6 +5,7 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "noImplicitAny": true,
+    "strictPropertyInitialization": false,
     "skipLibCheck": false,
     "checkJs": false,
     "noEmit": true,

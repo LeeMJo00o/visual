@@ -46,7 +46,7 @@
             v-if="isUploading"
             :percentage="uploadProgress"
             :stroke-width="10"
-            style="width: 200px; margin-left: 10px"
+            style="width: 120px; margin-left: 10px"
           />
 
           <el-tooltip class="box-item" content="重置">
