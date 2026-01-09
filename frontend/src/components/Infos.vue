@@ -1,9 +1,5 @@
 <!-- infos -->
 <template>
-    <div>
-        <el-button type="success" plain @click="handleOpen">Show</el-button>
-    </div>
-
     <CustomDialog v-model:visible="dialogFormVisible" title="系统信息" :width="1000" :height="600" :min-width="400"
         :min-height="200" :max-width="1200" :max-height="800" :draggable="true" :resizable="true">
         

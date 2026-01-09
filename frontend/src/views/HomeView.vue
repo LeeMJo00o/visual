@@ -142,9 +142,9 @@ const copyClickPosition = () => {
   if (globalStore.positions.click) {
     const text = `${globalStore.positions.click[0].toFixed(3)}, ${globalStore.positions.click[1].toFixed(3)}`
     navigator.clipboard.writeText(text).then(() => {
-      ElMessage({ message: '坐标已复制', type: 'success', duration: 1500 })
+      ElMessage({ message: '坐标已复制', type: 'success', duration: 500 })
     }).catch(() => {
-      ElMessage({ message: '复制失败', type: 'error' })
+      ElMessage({ message: '复制失败', type: 'error'})
     })
   }
 }
