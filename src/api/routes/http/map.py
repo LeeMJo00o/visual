@@ -20,7 +20,7 @@ router = APIRouter()
 def get_config_by_prefix(config_map: dict, src: str) -> dict:
     _src = src.lower()
     for k, v in config_map.items():
-        if _src.startswith(k):
+        if _src.startswith(k.lower()):
             return v
     return config_map.get("default")
 
@@ -38,7 +38,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "abuzhabi": {
+        "Abuzhabi": {
             "rotation": -2.471,
             "offset": [450, 330],
             "offset_back_image": [0, 0],
@@ -47,7 +47,7 @@ async def get_config(req: MapInfo):
             "mode": "test-my-pp",
             "version": map_name
         },
-        "mapsingapore": {
+        "MapSingapore": {
             "rotation": -2.112,
             "offset": [990, 198],
             "offset_back_image": [0, 0],
@@ -56,7 +56,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "fangzhen": {
+        "FangZhen": {
             "rotation": -2.112,
             "offset": [990, 198],
             "offset_back_image": [0, 0],
@@ -65,7 +65,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "taiguo": {
+        "TaiGuo": {
             "rotation": 0.292,
             "offset": [761, 612],
             "use_back_image": True,
@@ -76,7 +76,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "tangshan": {
+        "TangShan": {
             "rotation": 0,
             "offset": [350, 650],
             "use_back_image": False,
@@ -84,7 +84,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "malaysia": {
+        "Malaysia": {
             "rotation": 1.047,
             "offset": [1000, 400],
             "use_back_image": False,
@@ -92,7 +92,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "malaixiya": {
+        "Malaixiya": {
             "rotation": 1.047,
             "offset": [1000, 400],
             "use_back_image": False,
@@ -100,7 +100,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "taipingyang": {
+        "TaiPingYang": {
             "rotation": 0,
             "offset": [400, 600],
             "use_back_image": False,
@@ -108,7 +108,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "uk": {
+        "UK": {
             "rotation": -0.64,
             "offset": [600, 500],
             "use_back_image": False,
@@ -116,7 +116,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "luzhou": {
+        "LuZhou": {
             "rotation": 0.872,
             "offset": [200, 100],
             "use_back_image": False,
@@ -124,7 +124,7 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "fuzhou": {
+        "FuZhou": {
             "rotation": -0.447,
             "offset": [600,350],
             "use_back_image": False,
@@ -132,11 +132,19 @@ async def get_config(req: MapInfo):
             "mode": "test-demo",
             "version": map_name
         },
-        "zhoukou": {
+        "ZhouKou": {
             "rotation": -0.844,
             "offset": [1000, 920],
             "use_back_image": False,
             "scale": 1.7,
+            "mode": "test-demo",
+            "version": map_name
+        },
+        "DongGuan": {
+            "rotation": 0,
+            "offset": [877, 200],
+            "use_back_image": False,
+            "scale": 1.3,
             "mode": "test-demo",
             "version": map_name
         }

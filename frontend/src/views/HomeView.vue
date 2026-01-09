@@ -141,12 +141,43 @@ const handleChangeIsReplay = () => {
 const copyClickPosition = () => {
   if (globalStore.positions.click) {
     const text = `${globalStore.positions.click[0].toFixed(3)}, ${globalStore.positions.click[1].toFixed(3)}`
-    navigator.clipboard.writeText(text).then(() => {
-      ElMessage({ message: '坐标已复制', type: 'success', duration: 500 })
-    }).catch(() => {
-      ElMessage({ message: '复制失败', type: 'error'})
-    })
+    
+    // 兼容性处理：优先使用 clipboard API，降级使用 execCommand
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        ElMessage({ message: '坐标已复制', type: 'success', duration: 500 })
+      }).catch(() => {
+        fallbackCopyText(text)
+      })
+    } else {
+      fallbackCopyText(text)
+    }
   }
+}
+
+// 降级复制方法（用于非安全上下文，如 HTTP 环境）
+const fallbackCopyText = (text: string) => {
+  const textArea = document.createElement('textarea')
+  textArea.value = text
+  textArea.style.position = 'fixed'
+  textArea.style.left = '-9999px'
+  textArea.style.top = '-9999px'
+  textArea.setAttribute('readonly', '')  // 防止移动端弹出键盘
+  document.body.appendChild(textArea)
+  textArea.select()
+  textArea.setSelectionRange(0, text.length)  // 兼容移动端
+  try {
+    // execCommand 已弃用但在非 HTTPS 环境下是唯一选择
+    const successful = document.execCommand('copy')
+    if (successful) {
+      ElMessage({ message: '坐标已复制', type: 'success', duration: 500 })
+    } else {
+      ElMessage({ message: '复制失败', type: 'error' })
+    }
+  } catch (err) {
+    ElMessage({ message: '复制失败', type: 'error' })
+  }
+  document.body.removeChild(textArea)
 }
 
 // 测量点功能
