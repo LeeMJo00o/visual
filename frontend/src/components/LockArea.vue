@@ -319,7 +319,7 @@ onUnmounted(() => {
     @close="handleCancel">
     <el-form>
       <!-- 多边形顶点坐标 -->
-      <el-form-item label="polygon" label-width="140px">
+      <el-form-item label="Polygon" label-width="140px">
         <el-input v-model="verticesText" type="textarea" :rows="6" readonly autocomplete="off" />
       </el-form-item>
       <!-- 流量控制区域控制车辆数 -->
@@ -327,7 +327,7 @@ onUnmounted(() => {
         <el-input-number v-model="limit_num" :min="0" :max="1000" :precision="0" />
       </el-form-item>
       <!-- 锁闭区类型 -->
-      <el-form-item label="area_type" label-width="140px" v-if="type === 'lock'">
+      <el-form-item label="Area type" label-width="140px" v-if="type === 'lock'">
         <el-select v-model="lockAreaType" placeholder="请选择锁闭区类型">
           <el-option label="禁行区" value="lock" />
           <el-option label="禁停区" value="no_parking" />

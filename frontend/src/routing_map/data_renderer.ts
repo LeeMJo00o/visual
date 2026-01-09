@@ -661,7 +661,8 @@ export class DataRenderer {
     lineWidth: number,
   ): void {
     // 根据区域的实际类型设置颜色
-    const color = getBorderColor(type)
+    const color =
+      area.subtype === 'no_parking' ? getBorderColor('no_parking') : getBorderColor(type)
 
     // 将多边形数据转换为drawLine需要的格式
     const points = area.polygon.map((point) => [point.x, point.y])

@@ -24,7 +24,7 @@
         </div>
 
         <!-- 内容区域 -->
-        <div class="dialog-body" @wheel="handleWheel">
+        <div class="dialog-body">
           <slot></slot>
         </div>
 
@@ -136,29 +136,34 @@ const handleMouseLeave = () => {
 }
 
 const handleWheel = (e: WheelEvent) => {
-  const target = e.currentTarget as HTMLElement
-
-  // 如果事件发生在对话框根元素上，我们需要找到内容区域
-  let scrollTarget = target
-  if (target.classList.contains('custom-dialog')) {
-    const dialogBody = target.querySelector('.dialog-body') as HTMLElement
-    if (dialogBody) {
-      scrollTarget = dialogBody
+  // 检查事件目标是否在可滚动的子元素内（如 el-table, el-form 等）
+  const target = e.target as HTMLElement
+  
+  // 查找最近的可滚动容器
+  let scrollableParent: HTMLElement | null = target
+  while (scrollableParent && scrollableParent !== dialogRef.value) {
+    const style = window.getComputedStyle(scrollableParent)
+    const overflowY = style.overflowY
+    const isScrollable = overflowY === 'auto' || overflowY === 'scroll'
+    
+    if (isScrollable && scrollableParent.scrollHeight > scrollableParent.clientHeight) {
+      // 找到了可滚动的容器，检查是否在边界
+      const isAtTop = scrollableParent.scrollTop === 0
+      const isAtBottom = scrollableParent.scrollTop + scrollableParent.clientHeight >= scrollableParent.scrollHeight - 1
+      
+      // 如果不在边界，让内部元素正常滚动，只阻止冒泡到地图
+      if (!((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom))) {
+        e.stopPropagation()
+        return // 让内部元素自己处理滚动
+      }
+      break
     }
+    scrollableParent = scrollableParent.parentElement
   }
-
-  // 检查滚动容器是否已经到达边界
-  const isAtTop = scrollTarget.scrollTop === 0
-  const isAtBottom = scrollTarget.scrollTop + scrollTarget.clientHeight >= scrollTarget.scrollHeight
-
-  // 如果向上滚动且已经在顶部，或者向下滚动且已经在底部，则阻止默认行为和冒泡
-  if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
-    e.preventDefault()
-    e.stopPropagation()
-  } else {
-    // 否则只阻止事件冒泡，让内容正常滚动
-    e.stopPropagation()
-  }
+  
+  // 阻止事件冒泡到地图，防止触发地图缩放
+  e.preventDefault()
+  e.stopPropagation()
 }
 
 const handleDialogMouseDown = () => {

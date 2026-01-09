@@ -3,6 +3,8 @@ from fastapi import APIRouter
 import json
 import asyncio
 from src.core import config
+from src.core.log import logger
+from src.services.server_info import get_env, get_docker
 
 router = APIRouter()
 
@@ -47,6 +49,25 @@ async def get_status() -> StdRes:
         "ws_clients": desc_ws(),
         "config_info": get_obj_info(config),
         "routes": routes,
+    }
+
+    return StdRes(data=status)
+
+
+@router.get("/server_info", name="server status")
+async def get_status() -> StdRes:
+    from src.main import app
+    routes = []
+    for r in app.routes:
+        routes.append(f"{r.name} => {r.path}")
+    try:
+        docker_info = await get_docker()
+    except Exception as ex:
+        logger.error(f"docker get error: {ex}")
+        docker_info = []
+    status = {
+        "env": get_env(),
+        "docker": docker_info
     }
 
     return StdRes(data=status)

@@ -226,3 +226,17 @@ async def get_vpb_info():
         logger.error(f"get_vpb_info err: {traceback.format_exc()}")
 
     return data
+
+
+@router.post('/vpb_info')
+async def get_vpb_info():
+    """获取开启的vpb数据"""
+    data = {}
+    try:
+        s = await redis_cli.get("pp4:vpbStatusData:fms")
+        if s:
+            data = json.loads(s)
+    except:
+        logger.error(f"get_vpb_info err: {traceback.format_exc()}")
+
+    return data

@@ -127,8 +127,36 @@
                 <el-tab-pane label="Harden" name="Harden"></el-tab-pane>
 
                 <el-tab-pane label="FormatService" name="FormatService"></el-tab-pane>
+
+                <el-tab-pane label="Envs" name="EnvVars">
+                    <div class="env-filter">
+                        <el-input v-model="envFilter" placeholder="搜索环境变量..." size="small" clearable style="width: 300px; margin-bottom: 10px;" />
+                    </div>
+                    <el-table :data="filteredEnvList" stripe style="width: 100%" size="small" max-height="400">
+                        <el-table-column prop="key" label="变量名" width="280" show-overflow-tooltip />
+                        <el-table-column prop="value" label="值" show-overflow-tooltip />
+                    </el-table>
+                </el-tab-pane>
+
+                <el-tab-pane label="Docker" name="Docker">
+                    <div class="docker-filter">
+                        <el-input v-model="dockerFilter" placeholder="搜索容器..." size="small" clearable style="width: 300px; margin-bottom: 10px;" />
+                    </div>
+                    <template v-if="dockerList && dockerList.length > 0">
+                        <el-table :data="filteredDockerList" stripe style="width: 100%" size="small" max-height="400">
+                            <el-table-column prop="name" label="容器名" width="150" />
+                            <el-table-column prop="image" label="镜像" show-overflow-tooltip />
+                            <el-table-column prop="start_at" label="启动时间" width="140" />
+                        </el-table>
+                    </template>
+                    <el-empty v-else description="">
+                        <template #description>
+                            请确保 pp_visual 服务已正确映射文件: "/var/run/docker.sock" <br />
+                            检查后端接口 "/api/maintain/server_info"
+                        </template>
+                    </el-empty>
+                </el-tab-pane>
             </el-tabs>
-            
             
             <span v-else>
                 没有数据
@@ -148,6 +176,54 @@ import { Refresh } from '@element-plus/icons-vue'
 
 const activeName = ref('MapVersion')
 
+// 服务器信息相关
+const serverInfo = ref<{
+    env: Record<string, string>;
+    docker: Array<{ name: string; image: string; start_at: string }>;
+} | null>(null)
+
+// 环境变量过滤
+const envFilter = ref('')
+
+// docker 过滤
+const dockerFilter = ref('')
+
+// 环境变量列表
+const envList = computed(() => {
+    if (!serverInfo.value?.env) return []
+    return Object.entries(serverInfo.value.env).map(([key, value]) => ({
+        key,
+        value
+    })).sort((a, b) => a.key.localeCompare(b.key))
+})
+
+// 过滤后的环境变量列表
+const filteredEnvList = computed(() => {
+    if (!envFilter.value) return envList.value
+    const filter = envFilter.value.toLowerCase()
+    return envList.value.filter(item => 
+        item.key.toLowerCase().includes(filter) || 
+        item.value.toLowerCase().includes(filter)
+    )
+})
+
+// 容器列表
+const dockerList = computed(() => {
+    if (!serverInfo.value?.docker) return []
+    return serverInfo.value.docker
+})
+
+// 过滤后的容器列表
+const filteredDockerList = computed(() => {
+    if (!dockerFilter.value) return dockerList.value
+    const filter = dockerFilter.value.toLowerCase()
+    return dockerList.value.filter(item =>
+        item.name.toLowerCase().includes(filter) ||
+        item.image.toLowerCase().includes(filter) ||
+        item.start_at.toLowerCase().includes(filter)
+    )
+})
+
 // 弹窗
 const dialogFormLoading = ref(false)    // 加载数据
 const dialogFormVisible = ref(false)    // 弹窗显示
@@ -157,6 +233,8 @@ type InfoData = {
     map_graph: any;
     wellrouting: any;
 }
+
+type InfoKey = keyof InfoData
 
 // 地图版本相关的信息
 type MapVersionData = {
@@ -180,7 +258,7 @@ const form = ref<InfoData | null>(null)
 // 各模块的地图 graph相关的数据, 封装为列表, 使用
 const MapVersionData_list = computed(() => {
     let list = []
-    const keys = ["map_graph", "wellrouting"]
+    const keys: InfoKey[] = ["map_graph", "wellrouting"]
     for (let i = 0; i < keys.length; i++) {
         const key = keys[i]
         const data = form.value?.[key] || null
@@ -224,8 +302,21 @@ const mapgraph_info = computed(()=> {
             }
 })
 
-const is_same_with_mapgraph = (key, value) => {
-    const info = mapgraph_info.value
+type MapGraphInfo = {
+    module: string;
+    map_file_name: any;
+    map_version: any;
+    graph_version: any;
+    map_data_version: any;
+    map_lanelet_count: any;
+    graph_vertices: any;
+    graph_edges: any;
+}
+
+type MapGraphCompareKey = keyof MapGraphInfo
+
+const is_same_with_mapgraph = (key: MapGraphCompareKey, value: unknown) => {
+    const info = mapgraph_info.value as MapGraphInfo
     console.log("mapgraph_info=", info)
     if(value && info && info?.[key] !== value) {
         console.log("key=", key, "  value=", value, "  info[key]=", info?.[key])
@@ -248,11 +339,26 @@ const query = async () => {
     }
 }
 
+// 查询服务器信息（环境变量和容器）
+const queryServerInfo = async () => {
+    try {
+        const response = await axios.get('/api/maintain/server_info')
+        if (response.status === 200 && response.data.code === 200 && response.data.data) {
+            serverInfo.value = response.data.data
+        } else {
+            serverInfo.value = null
+        }
+    } catch (error) {
+        console.log("query server info error: ", error)
+        serverInfo.value = null
+    }
+}
+
 
 const handleRefresh = async () => {
     dialogFormLoading.value = true
     try {
-        await query()
+        await Promise.all([query(), queryServerInfo()])
     } catch (error) {
         console.log("query infos error: ", error)
         // 提示

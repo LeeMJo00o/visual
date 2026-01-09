@@ -10,6 +10,7 @@ numpy==2.1.3
 scipy==1.15.2
 shapely==2.1.0
 pyyaml==6.0.2
+aiodocker==0.25.0
 
 chain_log==0.1.1
 chain-utils==0.1.13

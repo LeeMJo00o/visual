@@ -120,8 +120,8 @@ export default class ApplicationManager extends GraphicTools {
   public common_graphics: Record<string, Record<string, Graphics>> = {}
 
   // 测量点图形对象
-  public g_p1: Graphics | null = null
-  public g_p2: Graphics | null = null
+  public g_mesure_point1: Graphics | null = null
+  public g_mesure_point2: Graphics | null = null
 
   // 测量点相关
   public measurePointsContainer: Container | null = null
@@ -239,125 +239,29 @@ export default class ApplicationManager extends GraphicTools {
     }
 
     /**
-     * 初始化测量点容器
-     */
-    initMeasurePointsContainer() {
-      console.log("this is ", this)
-      if (!this.g_p1) {
-        this.g_p1 = new Graphics()
-        this.g_p2 = new Graphics()
-        this.mainContainer.addChild(this.g_p1)
-        this.mainContainer.addChild(this.g_p2)
-      }
-    }
-
-    /**
      * 绘制或更新测量点
      */
     updateMeasurePoint(pointId: 'point1' | 'point2', x: number, y: number) {
-      this.initMeasurePointsContainer()
-
       // 将地图坐标转换为应用坐标（翻转y轴）
       const [appX, appY] = this.map_xy_to_app([x, y])
 
-      const color = pointId === 'point1' ? 0x00bfff : 0x9370db // 深天蓝和中紫色
-      const label = pointId === 'point1' ? 'P1' : 'P2'
-      const g = pointId === 'point1' ? this.g_p1 : this.g_p2
-    //   // 绘制圆点（使用转换后的坐标）
-    //   const g = new Graphics()
-    //   g.circle(0, 0, 0.3).fill({ color: color, alpha: 0.8 }).stroke({
-    //     width: 2,
-    //     color: 0xff0000
-    // }); // 2px red stroke
-
-    //   g.circle(0, 0, 0.15).fill({ color: 0xffffff, alpha: 1 }).stroke({
-    //     width: 2,
-    //     color: 0xff0000
-    // }); // 2px red stroke
+      const color = pointId === 'point1' ? 0x00bfff : 0x00bfff // 深天蓝
+      const text = pointId === 'point1' ? this.p_text1 : this.p_text2
+      const g = pointId === 'point1' ? this.g_mesure_point1 : this.g_mesure_point2
+      
       g.clear()
-      // this.g_p1.rect(appX, appY, 100, 100)
-      g.circle(appX, appY, 1)
-      .fill({ color: color, alpha: 0.8 })
-
-      // 添加文字标签（使用转换后的坐标）
-      const text = new Text({
-        text: label,
-        style: {
-          fontSize: 14,
-          fill: color,
-          fontWeight: 'bold',
-        },
-      })
-      text.anchor.set(0.5, 1.2)
+       .circle(appX, appY, 1)
+       .fill({ color: color, alpha: 0.8 })
+      
       text.position.set(appX, appY)
-      text.scale.set(0.02) // 缩放以适应地图坐标系
-
-      // 更新连接线
-      // this.updateMeasureLine()
-    }
-
-    /**
-     * 更新两点之间的连接线
-     */
-    updateMeasureLine() {
-      // 移除旧线
-      if (this.measurePointGraphics.line) {
-        this.measurePointsContainer.removeChild(this.measurePointGraphics.line)
-        this.measurePointGraphics.line.destroy()
-        this.measurePointGraphics.line = null
-      }
-
-      // 如果两个点都存在，绘制连接线
-      const p1 = this.measurePointGraphics.point1
-      const p2 = this.measurePointGraphics.point2
-      if (p1 && p2) {
-        const g = new Graphics()
-        // 获取两点位置（从圆心）
-        const bounds1 = p1.getBounds()
-        const bounds2 = p2.getBounds()
-        const x1 = bounds1.x + bounds1.width / 2
-        const y1 = bounds1.y + bounds1.height / 2
-        const x2 = bounds2.x + bounds2.width / 2
-        const y2 = bounds2.y + bounds2.height / 2
-
-        g.moveTo(x1, y1)
-        g.lineTo(x2, y2)
-        g.stroke({ width: 0.05, color: 0xffff00, alpha: 0.8 })
-
-        // 绘制虚线效果（用小段实线模拟）
-        this.measurePointsContainer.addChild(g)
-        this.measurePointGraphics.line = g
-      }
-    }
-
-    /**
-     * 清除所有测量点
-     */
-    clearMeasurePoints() {
-      if (this.measurePointsContainer) {
-        // 清除所有子元素
-        const keys = ['point1', 'point2', 'line', 'label1', 'label2'] as const
-        for (const key of keys) {
-          const item = this.measurePointGraphics[key]
-          if (item) {
-            this.measurePointsContainer.removeChild(item)
-            item.destroy()
-            this.measurePointGraphics[key] = null
-          }
-        }
-      }
+  
     }
 
     /**
      * 设置测量点显示/隐藏
      */
     setMeasurePointsVisible(visible: boolean) {
-      if (this.g_p1) {
-        this.g_p1.visible = visible
-      }
-      if (this.g_p2) {
-        this.g_p2.visible = visible
-      }
+        this.measureContainer.visible = visible
     }
 
   // 获取单例实例
@@ -532,6 +436,42 @@ export default class ApplicationManager extends GraphicTools {
       }
 
       this.mainContainer.addChild(this.longPathContainer)
+
+      this.measureContainer = new Container()
+      this.g_mesure_point1 = new Graphics()
+      this.g_mesure_point2 = new Graphics()
+
+      this.p_text1 = new Text({
+        text: "P1",
+        style: {
+          fontSize: 20,
+          fill: 0x00bfff,
+        },
+      })
+      // this.p_text1.anchor.set(0.5, 1.2)
+      this.p_text1.position.set(0,0)
+      this.p_text1.rotation = -this.g_rotation
+      this.p_text1.scale.set(0.5)
+
+      this.p_text2 = new Text({
+        text: "P2",
+        style: {
+          fontSize: 20,
+          fill: 0x00bfff,
+        },
+      })
+
+      // this.p_text2.anchor.set(0.5, 1.2)
+      this.p_text2.position.set(0,0)
+      this.p_text2.rotation = -this.g_rotation
+      this.p_text2.scale.set(0.5)
+
+      this.measureContainer.addChild(this.g_mesure_point1)
+      this.measureContainer.addChild(this.g_mesure_point2)
+      this.measureContainer.addChild(this.p_text1)
+      this.measureContainer.addChild(this.p_text2)
+      this.setMeasurePointsVisible(false)
+      this.mainContainer.addChild(this.measureContainer)
 
       // 获取vpb 信息
       const vpb_info = await get_vpb_info()
@@ -710,7 +650,7 @@ export default class ApplicationManager extends GraphicTools {
   }
   // ...existing code...
 
-  // 坐标变换，注意 pixijs 的变换顺序是 缩放、旋转、平移
+  // 坐标变换，屏幕坐标转为地图坐标, 注意 pixijs 的变换顺序是 缩放、旋转、平移
   // 考虑地图坐标 (raw_x, raw_y) 则点击位置 (x, y) 与原位置的关系为：
   // x = rotate(raw_x * scale) + offset_x
   // 逆运算即可算出原坐标
@@ -727,7 +667,8 @@ export default class ApplicationManager extends GraphicTools {
     let t_y = newPoint.y / scale
     t_y = -t_y // 前端 y 的方向与原地图相反
     return [roundTo(t_x, 4), roundTo(t_y, 4)]
-  }
+  } 
+
 
   add_agent(vehicle_id) {
     const v = new Agent(this, vehicle_id)

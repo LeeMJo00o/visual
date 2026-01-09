@@ -152,7 +152,7 @@ const copyClickPosition = () => {
 // 测量点功能
 const measurePoint1 = ref('')
 const measurePoint2 = ref('')
-const showMeasurePoints = ref(true) // 控制测量点显示/隐藏
+const showMeasurePoints = ref(false) // 控制测量点显示/隐藏，默认不显示
 
 // 计算距离
 const measureDistance = computed(() => {
