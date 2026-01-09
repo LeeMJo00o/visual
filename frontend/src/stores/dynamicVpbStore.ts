@@ -55,9 +55,16 @@ export const useDynamicVpbStore = defineStore('dynamicVpbStore', () => {
                 data.value = _data?.data
             }
         }
-        // 进行更新
-        const appManager = ApplicationManager.getInstance()
-        appManager?.dataRenderer.update_dynamic_vpb(data.value)
+        // 进行更新 - 确保 ApplicationManager 已完全初始化
+        try {
+            const appManager = ApplicationManager.getInstance()
+            if (appManager?.app?.canvas && appManager?.dataRenderer) {
+                appManager.dataRenderer.update_dynamic_vpb(data.value)
+            }
+        } catch (e) {
+            // ApplicationManager 尚未初始化完成，跳过本次更新
+            console.log('ApplicationManager 尚未就绪，跳过动态 vpb 更新')
+        }
     }
 
     const startPolling = () => {
@@ -67,7 +74,7 @@ export const useDynamicVpbStore = defineStore('dynamicVpbStore', () => {
             return
         }
 
-        console.log('🚀 启动轮询服务')
+        console.log('🚀 启动动态 vpb 轮询服务')
         isPollingActive.value = true
 
         // 立即获取一次

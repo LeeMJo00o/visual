@@ -1,5 +1,7 @@
+ARG BASE_IMAGE=uhub.service.ucloud.cn/westwell_devops/chain_boot/pp-visual-base:2026-01-09-14-29-13
+
 # step 1: 构建前端
-FROM uhub.service.ucloud.cn/westwell_devops/chain_boot/pp-visual-base:2025-07-15-11-53-18 AS frontend-build
+FROM ${BASE_IMAGE} AS frontend-build
 
 WORKDIR /opt/app/
 
@@ -12,7 +14,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # step 2： 构建最终镜像
-FROM uhub.service.ucloud.cn/westwell_devops/chain_boot/pp-visual-base:2025-07-15-11-53-18
+FROM ${BASE_IMAGE}
 
 WORKDIR /opt/app/
 COPY . ./

@@ -279,17 +279,19 @@ export default class ApplicationManager extends GraphicTools {
 
   // 确保canvas正确显示
   ensureCanvasDisplay() {
-    if (this.app && this.app.canvas) {
-      const game_container = document.getElementById('map_main_container')
-      if (game_container && !game_container.contains(this.app.canvas)) {
-        console.log('re add canvas to DOM')
-        game_container.appendChild(this.app.canvas)
-      }
+    // 防御性检查：如果 app 或 canvas 还未初始化（init() 未完成），则跳过
+    if (!this.app || !this.app.canvas) {
+      return
+    }
+    const game_container = document.getElementById('map_main_container')
+    if (game_container && !game_container.contains(this.app.canvas)) {
+      console.log('re add canvas to DOM')
+      game_container.appendChild(this.app.canvas)
+    }
 
-      // 确保应用正常渲染
-      if (!this.app.renderer) {
-        console.log('no render!')
-      }
+    // 确保应用正常渲染
+    if (!this.app.renderer) {
+      console.log('no render!')
     }
   }
 
