@@ -267,13 +267,14 @@ export default class ApplicationManager extends GraphicTools {
   // 获取单例实例
   static getInstance() {
     const existingInstance = getGlobalInstance()
-    if (!existingInstance) {
-      console.log('create new ApplicationManager !')
-      return new ApplicationManager()
-    } else {
+    // 检查实例是否有效（app 属性必须存在）
+    if (existingInstance && existingInstance.app) {
       existingInstance.ensureCanvasDisplay()
       return existingInstance
     }
+
+    console.log('create new ApplicationManager !')
+    return new ApplicationManager()
   }
 
 
@@ -281,6 +282,7 @@ export default class ApplicationManager extends GraphicTools {
   ensureCanvasDisplay() {
     // 防御性检查：如果 app 或 canvas 还未初始化（init() 未完成），则跳过
     if (!this.app || !this.app.canvas) {
+      console.log('ensureCanvasDisplay: app or canvas not ready, skipping')
       return
     }
     const game_container = document.getElementById('map_main_container')

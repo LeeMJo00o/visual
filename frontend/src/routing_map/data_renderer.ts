@@ -296,7 +296,7 @@ export class DataRenderer {
       if (!newAreaIds.has(areaId)) {
         const areaGraphics = this.manager[data_key][areaId]
         if (areaGraphics && areaGraphics.parent) {
-          console.log('删除了不存在的区域')
+          console.log('移除了不存在的区域')
 
           areaGraphics.parent.removeChild(areaGraphics)
           areaGraphics.destroy()
@@ -313,7 +313,7 @@ export class DataRenderer {
     // this.update_or_create_lock_area()
   }
 
-
+  
   /**
    * 绘制动态vpb
    * @param data

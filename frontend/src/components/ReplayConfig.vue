@@ -22,7 +22,8 @@
             @change="handleFileChange"
             placeholder="Please select"
             filterable
-            style="width: 200px; margin-right: 20px"
+            class="replay-file-select"
+            style="min-width: 240px; width: 280px; max-width: 60%; margin-right: 20px"
           >
             <el-option
               v-for="item in fileListOption"
@@ -108,20 +109,27 @@ import { useGlobalStore } from '@/stores/globalStore'
 
 const globalStore = useGlobalStore()
 
-// const appManager = ref<ApplicationManager | null>(null)
-// const appManager = ApplicationManager.getInstance()
+// ReplayConfig 只在回放模式下显示（v-if="isReplay"），此时主界面已初始化完成
 const appManager = ApplicationManager.getInstance()
 
 const isReplay = computed(() => {
   return globalStore.isReplay
 })
 
-const startTime = ref<number>(0)
-const endTime = ref<number>(0)
+// 从 localStorage 恢复进度（跨标签页共享）
+const savedTime = localStorage.getItem('replayCurrentTime')
+const savedTimeNum = savedTime ? Number(savedTime) : 0
+console.log('[ReplayConfig] 初始化 - savedTime from localStorage:', savedTime)
+
+// 初始化 startTime/endTime 时，使用 savedTime 作为临时范围
+// 避免 el-slider 因为 currentTime 超出 [0, 0] 范围而强制重置为 0
+const startTime = ref<number>(savedTimeNum > 0 ? savedTimeNum : 0)
+const endTime = ref<number>(savedTimeNum > 0 ? savedTimeNum : 0)
 
 // 当前播放状态
 const isPlaying = ref(false)
-const currentTime = ref<number>(0) // 毫秒
+const currentTime = ref<number>(savedTimeNum) // 毫秒
+console.log('[ReplayConfig] 初始化 - currentTime:', currentTime.value)
 const currentPercent = ref(0)
 const timer = ref<number | null>(null)
 
@@ -135,7 +143,8 @@ const speedOptions = ref([0.5, 1, 2, 4])
 
 const fileListOption = ref<Array<{ name: string }>>([])
 
-const selectedFile = ref('')
+// 从 localStorage 恢复已选文件（跨标签页共享）
+const selectedFile = ref(localStorage.getItem('replaySelectedFile') || '')
 
 // 时间格式化
 const formatTime = (time: number) => {
@@ -158,6 +167,7 @@ watch(
 watch(
   () => currentTime.value,
   (t) => {
+    // console.log('[ReplayConfig] watch currentTime:', t, 'selectedFile:', selectedFile.value)
     // 未选择文件时不显示时间，只显示 [RE]
     if (!selectedFile.value) {
       globalStore.setReplayCurrentTime(null)
@@ -422,6 +432,26 @@ onMounted(() => {
   // appManager.value = ApplicationManager.getInstance()
   getReplayDBFileList()
   window.addEventListener('keydown', handleKeyDown)
+  
+  // 如果有已保存的文件，恢复时间范围
+  if (selectedFile.value) {
+    queryReplayTimeRange({ fileName: selectedFile.value }).then((res: any) => {
+      if (res.data.code === 200) {
+        startTime.value = dayjs(res.data.data.start).valueOf()
+        endTime.value = dayjs(res.data.data.end).valueOf()
+        // 确保 currentTime 在有效范围内（在设置 startTime/endTime 之后检查）
+        if (currentTime.value < startTime.value || currentTime.value > endTime.value) {
+          currentTime.value = startTime.value
+        }
+        // 加载当前进度的数据
+        getReplayRangeData()
+      }
+    }).catch(() => {
+      // 文件可能已被删除，清空选择
+      selectedFile.value = ''
+      currentTime.value = 0
+    })
+  }
 })
 onUnmounted(() => {
   stop()

@@ -40,28 +40,28 @@ declare global {
 
 const globalStore = useGlobalStore()
 
-const isReplay = ref<boolean>(false)
-watch(
-  () => globalStore.isReplay,
-  (newValue) => {
-    isReplay.value = newValue
-  },
-  { deep: true },
-)
+// 直接使用 store 的 isReplay 和 appReady，通过 storeToRefs 保持响应性
+const { isReplay, appReady } = storeToRefs(globalStore)
 
 // 监听地图显示状态
 watch(() => globalSettings.value.map_show, (newValue, oldValue) => {
-  // 只处理地图相关的逻辑
+  // 防御性检查：确保 ApplicationManager 已初始化
+  if (!appReady.value) return
   const ins = ApplicationManager.getInstance()
-  ins.map_container.visible = newValue
+  if (ins && ins.map_container) {
+    ins.map_container.visible = newValue
+  }
 })
 
 
 // 监听底图显示状态
-watch(() => globalSettings.value.map_show, (newValue, oldValue) => {
-  // 只处理地图相关的逻辑
+watch(() => globalSettings.value.background_image_show, (newValue, oldValue) => {
+  // 防御性检查：确保 ApplicationManager 已初始化
+  if (!appReady.value) return
   const ins = ApplicationManager.getInstance()
-  ins.toggleBackgroundImage(newValue)
+  if (ins && ins.app) {
+    ins.toggleBackgroundImage(newValue)
+  }
 })
 
 // 添加当前选中的菜单项
@@ -133,9 +133,11 @@ const handleVisibleAgent = (type: string) => {
 // const onImageHide = () => {
 //   window.dispatchEvent(new CustomEvent('image-hide-click'))
 // }
-const handleChangeIsReplay = () => {
-  globalStore.setIsReplay(!globalStore.isReplay)
-}
+
+// 监听 isReplay 变化，同步到 sessionStorage 并清理回放状态
+watch(isReplay, (newValue) => {
+  globalStore.setIsReplay(newValue)
+})
 
 // 复制坐标到剪贴板
 const copyClickPosition = () => {
@@ -222,8 +224,11 @@ watch(measurePoint1, (newValue) => {
   const coord = parseCoordinate(newValue)
   if (coord) {
     globalStore.setMeasurePoint('point1', coord.x, coord.y)
+    if (!appReady.value) return
     const appManager = ApplicationManager.getInstance()
-    appManager.updateMeasurePoint('point1', coord.x, coord.y)
+    if (appManager && appManager.updateMeasurePoint) {
+      appManager.updateMeasurePoint('point1', coord.x, coord.y)
+    }
   }
 })
 
@@ -232,8 +237,11 @@ watch(measurePoint2, (newValue) => {
   const coord = parseCoordinate(newValue)
   if (coord) {
     globalStore.setMeasurePoint('point2', coord.x, coord.y)
+    if (!appReady.value) return
     const appManager = ApplicationManager.getInstance()
-    appManager.updateMeasurePoint('point2', coord.x, coord.y)
+    if (appManager && appManager.updateMeasurePoint) {
+      appManager.updateMeasurePoint('point2', coord.x, coord.y)
+    }
   }
 })
 
@@ -242,14 +250,20 @@ const clearMeasurePoints = () => {
   globalStore.clearMeasurePoints()
   measurePoint1.value = ''
   measurePoint2.value = ''
+  if (!appReady.value) return
   const appManager = ApplicationManager.getInstance()
-  appManager.clearMeasurePoints()
+  if (appManager && appManager.clearMeasurePoints) {
+    appManager.clearMeasurePoints()
+  }
 }
 
 // 切换测量点显示
 const toggleMeasurePoints = (visible: boolean) => {
+  if (!appReady.value) return
   const appManager = ApplicationManager.getInstance()
-  appManager.setMeasurePointsVisible(visible)
+  if (appManager && appManager.setMeasurePointsVisible) {
+    appManager.setMeasurePointsVisible(visible)
+  }
 }
 
 // 监听显示开关变化
@@ -351,7 +365,6 @@ const openInfosDialog = () => {
                         style="--el-switch-off-color: rgb(64, 158, 255)"
                         active-text="回放"
                         inactive-text="实时"
-                        @change="handleChangeIsReplay"
                       />
 
                   <span class="cell-label">all-vpb</span>
@@ -471,7 +484,8 @@ const openInfosDialog = () => {
           </div>
 
           <!-- <ReplayConfig /> -->
-          <div class="bottom-fotter" v-if="isReplay">
+          <!-- 需要同时检查 appReady，避免刷新时 ApplicationManager 还未初始化 -->
+          <div class="bottom-fotter" v-if="isReplay && appReady">
             <ReplayConfig />
           </div>
         </el-container>

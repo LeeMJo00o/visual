@@ -35,16 +35,25 @@ watch(
 
 // 组件挂载时初始化游戏
 onMounted(async () => {
-  // 使用单例模式获取应用管理器实例
-  appManager = ApplicationManager.getInstance()
+  try {
+    // 使用单例模式获取应用管理器实例
+    appManager = ApplicationManager.getInstance()
 
-  // 如果还没有初始化，则进行初始化
-  if (!appManager.mainContainer) {
-    await appManager.init()
+    // 如果还没有初始化，则进行初始化
+    if (!appManager.mainContainer) {
+      await appManager.init()
+    }
+
+    // 初始化完成，设置 appReady 为 true，通知其他组件可以安全使用 ApplicationManager
+    globalStore.setAppReady(true)
+
+    // 添加窗口大小变化的监听
+    window.addEventListener('resize', handleResize)
+  } catch (error) {
+    console.error('RoutingMap init failed:', error)
+    // 即使失败也设置为 true，避免其他组件永久等待（可根据需求改为显示错误状态）
+    globalStore.setAppReady(true)
   }
-
-  // 添加窗口大小变化的监听
-  window.addEventListener('resize', handleResize)
 })
 
 // 组件卸载时清理资源
