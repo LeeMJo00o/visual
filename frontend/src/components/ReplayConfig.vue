@@ -238,7 +238,7 @@ const reset = () => {
 }
 
 /**
- * 查询当前文件的使劲按范围
+ * 查询当前文件的时间范围
  */
 const handleFileChange = (value: string) => {
   queryReplayTimeRange({ fileName: value }).then((res: any) => {
