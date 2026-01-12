@@ -634,7 +634,7 @@ const openInfosDialog = () => {
 }
 
 .measure-input-group .point-label.p2 {
-  color: #9370db;
+  color: #a578ff;
 }
 
 .measure-input-group .coord-input-single {

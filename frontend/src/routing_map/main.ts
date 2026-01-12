@@ -245,7 +245,7 @@ export default class ApplicationManager extends GraphicTools {
       // 将地图坐标转换为应用坐标（翻转y轴）
       const [appX, appY] = this.map_xy_to_app([x, y])
 
-      const color = pointId === 'point1' ? 0x00bfff : 0x00bfff // 深天蓝
+      const color = pointId === 'point1' ? 0x00bfff : 0xa578ff // 深天蓝 / 浅紫
       const text = pointId === 'point1' ? this.p_text1 : this.p_text2
       const g = pointId === 'point1' ? this.g_mesure_point1 : this.g_mesure_point2
       
@@ -459,7 +459,7 @@ export default class ApplicationManager extends GraphicTools {
         text: "P2",
         style: {
           fontSize: 20,
-          fill: 0x00bfff,
+          fill: 0xa578ff,
         },
       })
 
