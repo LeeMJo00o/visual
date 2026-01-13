@@ -101,28 +101,18 @@ export default class ApplicationManager extends GraphicTools {
   public agents: AgentMap = {}
   public dataRenderer: DataRenderer | null // 暴露给外部使用
   public isSuspend: boolean = false // 是否暂停数据渲染，回放时为true
-
-  // ga 图形对象
-  public gaAreas: Record<string, Graphics>  = {}
-
-  // pla 图形对象
-  public plaAreas: Record<string, Graphics>  = {}
-
-  // pga 图形对象
-  public pgaAreas: Record<string, Graphics>  = {}
-
-  public self_area: Record<string, Graphics>  = {}
+  public gaAreas: Record<string, Graphics> = {}
+  public plaAreas: Record<string, Graphics> = {}
+  public pgaAreas: Record<string, Graphics> = {}
+  public self_area: Record<string, Graphics> = {}
 
   // 动态vpb图形对象, key为lanelt_id
-  public dynamic_vpb_lanes: Record<string, Record<string, Graphics>>  = {}
-
+  public dynamic_vpb_lanes: Record<string, Record<string, Graphics>> = {}
   // 通用的图形对象, key为类型, 用于区分不同类型的图形; 值为, id: graphics的对象
   public common_graphics: Record<string, Record<string, Graphics>> = {}
-
   // 测量点图形对象
   public g_mesure_point1: Graphics | null = null
   public g_mesure_point2: Graphics | null = null
-
   // 测量点相关
   public measurePointsContainer: Container | null = null
   public measurePointGraphics: {
@@ -132,12 +122,12 @@ export default class ApplicationManager extends GraphicTools {
     label1: Text | null
     label2: Text | null
   } = {
-    point1: null,
-    point2: null,
-    line: null,
-    label1: null,
-    label2: null,
-  }
+      point1: null,
+      point2: null,
+      line: null,
+      label1: null,
+      label2: null,
+    }
 
   constructor() {
     // 如果已经存在实例，返回现有实例
@@ -145,12 +135,9 @@ export default class ApplicationManager extends GraphicTools {
     if (existingInstance) {
       return existingInstance
     }
-
     super()
-
     // 设置全局实例
     setGlobalInstance(this)
-
     this.app = new Application()
     this.graphics_path_short = null
     this.graphics_path_long = null
@@ -169,41 +156,21 @@ export default class ApplicationManager extends GraphicTools {
     this.mode = 'test-demo'
     this.mouse_func = 'default' // 保留鼠标功能模式，供事件管理器使用
 
-    // 车辆平滑移动的配置
-    this.smoothMovementConfig = {
-      enabled: true, // 是否启用平滑移动
+    this.smoothMovementConfig = { // 车辆平滑移动的配置
+      enabled: true,
     }
-
-    // 背景图片显示配置
-    this.backgroundImageConfig = {
-      visible: true, // 是否显示背景图片
+    this.backgroundImageConfig = { // 是否显示背景图片
+      visible: true,
     }
-
-    // 创建事件管理器实例
     this.eventManager = null
 
-    // 创建数据渲染管理器实例
-    // this.dataRenderer = null
-
-    // 存储锁闭区图形对象
-    this.lockAreas = {}
-
-    // 存储流量控制区域图形对象
-    this.limitAreas = {}
-
-    // 存储电子围栏图形对象
-    this.geoFences = {}
-
-    // ga 图形对象
-    this.gaAreas = {}
-
-    // pla 图形对象
-    this.plaAreas = {}
-
-    // pga 图形对象
-    this.pgaAreas = {}
-
-    this.self_area = {}
+    this.lockAreas = {}       // 存储锁闭区 Graphics
+    this.limitAreas = {}      // 存储流量控制区域 Graphics
+    this.geoFences = {}       // 存储电子围栏 Graphics
+    this.gaAreas = {}         // ga Graphics
+    this.plaAreas = {}        // pla Graphics
+    this.pgaAreas = {}        // pga Graphics
+    this.self_area = {}       // self 区域 Graphics
 
     // 通用的图形对象集合
     this.common_graphics = {}
@@ -221,48 +188,45 @@ export default class ApplicationManager extends GraphicTools {
     this.timeUpdateInterval = null
   }
 
-    /**
-     * 直接设置顶部时间文本（同步、无延迟）。
-     * 回放模式下由回放控件主动调用，避免等待 1s 定时器。
-     */
-    setTopTimeText(text: string) {
-      if (this.timeText) {
-        this.timeText.text = text
-      }
+  /**
+   * 直接设置顶部时间文本（同步、无延迟）。
+   * 回放模式下由回放控件主动调用，避免等待 1s 定时器。
+   */
+  setTopTimeText(text: string) {
+    if (this.timeText) {
+      this.timeText.text = text
     }
+  }
 
-    /**
-     * 立即刷新顶部时间显示（同步读取 store 的回放/实时状态）。
-     */
-    updateTopTimeDisplayNow() {
-      this.updateTimeDisplay()
-    }
+  /**
+   * 立即刷新顶部时间显示（同步读取 store 的回放/实时状态）。
+   */
+  updateTopTimeDisplayNow() {
+    this.updateTimeDisplay()
+  }
 
-    /**
-     * 绘制或更新测量点
-     */
-    updateMeasurePoint(pointId: 'point1' | 'point2', x: number, y: number) {
-      // 将地图坐标转换为应用坐标（翻转y轴）
-      const [appX, appY] = this.map_xy_to_app([x, y])
+  /**
+   * 绘制或更新测量点
+   */
+  updateMeasurePoint(pointId: 'point1' | 'point2', x: number, y: number) {
+    // 将地图坐标转换为应用坐标（翻转y轴）
+    const [appX, appY] = this.map_xy_to_app([x, y])
 
-      const color = pointId === 'point1' ? 0x00bfff : 0xa578ff // 深天蓝 / 浅紫
-      const text = pointId === 'point1' ? this.p_text1 : this.p_text2
-      const g = pointId === 'point1' ? this.g_mesure_point1 : this.g_mesure_point2
-      
-      g.clear()
-       .circle(appX, appY, 1)
-       .fill({ color: color, alpha: 0.8 })
-      
-      text.position.set(appX, appY)
-  
-    }
+    const color = pointId === 'point1' ? 0x00bfff : 0xa578ff // 深天蓝 / 浅紫
+    const text = pointId === 'point1' ? this.p_text1 : this.p_text2
+    const g = pointId === 'point1' ? this.g_mesure_point1 : this.g_mesure_point2
 
-    /**
-     * 设置测量点显示/隐藏
-     */
-    setMeasurePointsVisible(visible: boolean) {
-        this.measureContainer.visible = visible
-    }
+    g.clear().circle(appX, appY, 1).fill({ color: color, alpha: 0.8 })
+
+    text.position.set(appX, appY)
+  }
+
+  /**
+   * 设置测量点显示/隐藏
+   */
+  setMeasurePointsVisible(visible: boolean) {
+    this.measureContainer.visible = visible
+  }
 
   // 获取单例实例
   static getInstance() {
@@ -278,9 +242,8 @@ export default class ApplicationManager extends GraphicTools {
   }
 
 
-  // 确保canvas正确显示
+  // 确保canvas正确显示，保证 debug 时，vue 组建重载能够正确显示主界面
   ensureCanvasDisplay() {
-    // 防御性检查：如果 app 或 canvas 还未初始化（init() 未完成），则跳过
     if (!this.app || !this.app.canvas) {
       console.log('ensureCanvasDisplay: app or canvas not ready, skipping')
       return
@@ -290,8 +253,6 @@ export default class ApplicationManager extends GraphicTools {
       console.log('re add canvas to DOM')
       game_container.appendChild(this.app.canvas)
     }
-
-    // 确保应用正常渲染
     if (!this.app.renderer) {
       console.log('no render!')
     }
@@ -312,9 +273,7 @@ export default class ApplicationManager extends GraphicTools {
       this.timeUpdateInterval = null
     }
 
-    // 重置全局单例实例
     clearGlobalInstance()
-
     console.log('资源清理完成')
   }
 
@@ -333,13 +292,13 @@ export default class ApplicationManager extends GraphicTools {
     const game_container = document.getElementById('map_main_container')
     if (game_container) {
       game_container.appendChild(this.app.canvas)
-      
+
       // 阻止地图容器的滚轮事件传播到页面，避免页面滚动
       game_container.addEventListener('wheel', (e) => {
         e.preventDefault()
       }, { passive: false })
     }
-    
+
     this.mainContainer = new Container()
     this.agentContainer = new Container()
     this.longPathContainer = new Container()
@@ -453,7 +412,7 @@ export default class ApplicationManager extends GraphicTools {
         },
       })
       // this.p_text1.anchor.set(0.5, 1.2)
-      this.p_text1.position.set(0,0)
+      this.p_text1.position.set(0, 0)
       this.p_text1.rotation = -this.g_rotation
       this.p_text1.scale.set(0.5)
 
@@ -466,7 +425,7 @@ export default class ApplicationManager extends GraphicTools {
       })
 
       // this.p_text2.anchor.set(0.5, 1.2)
-      this.p_text2.position.set(0,0)
+      this.p_text2.position.set(0, 0)
       this.p_text2.rotation = -this.g_rotation
       this.p_text2.scale.set(0.5)
 
@@ -604,7 +563,7 @@ export default class ApplicationManager extends GraphicTools {
         this.graphics_path_apply_area.parent.removeChild(this.graphics_path_apply_area)
       try {
         this.graphics_path_apply_area.clear()
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 清理锁闭区 / 流控 / 围栏 等
@@ -614,7 +573,7 @@ export default class ApplicationManager extends GraphicTools {
           if (g.parent) g.parent.removeChild(g)
           if (typeof g.clear === 'function') g.clear()
           if (typeof g.destroy === 'function') g.destroy({ children: true })
-        } catch (e) {}
+        } catch (e) { }
       })
     }
     clearGraphicsMap(this.lockAreas)
@@ -625,7 +584,7 @@ export default class ApplicationManager extends GraphicTools {
     clearGraphicsMap(this.plaAreas)
     clearGraphicsMap(this.pgaAreas)
     clearGraphicsMap(this.self_area)
-    
+
     Object.values(this.common_graphics).forEach(items => {
       clearGraphicsMap(items)
     })
@@ -671,7 +630,7 @@ export default class ApplicationManager extends GraphicTools {
     let t_y = newPoint.y / scale
     t_y = -t_y // 前端 y 的方向与原地图相反
     return [roundTo(t_x, 4), roundTo(t_y, 4)]
-  } 
+  }
 
 
   add_agent(vehicle_id) {
@@ -783,12 +742,13 @@ export default class ApplicationManager extends GraphicTools {
     return Math.atan2(y2 - y1, x2 - x1)
   }
   matchIntNumber(s: string): number {
-    if(!s) return 0;
+    if (!s) return 0;
     // 提取字符串中的第一组连续数字
     const match = s.match(/\d+/); // 匹配第一个连续数字
     return match ? parseInt(match[0], 10) : 0;
-}
+  }
 
+  // 根据路径信息绘制主界面路径，在路径中点加上箭头
   draw_map_road(g, points, color, alpha = 0.5, width = 1) {
     // const width = 1
     g.clear()
@@ -870,20 +830,20 @@ export default class ApplicationManager extends GraphicTools {
 
     Object.entries(this.map_path_info).forEach(([path_id, one_path]) => {
       let color = '#fff'
-      
-      if(!getGlobalSettings().value.all_vpb_show) {
+
+      if (!getGlobalSettings().value.all_vpb_show) {
         // 检查是否有vpb_enter或vpb_exit属性
         const vpb_enter = this.matchIntNumber(one_path?.attrs?.vpb_enter)
         const vpb_exit = this.matchIntNumber(one_path?.attrs?.vpb_exit)
         if (vpb_enter && vpb_enter_list && !vpb_enter_list.includes(vpb_enter)) {
-          return; 
+          return;
         }
         if (vpb_exit && vpb_exit_list && !vpb_exit_list.includes(vpb_exit)) {
-          return; 
+          return;
         }
         // vpb color
-        if(vpb_enter) {color="blue"}
-        if(vpb_exit) {color="red"}
+        if (vpb_enter) { color = "blue" }
+        if (vpb_exit) { color = "red" }
       }
 
       // console.log(path_id, one_path);
@@ -892,7 +852,7 @@ export default class ApplicationManager extends GraphicTools {
       const g = new Graphics()
       cons.addChild(g)
 
-      
+
 
 
       // 直接使用 drawLine 方法
@@ -1070,19 +1030,26 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  // 坐标转换 - 用于绘制text
-  transform_xy(p: [number, number]): [number, number] {
+  /**
+   * 地图坐标转换为屏幕坐标，附加自定义偏移量
+   * raw_xy 的逆操作
+   * @param p 地图坐标 [x, y]
+   * @param offset 偏移量 [offsetX, offsetY]，默认 [5, -5]
+   * @returns 屏幕坐标 [screenX, screenY]
+   */
+  map_to_screen_xy(p: [number, number], offset: [number, number] = [0, 0], reverse_y = false): [number, number] {
+
     let [x, y] = p
     const scale = this.mainContainer.scale.x
     const rotation = this.g_rotation
-    const offsetX = this.mainContainer.position.x
-    const offsetY = this.mainContainer.position.y
+    const baseOffsetX = this.mainContainer.position.x
+    const baseOffsetY = this.mainContainer.position.y
+    if (reverse_y){
+      y = -y // y 轴反转
+    }
+    x += offset[0]
+    y += offset[1]
 
-    // 加一个偏移量
-    x += 5
-    y -= 5
-
-    y = -y // 坐标系翻转
     // 1. 先缩放
     let screenX = x * scale
     let screenY = y * scale
@@ -1094,20 +1061,20 @@ export default class ApplicationManager extends GraphicTools {
     const rotatedY = screenX * sin + screenY * cos
 
     // 3. 最后平移
-    screenX = rotatedX + offsetX
-    screenY = rotatedY + offsetY
+    screenX = rotatedX + baseOffsetX
+    screenY = rotatedY + baseOffsetY
     return [screenX, screenY]
   }
 
   // 更新车辆的显示状态, 包括: 车辆轮廓, id, 短路径, 长路径, selfarea, ga, pga, pla.
   update_agent_visibility(vehicle_id: string) {
     const agent = this.agents[vehicle_id]
-    if(!agent) return;
-    
+    if (!agent) return;
+
     const settingsStore = getSettingsStore()
     const globalSettings = getGlobalSettings()
-    
-    if(!(vehicle_id in globalSettings.value.vehicle_visible)){
+
+    if (!(vehicle_id in globalSettings.value.vehicle_visible)) {
       settingsStore.updateVehicleVisible(vehicle_id, true);
       // globalSettings.value.vehicle_visible[vehicle_id] = true;
     }
@@ -1124,25 +1091,25 @@ export default class ApplicationManager extends GraphicTools {
 
     // area : let areaGraphics = this.manager[data_key]?.[areaId]
     const g_self_area = this.self_area?.[vehicle_id]
-    if(g_self_area) {
+    if (g_self_area) {
       g_self_area.visible = visible && globalSettings.value.vehicle_selfAreaVisible
     }
 
     // ga
     const ga = this.gaAreas?.[vehicle_id]
-    if(ga) {
+    if (ga) {
       ga.visible = visible && globalSettings.value.vehicle_gaAreasVisible
     }
 
     // pga
     const pga = this.pgaAreas?.[vehicle_id]
-    if(pga) {
+    if (pga) {
       pga.visible = visible && globalSettings.value.vehicle_pgaAreasVisible
     }
 
     // pla
     const pla = this.plaAreas?.[vehicle_id]
-    if(pla) {
+    if (pla) {
       pla.visible = visible && globalSettings.value.vehicle_plaAreasVisible
     }
 

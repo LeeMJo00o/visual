@@ -90,31 +90,11 @@ export default class Agent {
   }
 
   sync_text_pos(x, y) {
-    // 将地图坐标转换为屏幕坐标
-    // 坐标变换顺序：缩放 -> 旋转 -> 平移
-    // 这与 raw_xy 方法的逆变换顺序一致
-    const scale = this.manager.mainContainer.scale.x
-    const rotation = this.manager.g_rotation
-    const offsetX = this.manager.mainContainer.position.x
-    const offsetY = this.manager.mainContainer.position.y
-
-    // 1. 先缩放
-    let screenX = x * scale
-    let screenY = y * scale
-
-    // 2. 再旋转
-    const cos = Math.cos(rotation)
-    const sin = Math.sin(rotation)
-    const rotatedX = screenX * cos - screenY * sin
-    const rotatedY = screenX * sin + screenY * cos
-
-    // 3. 最后平移
-    screenX = rotatedX + offsetX
-    screenY = rotatedY + offsetY
-
+    const [screenX, screenY] = this.manager.map_to_screen_xy([x, y])
     this.text.position.set(screenX, screenY)
-
-    // 优化字体缩放：只在缩放变化超过阈值时才更新字体大小
+    // 尽管主界面在缩放，id 文本应该始终在一定范围内
+    // 这里优化字体缩放，只在缩放变化超过阈值时才更新字体大小
+    const scale = this.manager.mainContainer.scale.x
     if (Math.abs(scale - this.lastScale) > this.scaleUpdateThreshold) {
       if (scale > 1) {
         this.text.style.fontSize = 12 + 12 * (scale - 1) * 0.1
@@ -123,9 +103,6 @@ export default class Agent {
       }
       this.lastScale = scale
     }
-
-    // 文本旋转需要抵消地图旋转，保持水平显示
-    // this.text.rotation = -rotation
   }
 
   // 新方法：在每一帧更新位置

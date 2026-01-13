@@ -789,12 +789,12 @@ export class DataRenderer {
 
     // 绘制流量控制区域的约束数量
     if (type == 'limit') {
-      const p = this.manager.transform_xy(points[0])
+      const p = this.manager.map_to_screen_xy(points[0], [5, 5], true)
       // [7/12]
       const content = `[${area?.count}/${area?.limit}]`
       const textObj = this.manager.createText(content, p)
       textObj.__ww_update = () => {
-        const p = this.manager.transform_xy(points[0])
+        const p = this.manager.map_to_screen_xy(points[0], [5, 5], true)
         textObj.position.set(p[0], p[1])
       }
       // 将text对象添加到容器中
