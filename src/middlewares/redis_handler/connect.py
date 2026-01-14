@@ -27,12 +27,13 @@ else:
 
 redis_cli_fms: AioRedis = _redis_cli_fms
 
-
+_redis_cli_arbiter = None
 if pp_visual_ARBITER_REDIS_MODE == "SENTINEL":
     sentinels = [i.split(":") for i in pp_visual_ARBITER_REDIS_SENTINELS.split(",")]
     _redis_cli_arbiter = get_sentinel_master(sentinels, pp_visual_ARBITER_REDIS_SENTINEL_PWD,
                                              ext_config={"decode_responses": False})
 else:
-    _redis_cli_arbiter = get_single(pp_visual_ARBITER_REDIS_URL, ext_config={"decode_responses": False})
+    if pp_visual_ARBITER_REDIS_URL:
+        _redis_cli_arbiter = get_single(pp_visual_ARBITER_REDIS_URL, ext_config={"decode_responses": False})
 
 redis_cli_arbiter: AioRedis = _redis_cli_arbiter

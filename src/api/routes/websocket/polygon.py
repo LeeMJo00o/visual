@@ -46,7 +46,7 @@ class PolygonWsServer(MulLinkServerEndpoint):
     @classmethod
     async def get_data(cls) -> dict[str, str]:
         try:
-            if not cls.key: return {}
+            if not cls.key or not redis_cli: return {}
 
             data = await redis_cli.hgetall(cls.key)
 
