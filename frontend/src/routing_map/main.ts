@@ -398,8 +398,6 @@ export default class ApplicationManager extends GraphicTools {
         this.mainContainer.addChildAt(this.backgroundSprite, 0)
       }
 
-      this.mainContainer.addChild(this.longPathContainer)
-
       // 获取vpb 信息
       const vpb_info = await get_vpb_info()
 
