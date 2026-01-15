@@ -216,7 +216,7 @@ export default class ApplicationManager extends GraphicTools {
     const text = pointId === 'point1' ? this.p_text1 : this.p_text2
     const g = pointId === 'point1' ? this.g_mesure_point1 : this.g_mesure_point2
 
-    g.clear().circle(appX, appY, 1).fill({ color: color, alpha: 0.8 })
+    g.clear().circle(appX, appY, 0.7).fill({ color: color, alpha: 0.8})
 
     text.position.set(appX, appY)
   }
@@ -400,6 +400,31 @@ export default class ApplicationManager extends GraphicTools {
 
       this.mainContainer.addChild(this.longPathContainer)
 
+      // 获取vpb 信息
+      const vpb_info = await get_vpb_info()
+
+      this.map_container = await this.initMap(vpb_info)
+
+      // 默认关闭地图显示
+      this.map_container.visible = getGlobalSettings().value.map_show   //!this.map_config.use_back_image
+      this.app.stage.addChild(this.mainContainer)
+
+      this.app.stage.addChild(this.agentTextContainer)
+
+      this.app.stage.addChild(this.limitAreaTextContainer)
+
+      // 添加时间文本到舞台，确保显示在最上层
+      this.app.stage.addChild(this.timeText)
+
+      this.graphics_path_apply_area = new Graphics()
+
+      this.add_graphics(this.map_container)
+
+      this.mainContainer.addChild(this.longPathContainer)
+      this.mainContainer.addChild(this.shortPathContainer)
+      this.add_graphics(this.graphics_path_apply_area)
+      this.mainContainer.addChild(this.agentContainer)
+
       this.measureContainer = new Container()
       this.g_mesure_point1 = new Graphics()
       this.g_mesure_point2 = new Graphics()
@@ -407,14 +432,14 @@ export default class ApplicationManager extends GraphicTools {
       this.p_text1 = new Text({
         text: "P1",
         style: {
-          fontSize: 20,
+          fontSize: 40,
           fill: 0x00bfff,
         },
       })
       // this.p_text1.anchor.set(0.5, 1.2)
       this.p_text1.position.set(0, 0)
       this.p_text1.rotation = -this.g_rotation
-      this.p_text1.scale.set(0.5)
+      this.p_text1.scale.set(0.15)
 
       this.p_text2 = new Text({
         text: "P2",
@@ -435,30 +460,6 @@ export default class ApplicationManager extends GraphicTools {
       this.measureContainer.addChild(this.p_text2)
       this.setMeasurePointsVisible(false)
       this.mainContainer.addChild(this.measureContainer)
-
-      // 获取vpb 信息
-      const vpb_info = await get_vpb_info()
-
-      this.map_container = await this.initMap(vpb_info)
-      // 默认关闭地图显示
-      this.map_container.visible = getGlobalSettings().value.map_show   //!this.map_config.use_back_image
-      this.app.stage.addChild(this.mainContainer)
-
-      this.app.stage.addChild(this.agentTextContainer)
-
-      this.app.stage.addChild(this.limitAreaTextContainer)
-
-      // 添加时间文本到舞台，确保显示在最上层
-      this.app.stage.addChild(this.timeText)
-
-      this.graphics_path_apply_area = new Graphics()
-
-      this.add_graphics(this.map_container)
-
-      this.mainContainer.addChild(this.longPathContainer)
-      this.mainContainer.addChild(this.shortPathContainer)
-      this.add_graphics(this.graphics_path_apply_area)
-      this.mainContainer.addChild(this.agentContainer)
 
       this.graphics_path_apply_area.alpha = 0.5
 
