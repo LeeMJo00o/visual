@@ -3,7 +3,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { CopyDocument, Pointer, Location } from '@element-plus/icons-vue'
+import { CopyDocument, Location } from '@element-plus/icons-vue'
 import { useGlobalStore } from '../stores/globalStore'
 // import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import LockArea from '@/components/LockArea.vue'
@@ -434,7 +434,7 @@ const openInfosDialog = () => {
                       :type="selectingPoint === 'point1' ? 'primary' : 'default'"
                       @click="togglePointSelection('point1')"
                       class="pick-button"
-                      :icon="selectingPoint === 'point1' ? Pointer : Location"
+                      :icon="Location"
                     >
                     </el-button>
                     <el-input v-model="measurePoint1" placeholder="x, y" size="small" class="coord-input-single" />
@@ -446,7 +446,7 @@ const openInfosDialog = () => {
                       :type="selectingPoint === 'point2' ? 'primary' : 'default'"
                       @click="togglePointSelection('point2')"
                       class="pick-button"
-                      :icon="selectingPoint === 'point2' ? Pointer : Location"
+                      :icon="Location"
                     >
                     </el-button>
                     <el-input v-model="measurePoint2" placeholder="x, y" size="small" class="coord-input-single" />
