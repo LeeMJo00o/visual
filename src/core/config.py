@@ -54,7 +54,7 @@ pp_visual_ARBITER_REDIS_MODE: str = config(
 )
 # if redis mode id single, use this config
 pp_visual_ARBITER_REDIS_URL: str = config(
-    "pp_visual_ARBITER_REDIS_URL", default="redis://127.0.0.1:6370/2"
+    "pp_visual_ARBITER_REDIS_URL", default=""
 )
 # if redis mode id sentinel, use this config
 pp_visual_ARBITER_REDIS_SENTINELS: str = config(

@@ -267,12 +267,16 @@ const sendDrawingRequest = async (
           ? 'no_parking_' + Date.now()
           : _subtype + '_area_' + Date.now() // 禁停区使用no_parking_xxxx格式
     }
-    
+    let _type = props.type === 'lock' ? lockAreaType.value : props.type
+    // 如果是uniform_region, 那么type仍使用lock
+    if(lockAreaType.value === 'uniform_region') {
+      _type = 'lock'
+    }
     const requestData = {
       name: name,
       subtype:
         props.type === 'lock' && lockAreaType.value === 'no_parking' ? 'no_parking' : _subtype, // 禁停区的subtype使用no_parking
-      type: props.type, // 根据锁闭区类型设置正确的type
+      type: _type, // 根据锁闭区类型设置正确的type
       created_by: 'pp-visual',
       describe: '',
       polygon: polygon,
