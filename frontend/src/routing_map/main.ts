@@ -444,7 +444,7 @@ export default class ApplicationManager extends GraphicTools {
       this.p_text2 = new Text({
         text: "P2",
         style: {
-          fontSize: 20,
+          fontSize: 40,
           fill: 0xa578ff,
         },
       })
@@ -452,7 +452,7 @@ export default class ApplicationManager extends GraphicTools {
       // this.p_text2.anchor.set(0.5, 1.2)
       this.p_text2.position.set(0, 0)
       this.p_text2.rotation = -this.g_rotation
-      this.p_text2.scale.set(0.5)
+      this.p_text2.scale.set(0.15)
 
       this.measureContainer.addChild(this.g_mesure_point1)
       this.measureContainer.addChild(this.g_mesure_point2)

@@ -3,7 +3,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { CopyDocument } from '@element-plus/icons-vue'
+import { CopyDocument, Pointer, Location } from '@element-plus/icons-vue'
 import { useGlobalStore } from '../stores/globalStore'
 // import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import LockArea from '@/components/LockArea.vue'
@@ -186,6 +186,37 @@ const fallbackCopyText = (text: string) => {
 const measurePoint1 = ref('')
 const measurePoint2 = ref('')
 const showMeasurePoints = ref(false) // 控制测量点显示/隐藏，默认不显示
+
+// 测量点选点模式
+const selectingPoint = ref<'point1' | 'point2' | null>(null)
+
+// 切换选点模式
+const togglePointSelection = (pointId: 'point1' | 'point2') => {
+  if (selectingPoint.value === pointId) {
+    // 如果已经是选中状态，则取消
+    selectingPoint.value = null
+  } else {
+    // 切换到选中状态
+    selectingPoint.value = pointId
+    // 确保测量点显示打开
+    if (!showMeasurePoints.value) {
+      showMeasurePoints.value = true
+    }
+  }
+}
+
+// 监听全局点击坐标变化，同步到选中的测量点
+watch(() => globalStore.positions.click, (newClick) => {
+  if (newClick && selectingPoint.value) {
+    const [x, y] = newClick
+    if (selectingPoint.value === 'point1') {
+      measurePoint1.value = `${x.toFixed(3)}, ${y.toFixed(3)}`
+    } else if (selectingPoint.value === 'point2') {
+      measurePoint2.value = `${x.toFixed(3)}, ${y.toFixed(3)}`
+    }
+    // 保持选点模式，不自动取消
+  }
+})
 
 // 计算距离
 const measureDistance = computed(() => {
@@ -398,14 +429,29 @@ const openInfosDialog = () => {
                   <span class="cell-label">测量:</span>
                   <div class="measure-input-group">
                     <span class="point-label p1">P1</span>
+                    <el-button
+                      size="small"
+                      :type="selectingPoint === 'point1' ? 'primary' : 'default'"
+                      @click="togglePointSelection('point1')"
+                      class="pick-button"
+                      :icon="selectingPoint === 'point1' ? Pointer : Location"
+                    >
+                    </el-button>
                     <el-input v-model="measurePoint1" placeholder="x, y" size="small" class="coord-input-single" />
                   </div>
                   <div class="measure-input-group">
                     <span class="point-label p2">P2</span>
+                    <el-button
+                      size="small"
+                      :type="selectingPoint === 'point2' ? 'primary' : 'default'"
+                      @click="togglePointSelection('point2')"
+                      class="pick-button"
+                      :icon="selectingPoint === 'point2' ? Pointer : Location"
+                    >
+                    </el-button>
                     <el-input v-model="measurePoint2" placeholder="x, y" size="small" class="coord-input-single" />
                   </div>
-                  <span class="cell-label">显示</span>
-                  <el-switch v-model="showMeasurePoints" size="small" />
+                  <el-switch v-model="showMeasurePoints" size="small" inline-prompt active-text="显示" inactive-text="隐藏" />
                   <div class="measure-result" v-if="measureDistance !== null">
                     <span>距离: {{ measureDistance.toFixed(3) }}</span>
                     <span>角度: {{ measureAngle?.toFixed(3) }}</span>
@@ -634,6 +680,11 @@ const openInfosDialog = () => {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.measure-input-group .pick-button {
+  min-width: 32px;
+  padding: 8px;
 }
 
 .measure-input-group .point-label {
