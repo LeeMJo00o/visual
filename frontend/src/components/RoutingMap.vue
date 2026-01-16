@@ -49,6 +49,13 @@ onMounted(async () => {
 
     // 添加窗口大小变化的监听
     window.addEventListener('resize', handleResize)
+
+    // 初始化后检查回放状态，如果处于回放模式，需要暂停WebSocket数据渲染
+    // 这样刷新页面时，能正确进入回放模式
+    if (globalStore.isReplay) {
+      console.log('Init: detected replay mode, pausing WebSocket data rendering')
+      appManager?.pauseWSDataRendering()
+    }
   } catch (error) {
     console.error('RoutingMap init failed:', error)
     // 即使失败也设置为 true，避免其他组件永久等待（可根据需求改为显示错误状态）
