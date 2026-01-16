@@ -11,6 +11,7 @@ import {
   CullerPlugin,
   SCALE_MODES,
 } from 'pixi.js'
+import dayjs from 'dayjs'
 import { GraphicTools, stringToUniqueColor, unrotatePoint } from './graph.ts'
 import {
   WebSocketClient,
@@ -1001,31 +1002,15 @@ export default class ApplicationManager extends GraphicTools {
         }
 
         if (t) {
-          const dt = new Date(t)
-          const dateString = dt.toISOString().split('T')[0]
-          const timeString = dt.toLocaleTimeString('zh-CN', {
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          })
-          this.timeText.text = `[RE] ${dateString} ${timeString}`
+          const timeString = dayjs(t).format('YYYY-MM-DD HH:mm:ss')
+          this.timeText.text = `[RE] ${timeString}`
         } else {
           // 已选择文件但时间点尚未设置（例如刚切换模式/刚选文件）
           this.timeText.text = '[RE]'
         }
         return
       }
-
-      const now = new Date()
-      const dateString = now.toISOString().split('T')[0] // 获取日期部分 YYYY-MM-DD
-      const timeString = now.toLocaleTimeString('zh-CN', {
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
-      this.timeText.text = `${dateString} ${timeString}`
+      this.timeText.text = dayjs(Date()).format('YYYY-MM-DD HH:mm:ss')
     }
   }
 
