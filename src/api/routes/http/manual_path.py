@@ -153,13 +153,31 @@ def _build_start_pose(pose: dict | None) -> dict:
             "trailer_heading": 0.0,
         }
 
+    heading = pose.get("heading")
+    if heading is None:
+        heading = pose.get("yaw")
+    if heading is None:
+        heading = pose.get("theta", 0.0)
+
+    trailer_heading = pose.get("trailer_heading")
+    if trailer_heading is None:
+        trailer_heading = pose.get("t_theta", heading)
+
+    trailer_x = pose.get("trailer_x")
+    if trailer_x is None:
+        trailer_x = pose.get("tx", pose.get("x", 0.0))
+
+    trailer_y = pose.get("trailer_y")
+    if trailer_y is None:
+        trailer_y = pose.get("ty", pose.get("y", 0.0))
+
     return {
         "x": float(pose.get("x", 0.0)),
         "y": float(pose.get("y", 0.0)),
-        "heading": float(pose.get("theta", 0.0)),
-        "trailer_x": float(pose.get("tx", 0.0)),
-        "trailer_y": float(pose.get("ty", 0.0)),
-        "trailer_heading": float(pose.get("t_theta", 0.0)),
+        "heading": float(heading),
+        "trailer_x": float(trailer_x),
+        "trailer_y": float(trailer_y),
+        "trailer_heading": float(trailer_heading),
     }
 
 
