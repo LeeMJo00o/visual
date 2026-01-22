@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 import time
 import uuid
 from typing import Any
@@ -14,7 +15,9 @@ from src.core.config import (
     pp_visual_PATH_PLAN_URL,
 )
 from src.core.log import logger
+from src.map_tools import g_roads
 from src.middlewares.redis_handler.connect import redis_cli, redis_cli_fms
+from src.routing import get_vec_point_angle, normalize_angle, vec_point_distance
 
 router = APIRouter()
 
@@ -181,6 +184,64 @@ def _build_start_pose(pose: dict | None) -> dict:
     }
 
 
+def _snap_heading_to_lane(point: dict) -> float | None:
+    if not g_roads or not getattr(g_roads, "road_info", None):
+        return None
+
+    x = point.get("x")
+    y = point.get("y")
+    if x is None or y is None:
+        return None
+
+    try:
+        x = float(x)
+        y = float(y)
+    except (TypeError, ValueError):
+        return None
+
+    raw_heading = point.get("heading")
+    try:
+        requested_heading = float(raw_heading) if raw_heading is not None else None
+    except (TypeError, ValueError):
+        requested_heading = None
+
+    nearest_heading = None
+    best_distance = float("inf")
+
+    for lane_id, lane_info in g_roads.road_info.items():
+        if str(lane_id).startswith("junction_"):
+            continue
+        line = lane_info.get("points") or []
+        if len(line) < 2:
+            continue
+
+        closest_idx = 0
+        min_dist = float("inf")
+        for idx, lane_point in enumerate(line):
+            dist = vec_point_distance(lane_point, (x, y))
+            if dist < min_dist:
+                min_dist = dist
+                closest_idx = idx
+
+        lane_heading = get_vec_point_angle(line, closest_idx)
+        if min_dist < best_distance:
+            best_distance = min_dist
+            nearest_heading = lane_heading
+
+    if nearest_heading is None:
+        return None
+
+    if requested_heading is None:
+        return nearest_heading
+
+    opposite_heading = normalize_angle(nearest_heading + math.pi)
+    direct_diff = abs(normalize_angle(requested_heading - nearest_heading))
+    opposite_diff = abs(normalize_angle(requested_heading - opposite_heading))
+    if opposite_diff < direct_diff:
+        return opposite_heading
+    return nearest_heading
+
+
 def _build_routing_payload(req: dict, vehicle_id: str, start_pose: dict, end_pose: dict) -> dict:
     task_type = req.get("task_type", "ESTOP")
     return {
@@ -267,10 +328,11 @@ async def plan_manual_path(req: dict = Body()) -> StdRes:
         logger.error(f"manual_path plan: read pose failed: {exc}")
 
     start_pose = _build_start_pose(pose)
+    snapped_heading = _snap_heading_to_lane(points)
     end_pose = {
         "x": float(points["x"]),
         "y": float(points["y"]),
-        "heading": float(points["heading"]),
+        "heading": float(snapped_heading if snapped_heading is not None else points["heading"]),
     }
     payload = _build_routing_payload(req, vehicle_id, start_pose, end_pose)
 
