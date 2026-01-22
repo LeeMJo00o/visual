@@ -90,3 +90,16 @@ pp_visual_COLLECTOR_URL: str = config("pp_visual_COLLECTOR_URL", cast=str, defau
 # arbiter清除轮廓的接口
 pp_visual_ARBITER_CLEAR_AREA_URL: str = config("pp_visual_ARBITER_CLEAR_AREA_URL", cast=str,
                                                default="http://127.0.0.1:8082/api/area/clearArea")
+
+# task executor / task info / path plan
+pp_visual_TASK_EXECUTOR_URL: str = config(
+    "pp_visual_TASK_EXECUTOR_URL", cast=str, default="http://127.0.0.1:55000"
+)
+pp_visual_TASK_INFO_URL: str = config(
+    "pp_visual_TASK_INFO_URL", cast=str, default="http://127.0.0.1:55000"
+)
+pp_visual_PATH_PLAN_URL: str = config(
+    "pp_visual_PATH_PLAN_URL",
+    cast=str,
+    default="http://127.0.0.1:8008/RoutingInterface/navigation/update",
+)

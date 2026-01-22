@@ -46,7 +46,9 @@ export class EventManager {
 
   handlePointerDown(e) {
     // 只在默认模式下执行拖拽功能
-    if (this.manager.mouse_func === 'default') {
+    if (this.manager.mouse_func === 'manual_path') {
+      this.manager.handleManualPathPointerDown(e)
+    } else if (this.manager.mouse_func === 'default') {
       this.isDragging = true
       this.lastX = e.global.x
       this.lastY = e.global.y
@@ -61,7 +63,9 @@ export class EventManager {
 
   handlePointerMove(e) {
     // 只在默认模式下执行拖拽功能
-    if (this.manager.mouse_func === 'default') {
+    if (this.manager.mouse_func === 'manual_path') {
+      this.manager.handleManualPathPointerMove(e)
+    } else if (this.manager.mouse_func === 'default') {
       let raw_pos = this.manager.raw_xy(e.global.x, e.global.y)
       // 使用Pinia store更新
       this.globalStore.setPosition('pointer', raw_pos[0], raw_pos[1])
@@ -120,7 +124,9 @@ export class EventManager {
   }
   handlePointerUp(e) {
     // 只在默认模式下执行拖拽功能
-    if (this.manager.mouse_func === 'default') {
+    if (this.manager.mouse_func === 'manual_path') {
+      this.manager.handleManualPathPointerUp(e)
+    } else if (this.manager.mouse_func === 'default') {
       this.isDragging = false
     } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {
       this.manager.drawingHandlers.handleDrawingMouseUp(e)
@@ -129,7 +135,9 @@ export class EventManager {
 
   handlePointerUpOutside(e) {
     // 只在默认模式下执行拖拽功能
-    if (this.manager.mouse_func === 'default') {
+    if (this.manager.mouse_func === 'manual_path') {
+      this.manager.handleManualPathPointerUp(e)
+    } else if (this.manager.mouse_func === 'default') {
       this.isDragging = false
     } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {
       this.manager.drawingHandlers.handleDrawingMouseUp(e)

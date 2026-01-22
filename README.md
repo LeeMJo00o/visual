@@ -20,6 +20,19 @@ env $(cat ~/env_local | xargs) ./run.sh
 
 其他的工具、编辑器或 IDE 参考相应的文档。
 
+### Docker Compose 运行
+
+1. 使用 `.env` 配置运行参数（仓库已提供默认示例，可按需修改）。
+2. 启动服务：
+
+```
+docker compose --env-file .env up -d
+```
+
+#### 常见问题
+
+如果使用 `docker-compose`（v1）时遇到类似 `KeyError: 'ContainerConfig'` 的报错，通常是旧版 `docker-compose` 与新版本 Docker 引擎不兼容导致的。建议改用 Docker 官方的 `docker compose`（v2 插件）或升级 `docker-compose` 版本后重试。
+
 ### 测试
 
 项目使用 pytest 测试。

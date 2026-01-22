@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  pp_visual:
+    image: ${APP_IMAGE}
+    container_name: pp_visual
+    restart: always
+    env_file:
+      - .env
+    cap_add:
+      - SYS_PTRACE
+    logging:
+      options:
+        max-size: 100m
+    ports:
+      - "${APP_PORT}:${pp_visual_RUN_PORT}"
+    networks:
+      - pp-network
+    volumes:
+      - ./log/pp_visual:/opt/app/log
+      - ./map:/opt/app/map
+    depends_on:
+      - redis
+      - postgres
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - pp-network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: scenario
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: westwell
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pp-network
+
+networks:
+  pp-network:
+
+volumes:
+  postgres_data:

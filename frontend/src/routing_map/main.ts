@@ -129,6 +129,14 @@ export default class ApplicationManager extends GraphicTools {
       label1: null,
       label2: null,
     }
+  public manualPathContainer: Container | null = null
+  public manualPathPreviewGraphics: Graphics | null = null
+  public manualPathArrowGraphics: Graphics | null = null
+  public manualPathState = {
+    active: false,
+    dragging: false,
+    startPoint: null as Position | null,
+  }
 
   constructor() {
     // 如果已经存在实例，返回现有实例
@@ -187,6 +195,10 @@ export default class ApplicationManager extends GraphicTools {
 
     // 时间更新定时器
     this.timeUpdateInterval = null
+
+    this.manualPathContainer = null
+    this.manualPathPreviewGraphics = null
+    this.manualPathArrowGraphics = null
   }
 
   /**
@@ -298,6 +310,10 @@ export default class ApplicationManager extends GraphicTools {
       game_container.addEventListener('wheel', (e) => {
         e.preventDefault()
       }, { passive: false })
+
+      game_container.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+      })
     }
 
     this.mainContainer = new Container()
@@ -459,6 +475,13 @@ export default class ApplicationManager extends GraphicTools {
       this.measureContainer.addChild(this.p_text2)
       this.setMeasurePointsVisible(false)
       this.mainContainer.addChild(this.measureContainer)
+
+      this.manualPathContainer = new Container()
+      this.manualPathPreviewGraphics = new Graphics()
+      this.manualPathArrowGraphics = new Graphics()
+      this.manualPathContainer.addChild(this.manualPathPreviewGraphics)
+      this.manualPathContainer.addChild(this.manualPathArrowGraphics)
+      this.mainContainer.addChild(this.manualPathContainer)
 
       this.graphics_path_apply_area.alpha = 0.5
 
@@ -638,8 +661,23 @@ export default class ApplicationManager extends GraphicTools {
     // this.agent_graphics.push(v.graphics)
     v.graphics.interactive = true
     v.graphics.cursor = 'pointer'
+    v.graphics.eventMode = 'static'
 
     this.agents[vehicle_id] = v
+
+    v.graphics.on('pointerdown', (e) => {
+      if (e.button === 2) {
+        e.stopPropagation()
+        const rect = this.app.canvas.getBoundingClientRect()
+        const clientX = typeof e.clientX === 'number' ? e.clientX : rect.left + e.global.x
+        const clientY = typeof e.clientY === 'number' ? e.clientY : rect.top + e.global.y
+        window.dispatchEvent(
+          new CustomEvent('vehicle-contextmenu', {
+            detail: { vehicleId: vehicle_id, x: clientX, y: clientY },
+          }),
+        )
+      }
+    })
 
     // 添加鼠标悬停事件处理，显示车辆信息
     v.graphics.on('pointerover', (e) => {
@@ -738,6 +776,160 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   // 新增：计算两点之间的角度
+  setManualPathMode(active: boolean) {
+    this.manualPathState.active = active
+    this.manualPathState.dragging = false
+    this.manualPathState.startPoint = null
+    this.mouse_func = active ? 'manual_path' : 'default'
+    if (!active) {
+      this.clearManualPathPreview()
+      this.clearManualPathArrow()
+    }
+  }
+
+  handleManualPathPointerDown(e) {
+    if (!this.manualPathState.active) return
+    if (e.button !== 0) return
+    const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    const snapped = this.snapManualPathTarget(x, y, 0)
+    const startX = snapped?.x ?? x
+    const startY = snapped?.y ?? y
+    this.manualPathState.dragging = true
+    this.manualPathState.startPoint = { x: startX, y: startY, theta: 0 }
+    this.updateManualPathArrow(startX, startY, 0)
+  }
+
+  handleManualPathPointerMove(e) {
+    if (!this.manualPathState.active || !this.manualPathState.dragging) return
+    const start = this.manualPathState.startPoint
+    if (!start) return
+    const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    const heading = Math.atan2(y - start.y, x - start.x)
+    this.updateManualPathArrow(start.x, start.y, heading)
+  }
+
+  handleManualPathPointerUp(e) {
+    if (!this.manualPathState.active || !this.manualPathState.dragging) return
+    const start = this.manualPathState.startPoint
+    if (!start) return
+    const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    const heading = Math.atan2(y - start.y, x - start.x)
+    const snapped = this.snapManualPathTarget(start.x, start.y, heading)
+    const target = snapped ?? { x: start.x, y: start.y, heading }
+    this.manualPathState.dragging = false
+    this.manualPathState.startPoint = null
+    this.clearManualPathArrow()
+    window.dispatchEvent(
+      new CustomEvent('manual-path-target-selected', {
+        detail: target,
+      }),
+    )
+  }
+
+  updateManualPathArrow(x: number, y: number, heading: number) {
+    if (!this.manualPathArrowGraphics) return
+    const [appX, appY] = this.map_xy_to_app([x, y])
+    this.manualPathArrowGraphics.clear()
+    this.drawArrow(this.manualPathArrowGraphics, appX, appY, -heading, 3, '#ffaa00', 0.8)
+  }
+
+  clearManualPathArrow() {
+    if (this.manualPathArrowGraphics) {
+      this.manualPathArrowGraphics.clear()
+    }
+  }
+
+  updateManualPathPreview(target: { x: number; y: number; heading: number }, valid = true) {
+    if (!this.manualPathPreviewGraphics) return
+    const [appX, appY] = this.map_xy_to_app([target.x, target.y])
+    const g = this.manualPathPreviewGraphics
+    g.clear()
+    const width = 16
+    const height = 3.1
+    g.pivot.set(appX, appY)
+    g.position.set(appX, appY)
+    const fillColor = valid ? '#00d60b' : '#ff4d4f'
+    g.rect(-width / 2, -height / 2, width, height)
+      .fill({ color: fillColor, alpha: 0.4 })
+      .stroke({ color: fillColor, width: 0.6, alpha: 0.6 })
+    g.rotation = -target.heading
+    g.pivot.set(0, 0)
+    this.drawArrow(g, 0, 0, 0, 3, fillColor, 0.5)
+  }
+
+  clearManualPathPreview() {
+    if (this.manualPathPreviewGraphics) {
+      this.manualPathPreviewGraphics.clear()
+    }
+  }
+
+  normalizeAngle(angle: number) {
+    const twoPi = Math.PI * 2
+    return ((angle + Math.PI) % twoPi + twoPi) % twoPi - Math.PI
+  }
+
+  projectPointToSegment(point: [number, number], start: [number, number], end: [number, number]) {
+    const [px, py] = point
+    const [x1, y1] = start
+    const [x2, y2] = end
+    const dx = x2 - x1
+    const dy = y2 - y1
+    if (dx === 0 && dy === 0) {
+      return { x: x1, y: y1, distance: Math.hypot(px - x1, py - y1) }
+    }
+    let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+    t = Math.max(0, Math.min(1, t))
+    const projX = x1 + t * dx
+    const projY = y1 + t * dy
+    return { x: projX, y: projY, distance: Math.hypot(px - projX, py - projY) }
+  }
+
+  snapManualPathTarget(x: number, y: number, heading: number) {
+    const mapInfo = this.map_path_info || {}
+    let bestDistance = Number.POSITIVE_INFINITY
+    let bestAngleDiff = Number.POSITIVE_INFINITY
+    let bestPoint: { x: number; y: number; heading: number } | null = null
+
+    Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
+      if (laneId.startsWith('junction_')) return
+      const points = laneInfo?.points || []
+      if (points.length < 2) return
+
+      for (let i = 0; i < points.length - 1; i += 1) {
+        const [x1, y1] = points[i]
+        const [x2, y2] = points[i + 1]
+        const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
+        const laneHeading = Math.atan2(y2 - y1, x2 - x1)
+        const angleDiff = Math.abs(this.normalizeAngle(heading - laneHeading))
+        const distanceDelta = Math.abs(projection.distance - bestDistance)
+        if (
+          projection.distance < bestDistance ||
+          (distanceDelta <= 0.5 && angleDiff < bestAngleDiff)
+        ) {
+          bestDistance = projection.distance
+          bestAngleDiff = angleDiff
+          bestPoint = {
+            x: projection.x,
+            y: projection.y,
+            heading: laneHeading,
+          }
+        }
+      }
+    })
+
+    if (!bestPoint || bestDistance > 10) return null
+
+    const oppositeHeading = this.normalizeAngle(bestPoint.heading + Math.PI)
+    const directDiff = Math.abs(this.normalizeAngle(heading - bestPoint.heading))
+    const oppositeDiff = Math.abs(this.normalizeAngle(heading - oppositeHeading))
+    const snappedHeading = oppositeDiff < directDiff ? oppositeHeading : bestPoint.heading
+
+    return {
+      x: bestPoint.x,
+      y: bestPoint.y,
+      heading: snappedHeading,
+    }
+  }
   calculateAngle(x1, y1, x2, y2) {
     return Math.atan2(y2 - y1, x2 - x1)
   }

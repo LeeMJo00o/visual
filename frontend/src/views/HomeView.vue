@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { CopyDocument, Location } from '@element-plus/icons-vue'
 import { useGlobalStore } from '../stores/globalStore'
 // import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
@@ -20,6 +20,7 @@ import ApplicationManager from '../routing_map/main.ts'
 import { storeToRefs } from 'pinia'
 import { useGlobalSettingsStore } from '@/stores/useLocalStorage'
 import { useDynamicVpbStore } from '@/stores/dynamicVpbStore'
+import { useManualPathStore } from '@/stores/manualPathStore'
 
 const dynamicVpbStore = useDynamicVpbStore()
 
@@ -39,9 +40,11 @@ declare global {
 }
 
 const globalStore = useGlobalStore()
+const manualPathStore = useManualPathStore()
 
 // 直接使用 store 的 isReplay 和 appReady，通过 storeToRefs 保持响应性
 const { isReplay, appReady } = storeToRefs(globalStore)
+const { active: manualModeActive, planValid, vehicleId } = storeToRefs(manualPathStore)
 
 // 监听地图显示状态
 watch(() => globalSettings.value.map_show, (newValue, oldValue) => {
@@ -97,6 +100,159 @@ onMounted(() => {
     .catch(error => {
       console.error('请求失败:', error)
     })
+})
+
+const contextMenuVisible = ref(false)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuVehicleId = ref('')
+
+const openVehicleContextMenu = (detail: { vehicleId: string; x: number; y: number }) => {
+  contextMenuVehicleId.value = detail.vehicleId
+  contextMenuPosition.value = { x: detail.x, y: detail.y }
+  contextMenuVisible.value = true
+}
+
+const closeVehicleContextMenu = () => {
+  contextMenuVisible.value = false
+}
+
+const handleManualModeEnter = async (vehicle: string) => {
+  try {
+    const response = await axios.post('/api/manual_path/enter', {
+      vehicle_id: vehicle,
+      origin: 'GUI',
+    })
+    if (response.data?.data?.ok) {
+      manualPathStore.startMode(vehicle)
+      if (appReady.value) {
+        ApplicationManager.getInstance().setManualPathMode(true)
+      }
+      ElMessage({ message: `已进入手控路径模式 (${vehicle})`, type: 'success' })
+    } else {
+      ElMessage({ message: '进入手控路径模式失败', type: 'error' })
+    }
+  } catch (error) {
+    ElMessage({ message: `进入手控路径模式失败: ${error}`, type: 'error' })
+  } finally {
+    closeVehicleContextMenu()
+  }
+}
+
+const handleManualModeExit = async () => {
+  try {
+    const response = await axios.post('/api/manual_path/exit', {
+      vehicle_id: manualPathStore.vehicleId,
+    })
+    if (response.data?.data?.ok) {
+      ElMessage({ message: '已退出手控路径模式', type: 'success' })
+    } else {
+      ElMessage({ message: response.data?.data?.message || '退出手控路径模式失败', type: 'warning' })
+    }
+  } catch (error) {
+    ElMessage({ message: `退出手控路径模式失败: ${error}`, type: 'error' })
+  } finally {
+    manualPathStore.reset()
+    if (appReady.value) {
+      ApplicationManager.getInstance().setManualPathMode(false)
+    }
+  }
+}
+
+const handleManualModeConfirm = async () => {
+  if (!manualPathStore.preview) return
+  try {
+    const response = await axios.post('/api/manual_path/start', {
+      vehicle_id: manualPathStore.vehicleId,
+      points: manualPathStore.preview,
+      origin: 'GUI',
+    })
+    if (response.data?.data?.ok) {
+      ElMessage({ message: '手控路径任务已下发', type: 'success' })
+      manualPathStore.setPreview(null, false)
+      if (appReady.value) {
+        ApplicationManager.getInstance().clearManualPathPreview()
+      }
+    } else {
+      ElMessage({ message: '手控路径任务下发失败', type: 'error' })
+    }
+  } catch (error) {
+    ElMessage({ message: `手控路径任务下发失败: ${error}`, type: 'error' })
+  }
+}
+
+const handleManualPathSelected = async (detail: { x: number; y: number; heading: number }) => {
+  if (!manualPathStore.active) return
+  manualPathStore.setTarget(detail)
+  manualPathStore.planning = true
+  try {
+    const response = await axios.post('/api/manual_path/plan', {
+      vehicle_id: manualPathStore.vehicleId,
+      points: detail,
+    })
+    const ok = response.data?.data?.ok
+    if (ok) {
+      const target = response.data?.data?.target || detail
+      manualPathStore.setPreview(target, true)
+      if (appReady.value) {
+        ApplicationManager.getInstance().updateManualPathPreview(target, true)
+      }
+    } else {
+      manualPathStore.setPreview(null, false)
+      if (appReady.value) {
+        ApplicationManager.getInstance().clearManualPathPreview()
+      }
+      ElMessageBox.alert('当前选择的手控目标点无可规划路径', '路径规划失败', {
+        confirmButtonText: '确定',
+        type: 'warning',
+      })
+    }
+  } catch (error) {
+    manualPathStore.setPreview(null, false)
+    if (appReady.value) {
+      ApplicationManager.getInstance().clearManualPathPreview()
+    }
+    ElMessageBox.alert('当前选择的手控目标点无可规划路径', '路径规划失败', {
+      confirmButtonText: '确定',
+      type: 'warning',
+    })
+  } finally {
+    manualPathStore.planning = false
+  }
+}
+
+const contextMenuHandler = (event: Event) => {
+  const detail = (event as CustomEvent).detail
+  if (detail?.vehicleId) {
+    openVehicleContextMenu(detail)
+  }
+}
+const manualTargetHandler = (event: Event) => {
+  const detail = (event as CustomEvent).detail
+  if (detail) {
+    handleManualPathSelected(detail)
+  }
+}
+const clickHandler = () => closeVehicleContextMenu()
+
+watch(
+  () => [appReady.value, manualModeActive.value],
+  ([ready, active]) => {
+    if (!ready) return
+    ApplicationManager.getInstance().setManualPathMode(active)
+  },
+  { immediate: true },
+)
+
+onMounted(() => {
+  window.addEventListener('vehicle-contextmenu', contextMenuHandler)
+  window.addEventListener('manual-path-target-selected', manualTargetHandler)
+  window.addEventListener('click', clickHandler)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('vehicle-contextmenu', contextMenuHandler)
+  window.removeEventListener('manual-path-target-selected', manualTargetHandler)
+  window.removeEventListener('click', clickHandler)
 })
 
 // 滑块变化处理函数
@@ -373,6 +529,18 @@ const openInfosDialog = () => {
         <el-container class="inner-container">
           <div class="top-section">
             <div v-if="currentMenu === 'main-map'" class="main-map-controls">
+              <div v-if="manualModeActive" class="manual-mode-banner">
+                <span class="manual-mode-text">手控路径模式 ({{ vehicleId }})</span>
+                <el-button
+                  type="primary"
+                  size="small"
+                  :disabled="!planValid"
+                  @click="handleManualModeConfirm"
+                >
+                  确认
+                </el-button>
+                <el-button size="small" @click="handleManualModeExit">退出</el-button>
+              </div>
               <!-- 两列布局 -->
               <div class="control-grid">
                 <!-- 左上：坐标信息 -->
@@ -553,6 +721,15 @@ const openInfosDialog = () => {
 
   <!-- Infos 信息对话框 -->
   <Infos ref="infosRef" />
+
+  <div
+    v-if="contextMenuVisible"
+    class="vehicle-context-menu"
+    :style="{ left: `${contextMenuPosition.x}px`, top: `${contextMenuPosition.y}px` }"
+    @click.stop
+  >
+    <div class="menu-item" @click="handleManualModeEnter(contextMenuVehicleId)">进入手控路径模式</div>
+  </div>
 </template>
 
 <style scoped>
@@ -641,6 +818,24 @@ const openInfosDialog = () => {
   background-color: #f8f9fa;
   border-radius: 4px;
   min-width: 0;
+}
+
+.manual-mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 6px;
+  color: #ad6800;
+  font-weight: 600;
+}
+
+.manual-mode-text {
+  display: inline-flex;
+  align-items: center;
 }
 
 .control-cell .cell-label {
@@ -845,5 +1040,26 @@ const openInfosDialog = () => {
 
 .bottom-fotter {
   background-color: #fff;
+}
+
+.vehicle-context-menu {
+  position: fixed;
+  z-index: 2000;
+  min-width: 160px;
+  background: #ffffff;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 4px 0;
+}
+
+.vehicle-context-menu .menu-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.vehicle-context-menu .menu-item:hover {
+  background: #f5f7fa;
 }
 </style>
