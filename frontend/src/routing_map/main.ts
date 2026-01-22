@@ -887,6 +887,7 @@ export default class ApplicationManager extends GraphicTools {
   snapManualPathTarget(x: number, y: number, heading: number) {
     const mapInfo = this.map_path_info || {}
     let bestDistance = Number.POSITIVE_INFINITY
+    let bestAngleDiff = Number.POSITIVE_INFINITY
     let bestPoint: { x: number; y: number; heading: number } | null = null
 
     Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
@@ -898,18 +899,25 @@ export default class ApplicationManager extends GraphicTools {
         const [x1, y1] = points[i]
         const [x2, y2] = points[i + 1]
         const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
-        if (projection.distance < bestDistance) {
+        const laneHeading = Math.atan2(y2 - y1, x2 - x1)
+        const angleDiff = Math.abs(this.normalizeAngle(heading - laneHeading))
+        const distanceDelta = Math.abs(projection.distance - bestDistance)
+        if (
+          projection.distance < bestDistance ||
+          (distanceDelta <= 0.5 && angleDiff < bestAngleDiff)
+        ) {
           bestDistance = projection.distance
+          bestAngleDiff = angleDiff
           bestPoint = {
             x: projection.x,
             y: projection.y,
-            heading: Math.atan2(y2 - y1, x2 - x1),
+            heading: laneHeading,
           }
         }
       }
     })
 
-    if (!bestPoint) return null
+    if (!bestPoint || bestDistance > 10) return null
 
     const oppositeHeading = this.normalizeAngle(bestPoint.heading + Math.PI)
     const directDiff = Math.abs(this.normalizeAngle(heading - bestPoint.heading))
@@ -982,7 +990,7 @@ export default class ApplicationManager extends GraphicTools {
 
       const [arrowX, arrowY] = this.map_xy_to_app(arrowPoint)
 
-      // 绘制头
+      // 绘制箭头
       this.drawArrow(g, arrowX, arrowY, angle, 1, color, alpha)
     }
   }

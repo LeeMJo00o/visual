@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 export interface ManualPathTarget {
   x: number
@@ -8,8 +8,24 @@ export interface ManualPathTarget {
 }
 
 export const useManualPathStore = defineStore('manualPath', () => {
-  const active = ref(false)
-  const vehicleId = ref('')
+  const readStoredState = () => {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) {
+        return {}
+      }
+      const storedStateRaw = window.localStorage.getItem('manualPathState')
+      if (!storedStateRaw) {
+        return {}
+      }
+      return JSON.parse(storedStateRaw)
+    } catch (error) {
+      return {}
+    }
+  }
+
+  const storedState = readStoredState() as { active?: boolean; vehicleId?: string }
+  const active = ref(Boolean(storedState.active))
+  const vehicleId = ref(storedState.vehicleId || '')
   const target = ref<ManualPathTarget | null>(null)
   const preview = ref<ManualPathTarget | null>(null)
   const planning = ref(false)
@@ -41,6 +57,21 @@ export const useManualPathStore = defineStore('manualPath', () => {
     planning.value = false
     planValid.value = false
   }
+
+  watch(
+    () => ({ active: active.value, vehicleId: vehicleId.value }),
+    (state: { active: boolean; vehicleId: string }) => {
+      try {
+        if (typeof window === 'undefined' || !window.localStorage) {
+          return
+        }
+        window.localStorage.setItem('manualPathState', JSON.stringify(state))
+      } catch (error) {
+        // ignore storage failures
+      }
+    },
+    { deep: true },
+  )
 
   return {
     active,

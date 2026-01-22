@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import PixiGame from '../components/RoutingMap.vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -89,7 +89,7 @@ const handleMenuSelect = (index: string) => {
 }
 
 
-// 挂载时执行, 从后台获取当前的global weight值
+// 挂载时行, 从后台获取当前的global weight值
 onMounted(() => {
   axios.get('/api/map/query/dynamic_weight_ratio')
     .then(response => {
@@ -124,9 +124,8 @@ const handleManualModeEnter = async (vehicle: string) => {
     })
     if (response.data?.data?.ok) {
       manualPathStore.startMode(vehicle)
-      if (appReady.value) {
-        ApplicationManager.getInstance().setManualPathMode(true)
-      }
+      const manager = getManagerSafe()
+      manager?.setManualPathMode(true)
       ElMessage({ message: `已进入手控路径模式 (${vehicle})`, type: 'success' })
     } else {
       ElMessage({ message: '进入手控路径模式失败', type: 'error' })
@@ -152,9 +151,8 @@ const handleManualModeExit = async () => {
     ElMessage({ message: `退出手控路径模式失败: ${error}`, type: 'error' })
   } finally {
     manualPathStore.reset()
-    if (appReady.value) {
-      ApplicationManager.getInstance().setManualPathMode(false)
-    }
+    const manager = getManagerSafe()
+    manager?.setManualPathMode(false)
   }
 }
 
@@ -169,9 +167,8 @@ const handleManualModeConfirm = async () => {
     if (response.data?.data?.ok) {
       ElMessage({ message: '手控路径任务已下发', type: 'success' })
       manualPathStore.setPreview(null, false)
-      if (appReady.value) {
-        ApplicationManager.getInstance().clearManualPathPreview()
-      }
+      const manager = getManagerSafe()
+      manager?.clearManualPathPreview()
     } else {
       ElMessage({ message: '手控路径任务下发失败', type: 'error' })
     }
@@ -193,14 +190,12 @@ const handleManualPathSelected = async (detail: { x: number; y: number; heading:
     if (ok) {
       const target = response.data?.data?.target || detail
       manualPathStore.setPreview(target, true)
-      if (appReady.value) {
-        ApplicationManager.getInstance().updateManualPathPreview(target, true)
-      }
+      const manager = getManagerSafe()
+      manager?.updateManualPathPreview(target, true)
     } else {
       manualPathStore.setPreview(null, false)
-      if (appReady.value) {
-        ApplicationManager.getInstance().clearManualPathPreview()
-      }
+      const manager = getManagerSafe()
+      manager?.clearManualPathPreview()
       ElMessageBox.alert('当前选择的手控目标点无可规划路径', '路径规划失败', {
         confirmButtonText: '确定',
         type: 'warning',
@@ -208,9 +203,8 @@ const handleManualPathSelected = async (detail: { x: number; y: number; heading:
     }
   } catch (error) {
     manualPathStore.setPreview(null, false)
-    if (appReady.value) {
-      ApplicationManager.getInstance().clearManualPathPreview()
-    }
+    const manager = getManagerSafe()
+    manager?.clearManualPathPreview()
     ElMessageBox.alert('当前选择的手控目标点无可规划路径', '路径规划失败', {
       confirmButtonText: '确定',
       type: 'warning',
@@ -233,6 +227,37 @@ const manualTargetHandler = (event: Event) => {
   }
 }
 const clickHandler = () => closeVehicleContextMenu()
+
+watch(
+  () => [appReady.value, manualModeActive.value],
+  async ([ready, active]) => {
+    if (!ready) return
+    await nextTick()
+    try {
+      const manager = getManagerSafe()
+      manager?.setManualPathMode(active)
+    } catch (error) {
+      console.error('手控模式同步失败:', error)
+    }
+  },
+  { immediate: true },
+)
+
+const getManagerSafe = () => {
+  try {
+    if (!appReady.value) {
+      return null
+    }
+    const manager = ApplicationManager.getInstance()
+    if (!manager?.app?.canvas) {
+      return null
+    }
+    return manager
+  } catch (error) {
+    console.error('获取 ApplicationManager 失败:', error)
+    return null
+  }
+}
 
 onMounted(() => {
   window.addEventListener('vehicle-contextmenu', contextMenuHandler)
