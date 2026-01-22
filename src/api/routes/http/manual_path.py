@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 import uuid
@@ -34,6 +35,13 @@ def _decode_redis_value(value: Any) -> Any:
 def _parse_business_key(payload: Any, vehicle_id: str) -> str | None:
     if payload is None:
         return None
+    if isinstance(payload, (str, int)):
+        return str(payload)
+    if isinstance(payload, bytes):
+        try:
+            return payload.decode("utf-8")
+        except Exception:
+            return None
     if isinstance(payload, str):
         try:
             payload = json.loads(payload)
@@ -82,6 +90,56 @@ def _is_plan_success(plan_data: Any, status_code: int) -> bool:
         if isinstance(code, int):
             return code == 200
     return status_code == 200
+
+
+def _extract_task_id(plan_data: Any) -> str | None:
+    if not isinstance(plan_data, dict):
+        return None
+    task_id = plan_data.get("task_id")
+    if task_id:
+        return str(task_id)
+    raw = plan_data.get("raw")
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            task_id = parsed.get("task_id")
+            if task_id:
+                return str(task_id)
+        except Exception:
+            return None
+    return None
+
+
+def _extract_response_task_id(payload: Any) -> str | None:
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except Exception:
+            return None
+    if not isinstance(payload, dict):
+        return None
+    data = payload.get("data")
+    if isinstance(data, dict):
+        task_id = data.get("task_id")
+        if task_id:
+            return str(task_id)
+    return None
+
+
+async def _await_path_response_task_id(vehicle_id: str, task_id: str, timeout_s: float = 5.0) -> bool:
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        try:
+            raw = await redis_cli.hget("scenario:long_path:response", vehicle_id)
+            raw = _decode_redis_value(raw)
+            response_task_id = _extract_response_task_id(raw)
+            if response_task_id == task_id:
+                return True
+        except Exception as exc:
+            logger.error(f"manual_path plan: read long_path response failed: {exc}")
+            return False
+        await asyncio.sleep(0.2)
+    return False
 
 
 def _build_start_pose(pose: dict | None) -> dict:
@@ -221,7 +279,12 @@ async def plan_manual_path(req: dict = Body()) -> StdRes:
 
     target = _extract_target_from_plan(payload, points)
     ok = _is_plan_success(payload, res.status)
-    logger.info(f"manual_path plan response: status={res.status}, ok={ok}, payload={payload}")
+    task_id = _extract_task_id(payload)
+    if ok and task_id:
+        ok = await _await_path_response_task_id(vehicle_id, task_id, timeout_s=5.0)
+    logger.info(
+        f"manual_path plan response: status={res.status}, ok={ok}, task_id={task_id}, payload={payload}"
+    )
     return StdRes(data={"ok": ok, "target": target, "plan": payload})
 
 
@@ -282,6 +345,20 @@ async def exit_manual_path(req: dict = Body()) -> StdRes:
 
     business_key = await redis_cli.get(f"{BUSINESS_KEY_CACHE_PREFIX}{vehicle_id}")
     business_key = _decode_redis_value(business_key)
+    if business_key is None and redis_cli_fms:
+        try:
+            raw = await redis_cli_fms.hget("self:current_job", vehicle_id)
+            payload = _decode_redis_value(raw)
+            business_key = _parse_business_key(payload, vehicle_id)
+            if business_key:
+                await redis_cli.set(
+                    f"{BUSINESS_KEY_CACHE_PREFIX}{vehicle_id}",
+                    business_key,
+                    ex=3600,
+                )
+        except Exception as exc:
+            logger.error(f"manual_path exit: read business_key failed: {exc}")
+
     if business_key is None:
         return StdRes(data={"ok": False, "message": "business_key not found"})
 
