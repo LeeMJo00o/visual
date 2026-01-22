@@ -17,7 +17,7 @@ from src.core.config import (
 from src.core.log import logger
 from src.map_tools import g_roads
 from src.middlewares.redis_handler.connect import redis_cli, redis_cli_fms
-from src.routing import get_vec_point_angle, normalize_angle, vec_point_distance
+from src.routing import normalize_angle
 
 router = APIRouter()
 
@@ -184,6 +184,22 @@ def _build_start_pose(pose: dict | None) -> dict:
     }
 
 
+def _project_point_to_segment(point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]) -> tuple[float, float, float]:
+    px, py = point
+    x1, y1 = start
+    x2, y2 = end
+    dx = x2 - x1
+    dy = y2 - y1
+    if dx == 0 and dy == 0:
+        return x1, y1, 0.0
+    t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+    t = max(0.0, min(1.0, t))
+    proj_x = x1 + t * dx
+    proj_y = y1 + t * dy
+    dist = math.hypot(px - proj_x, py - proj_y)
+    return proj_x, proj_y, dist
+
+
 def _snap_heading_to_lane(point: dict) -> float | None:
     if not g_roads or not getattr(g_roads, "road_info", None):
         return None
@@ -215,18 +231,13 @@ def _snap_heading_to_lane(point: dict) -> float | None:
         if len(line) < 2:
             continue
 
-        closest_idx = 0
-        min_dist = float("inf")
-        for idx, lane_point in enumerate(line):
-            dist = vec_point_distance(lane_point, (x, y))
-            if dist < min_dist:
-                min_dist = dist
-                closest_idx = idx
-
-        lane_heading = get_vec_point_angle(line, closest_idx)
-        if min_dist < best_distance:
-            best_distance = min_dist
-            nearest_heading = lane_heading
+        for idx in range(len(line) - 1):
+            x1, y1 = line[idx]
+            x2, y2 = line[idx + 1]
+            _, _, dist = _project_point_to_segment((x, y), (x1, y1), (x2, y2))
+            if dist < best_distance:
+                best_distance = dist
+                nearest_heading = math.atan2(y2 - y1, x2 - x1)
 
     if nearest_heading is None:
         return None

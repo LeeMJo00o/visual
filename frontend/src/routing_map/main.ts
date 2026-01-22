@@ -791,9 +791,12 @@ export default class ApplicationManager extends GraphicTools {
     if (!this.manualPathState.active) return
     if (e.button !== 0) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    const snapped = this.snapManualPathTarget(x, y, 0)
+    const startX = snapped?.x ?? x
+    const startY = snapped?.y ?? y
     this.manualPathState.dragging = true
-    this.manualPathState.startPoint = { x, y, theta: 0 }
-    this.updateManualPathArrow(x, y, 0)
+    this.manualPathState.startPoint = { x: startX, y: startY, theta: 0 }
+    this.updateManualPathArrow(startX, startY, 0)
   }
 
   handleManualPathPointerMove(e) {
@@ -811,12 +814,14 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
+    const snapped = this.snapManualPathTarget(start.x, start.y, heading)
+    const target = snapped ?? { x: start.x, y: start.y, heading }
     this.manualPathState.dragging = false
     this.manualPathState.startPoint = null
     this.clearManualPathArrow()
     window.dispatchEvent(
       new CustomEvent('manual-path-target-selected', {
-        detail: { x: start.x, y: start.y, heading: heading },
+        detail: target,
       }),
     )
   }
@@ -855,6 +860,66 @@ export default class ApplicationManager extends GraphicTools {
   clearManualPathPreview() {
     if (this.manualPathPreviewGraphics) {
       this.manualPathPreviewGraphics.clear()
+    }
+  }
+
+  normalizeAngle(angle: number) {
+    const twoPi = Math.PI * 2
+    return ((angle + Math.PI) % twoPi + twoPi) % twoPi - Math.PI
+  }
+
+  projectPointToSegment(point: [number, number], start: [number, number], end: [number, number]) {
+    const [px, py] = point
+    const [x1, y1] = start
+    const [x2, y2] = end
+    const dx = x2 - x1
+    const dy = y2 - y1
+    if (dx === 0 && dy === 0) {
+      return { x: x1, y: y1, distance: Math.hypot(px - x1, py - y1) }
+    }
+    let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+    t = Math.max(0, Math.min(1, t))
+    const projX = x1 + t * dx
+    const projY = y1 + t * dy
+    return { x: projX, y: projY, distance: Math.hypot(px - projX, py - projY) }
+  }
+
+  snapManualPathTarget(x: number, y: number, heading: number) {
+    const mapInfo = this.map_path_info || {}
+    let bestDistance = Number.POSITIVE_INFINITY
+    let bestPoint: { x: number; y: number; heading: number } | null = null
+
+    Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
+      if (laneId.startsWith('junction_')) return
+      const points = laneInfo?.points || []
+      if (points.length < 2) return
+
+      for (let i = 0; i < points.length - 1; i += 1) {
+        const [x1, y1] = points[i]
+        const [x2, y2] = points[i + 1]
+        const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
+        if (projection.distance < bestDistance) {
+          bestDistance = projection.distance
+          bestPoint = {
+            x: projection.x,
+            y: projection.y,
+            heading: Math.atan2(y2 - y1, x2 - x1),
+          }
+        }
+      }
+    })
+
+    if (!bestPoint) return null
+
+    const oppositeHeading = this.normalizeAngle(bestPoint.heading + Math.PI)
+    const directDiff = Math.abs(this.normalizeAngle(heading - bestPoint.heading))
+    const oppositeDiff = Math.abs(this.normalizeAngle(heading - oppositeHeading))
+    const snappedHeading = oppositeDiff < directDiff ? oppositeHeading : bestPoint.heading
+
+    return {
+      x: bestPoint.x,
+      y: bestPoint.y,
+      heading: snappedHeading,
     }
   }
   calculateAngle(x1, y1, x2, y2) {
@@ -917,7 +982,7 @@ export default class ApplicationManager extends GraphicTools {
 
       const [arrowX, arrowY] = this.map_xy_to_app(arrowPoint)
 
-      // 绘制箭头
+      // 绘制头
       this.drawArrow(g, arrowX, arrowY, angle, 1, color, alpha)
     }
   }
