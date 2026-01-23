@@ -260,28 +260,51 @@ def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, fl
 
 def _build_simple_path(start: dict, goal: dict) -> list[dict]:
     path: list[dict] = []
-    heading_delta = normalize_angle(goal["heading"] - start["heading"])
-    heading_steps = max(1, int(math.ceil(abs(heading_delta) / 0.1)))
-    for step in range(heading_steps + 1):
-        ratio = step / heading_steps
-        heading = normalize_angle(start["heading"] + ratio * heading_delta)
-        path.append({"x": start["x"], "y": start["y"], "heading": heading})
+    max_steer = 0.3
+    wheel_base = 3.576
+    min_radius = wheel_base / math.tan(max_steer)
+    heading_step = 0.1
 
     dx = goal["x"] - start["x"]
     dy = goal["y"] - start["y"]
-    distance = math.hypot(dx, dy)
-    if distance <= 0.0:
-        return path
-    steps = max(1, int(math.ceil(distance / PLANNER_STEP_SIZE)))
-    for step in range(1, steps + 1):
-        ratio = step / steps
-        path.append(
-            {
-                "x": start["x"] + ratio * dx,
-                "y": start["y"] + ratio * dy,
-                "heading": goal["heading"],
-            }
-        )
+    target_heading = math.atan2(dy, dx) if dx or dy else start["heading"]
+    turn_delta = normalize_angle(target_heading - start["heading"])
+    turn_sign = 1.0 if turn_delta >= 0 else -1.0
+    turn_angle = abs(turn_delta)
+    arc_length = min_radius * turn_angle
+    arc_steps = max(1, int(math.ceil(arc_length / PLANNER_STEP_SIZE)))
+    center_x = start["x"] - turn_sign * min_radius * math.sin(start["heading"])
+    center_y = start["y"] + turn_sign * min_radius * math.cos(start["heading"])
+
+    for step in range(arc_steps + 1):
+        ratio = step / arc_steps
+        heading = normalize_angle(start["heading"] + turn_sign * turn_angle * ratio)
+        x = center_x + turn_sign * min_radius * math.sin(heading)
+        y = center_y - turn_sign * min_radius * math.cos(heading)
+        path.append({"x": x, "y": y, "heading": heading})
+
+    arc_end = path[-1]
+    dx_line = goal["x"] - arc_end["x"]
+    dy_line = goal["y"] - arc_end["y"]
+    distance = math.hypot(dx_line, dy_line)
+    if distance > 0.0:
+        steps = max(1, int(math.ceil(distance / PLANNER_STEP_SIZE)))
+        for step in range(1, steps + 1):
+            ratio = step / steps
+            path.append(
+                {
+                    "x": arc_end["x"] + ratio * dx_line,
+                    "y": arc_end["y"] + ratio * dy_line,
+                    "heading": target_heading,
+                }
+            )
+
+    final_delta = normalize_angle(goal["heading"] - target_heading)
+    final_steps = max(1, int(math.ceil(abs(final_delta) / heading_step)))
+    for step in range(1, final_steps + 1):
+        ratio = step / final_steps
+        heading = normalize_angle(target_heading + ratio * final_delta)
+        path.append({"x": goal["x"], "y": goal["y"], "heading": heading})
     return path
 
 

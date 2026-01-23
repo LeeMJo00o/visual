@@ -849,6 +849,7 @@ export default class ApplicationManager extends GraphicTools {
     if (!this.parkingPathState.active) return
     if (e.button !== 0) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    this.clearParkingPathPreview()
     this.parkingPathState.dragging = true
     this.parkingPathState.startPoint = { x, y, theta: 0 }
     this.updateParkingPathArrow(x, y, 0)
@@ -918,6 +919,9 @@ export default class ApplicationManager extends GraphicTools {
     if (!this.parkingPathArrowGraphics) return
     const [appX, appY] = this.map_xy_to_app([x, y])
     this.parkingPathArrowGraphics.clear()
+    this.parkingPathArrowGraphics.pivot.set(0, 0)
+    this.parkingPathArrowGraphics.position.set(0, 0)
+    this.parkingPathArrowGraphics.rotation = 0
     this.drawArrow(this.parkingPathArrowGraphics, appX, appY, -heading, 3, '#00c2ff', 0.8)
   }
 
