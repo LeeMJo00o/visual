@@ -48,6 +48,8 @@ export class EventManager {
     // 只在默认模式下执行拖拽功能
     if (this.manager.mouse_func === 'manual_path') {
       this.manager.handleManualPathPointerDown(e)
+    } else if (this.manager.mouse_func === 'parking_path') {
+      this.manager.handleParkingPathPointerDown(e)
     } else if (this.manager.mouse_func === 'default') {
       this.isDragging = true
       this.lastX = e.global.x
@@ -65,6 +67,8 @@ export class EventManager {
     // 只在默认模式下执行拖拽功能
     if (this.manager.mouse_func === 'manual_path') {
       this.manager.handleManualPathPointerMove(e)
+    } else if (this.manager.mouse_func === 'parking_path') {
+      this.manager.handleParkingPathPointerMove(e)
     } else if (this.manager.mouse_func === 'default') {
       let raw_pos = this.manager.raw_xy(e.global.x, e.global.y)
       // 使用Pinia store更新
@@ -126,6 +130,8 @@ export class EventManager {
     // 只在默认模式下执行拖拽功能
     if (this.manager.mouse_func === 'manual_path') {
       this.manager.handleManualPathPointerUp(e)
+    } else if (this.manager.mouse_func === 'parking_path') {
+      this.manager.handleParkingPathPointerUp(e)
     } else if (this.manager.mouse_func === 'default') {
       this.isDragging = false
     } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {
@@ -137,6 +143,8 @@ export class EventManager {
     // 只在默认模式下执行拖拽功能
     if (this.manager.mouse_func === 'manual_path') {
       this.manager.handleManualPathPointerUp(e)
+    } else if (this.manager.mouse_func === 'parking_path') {
+      this.manager.handleParkingPathPointerUp(e)
     } else if (this.manager.mouse_func === 'default') {
       this.isDragging = false
     } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {

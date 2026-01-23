@@ -21,6 +21,7 @@ import { storeToRefs } from 'pinia'
 import { useGlobalSettingsStore } from '@/stores/useLocalStorage'
 import { useDynamicVpbStore } from '@/stores/dynamicVpbStore'
 import { useManualPathStore } from '@/stores/manualPathStore'
+import { useParkingPathStore } from '@/stores/parkingPathStore'
 
 const dynamicVpbStore = useDynamicVpbStore()
 
@@ -41,10 +42,16 @@ declare global {
 
 const globalStore = useGlobalStore()
 const manualPathStore = useManualPathStore()
+const parkingPathStore = useParkingPathStore()
 
 // 直接使用 store 的 isReplay 和 appReady，通过 storeToRefs 保持响应性
 const { isReplay, appReady } = storeToRefs(globalStore)
 const { active: manualModeActive, planValid, vehicleId } = storeToRefs(manualPathStore)
+const {
+  active: parkingModeActive,
+  planValid: parkingPlanValid,
+  vehicleId: parkingVehicleId,
+} = storeToRefs(parkingPathStore)
 
 // 监听地图显示状态
 watch(() => globalSettings.value.map_show, (newValue, oldValue) => {
@@ -118,6 +125,9 @@ const closeVehicleContextMenu = () => {
 
 const handleManualModeEnter = async (vehicle: string) => {
   try {
+    if (parkingPathStore.active) {
+      await handleParkingModeExit()
+    }
     const response = await axios.post('/api/manual_path/enter', {
       vehicle_id: vehicle,
       origin: 'GUI',
@@ -156,76 +166,7 @@ const handleManualModeExit = async () => {
   }
 }
 
-const formatBridgeTimestamp = () => {
-  const now = new Date()
-  const pad = (value: number, len = 2) => value.toString().padStart(len, '0')
-  return `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(
-    now.getUTCHours(),
-  )}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}${pad(now.getUTCMilliseconds(), 3)}Z`
-}
-
-const buildHybridBridgePayload = (vehicleId: string, path: { x: number; y: number; heading: number }[]) => {
-  const lastPoint = path[path.length - 1]
-  const transId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`
-  return {
-    qosCode: 2,
-    topName: `veh/${vehicleId}/missioncmd/request`,
-    payload: JSON.stringify({
-      header: {
-        transId,
-        deviceId: vehicleId,
-        timestamp: formatBridgeTimestamp(),
-      },
-      body: {
-        device_id: vehicleId,
-        command_reference_lines: path.map((point, index) => ({
-          index,
-          x: point.x,
-          y: point.y,
-          theta: point.heading,
-        })),
-        destination: {
-          description: 'manual_path',
-          locationId: 'manual_path',
-          locationType: 'YCTP',
-          refPosition: {
-            elevation: 0,
-            latitude: lastPoint.y,
-            longitude: lastPoint.x,
-          },
-        },
-        global_destination: {
-          x: lastPoint.x,
-          y: lastPoint.y,
-          theta: lastPoint.heading,
-        },
-        timestamp: formatBridgeTimestamp(),
-        trans_id: transId,
-        type: 2,
-      },
-    }),
-  }
-}
-
 const handleManualModeConfirm = async () => {
-  if (!manualPathStore.preview && !manualPathStore.previewPath) return
-  if (manualPathStore.planType === 'hybrid' && manualPathStore.previewPath) {
-    try {
-      const payload = buildHybridBridgePayload(manualPathStore.vehicleId, manualPathStore.previewPath)
-      const response = await axios.post('/api/bridge/message', payload)
-      if (response.data?.data?.ok) {
-        ElMessage({ message: '混合A*路径已下发', type: 'success' })
-        manualPathStore.setPreviewPath(null, false)
-        const manager = getManagerSafe()
-        manager?.clearManualPathPreview()
-      } else {
-        ElMessage({ message: response.data?.data?.message || '混合A*路径下发失败', type: 'error' })
-      }
-    } catch (error) {
-      ElMessage({ message: `混合A*路径下发失败: ${error}`, type: 'error' })
-    }
-    return
-  }
   if (!manualPathStore.preview) return
   try {
     const response = await axios.post('/api/manual_path/start', {
@@ -256,27 +197,7 @@ const handleManualPathSelected = async (detail: { x: number; y: number; heading:
       points: detail,
     })
     const ok = response.data?.data?.ok
-    const planType = response.data?.data?.plan_type
-    if (ok && planType === 'hybrid') {
-      const path = response.data?.data?.path
-      if (Array.isArray(path) && path.length > 1) {
-        manualPathStore.setPreviewPath(path, true)
-        const manager = getManagerSafe()
-        manager?.updateManualPathPreviewPath(path, true)
-        ElMessageBox.alert('混合A*路径生成成功，请确认下发', '路径规划完成', {
-          confirmButtonText: '确定',
-          type: 'success',
-        })
-      } else {
-        manualPathStore.setPreviewPath(null, false)
-        const manager = getManagerSafe()
-        manager?.clearManualPathPreview()
-        ElMessageBox.alert('混合A*路径生成失败', '路径规划失败', {
-          confirmButtonText: '确定',
-          type: 'warning',
-        })
-      }
-    } else if (ok) {
+    if (ok) {
       const target = response.data?.data?.target || detail
       manualPathStore.setPreview(target, true)
       const manager = getManagerSafe()
@@ -292,7 +213,6 @@ const handleManualPathSelected = async (detail: { x: number; y: number; heading:
     }
   } catch (error) {
     manualPathStore.setPreview(null, false)
-    manualPathStore.setPreviewPath(null, false)
     const manager = getManagerSafe()
     manager?.clearManualPathPreview()
     ElMessageBox.alert('当前选择的手控目标点无可规划路径', '路径规划失败', {
@@ -301,6 +221,183 @@ const handleManualPathSelected = async (detail: { x: number; y: number; heading:
     })
   } finally {
     manualPathStore.planning = false
+  }
+}
+
+const formatBridgeTimestamp = () => {
+  const now = new Date()
+  const pad = (value: number, len = 2) => value.toString().padStart(len, '0')
+  return `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(
+    now.getUTCHours(),
+  )}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}${pad(now.getUTCMilliseconds(), 3)}Z`
+}
+
+const buildParkingBridgePayload = (vehicleId: string, path: { x: number; y: number; heading: number }[]) => {
+  const lastPoint = path[path.length - 1]
+  const transId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`
+  return {
+    qosCode: 2,
+    topName: `veh/${vehicleId}/missioncmd/request`,
+    payload: JSON.stringify({
+      header: {
+        transId,
+        deviceId: vehicleId,
+        timestamp: formatBridgeTimestamp(),
+      },
+      body: {
+        backward_motion: true,
+        command_reference_lines: path.map((point, index) => ({
+          index,
+          x: point.x,
+          y: point.y,
+          theta: point.heading,
+        })),
+        dense_park: false,
+        destination: {
+          description: 'parking_path',
+          locationId: 'parking_path',
+          locationType: 'YCTP',
+          refPosition: {
+            elevation: 0,
+            latitude: lastPoint.y,
+            longitude: lastPoint.x,
+          },
+        },
+        device_id: vehicleId,
+        global_destination: {
+          x: lastPoint.x,
+          y: lastPoint.y,
+          theta: lastPoint.heading,
+        },
+        isFinalNavi: true,
+        lane_sequence: [],
+        occupancy_list: [],
+        request_timestamp: Math.floor(Date.now() / 1000),
+        reverse_done: false,
+        route_waypoints: path.map((point) => ({
+          x: point.x,
+          y: point.y,
+          theta: point.heading,
+        })),
+        timestamp: formatBridgeTimestamp(),
+        trans_id: transId,
+        type: 2,
+      },
+    }),
+  }
+}
+
+const handleParkingModeEnter = async (vehicle: string) => {
+  try {
+    if (manualPathStore.active) {
+      await handleManualModeExit()
+    }
+    const response = await axios.post('/api/parking_path/enter', {
+      vehicle_id: vehicle,
+      origin: 'GUI',
+    })
+    if (response.data?.data?.ok) {
+      parkingPathStore.startMode(vehicle)
+      const manager = getManagerSafe()
+      manager?.setParkingPathMode(true)
+      ElMessage({ message: `已进入寄车模式 (${vehicle})`, type: 'success' })
+    } else {
+      ElMessage({ message: response.data?.data?.message || '进入寄车模式失败', type: 'error' })
+    }
+  } catch (error) {
+    ElMessage({ message: `进入寄车模式失败: ${error}`, type: 'error' })
+  } finally {
+    closeVehicleContextMenu()
+  }
+}
+
+const handleParkingModeExit = async () => {
+  try {
+    const response = await axios.post('/api/parking_path/exit', {
+      vehicle_id: parkingPathStore.vehicleId,
+    })
+    if (response.data?.data?.ok) {
+      ElMessage({ message: '已退出寄车模式', type: 'success' })
+    } else {
+      ElMessage({ message: response.data?.data?.message || '退出寄车模式失败', type: 'warning' })
+    }
+  } catch (error) {
+    ElMessage({ message: `退出寄车模式失败: ${error}`, type: 'error' })
+  } finally {
+    parkingPathStore.reset()
+    const manager = getManagerSafe()
+    manager?.setParkingPathMode(false)
+    manager?.clearParkingPathPreview()
+    manager?.clearParkingObstacles()
+  }
+}
+
+const handleParkingModeConfirm = async () => {
+  if (!parkingPathStore.previewPath) return
+  try {
+    const payload = buildParkingBridgePayload(parkingPathStore.vehicleId, parkingPathStore.previewPath)
+    const response = await axios.post('/api/bridge/message', payload)
+    if (response.data?.data?.ok) {
+      ElMessage({ message: '寄车路径已下发', type: 'success' })
+      parkingPathStore.setPreviewPath(null, false)
+      const manager = getManagerSafe()
+      manager?.clearParkingPathPreview()
+    } else {
+      ElMessage({ message: response.data?.data?.message || '寄车路径下发失败', type: 'error' })
+    }
+  } catch (error) {
+    ElMessage({ message: `寄车路径下发失败: ${error}`, type: 'error' })
+  }
+}
+
+const handleParkingPathSelected = async (detail: { x: number; y: number; heading: number }) => {
+  if (!parkingPathStore.active) return
+  parkingPathStore.setTarget(detail)
+  parkingPathStore.planning = true
+  try {
+    const response = await axios.post('/api/parking_path/plan', {
+      vehicle_id: parkingPathStore.vehicleId,
+      points: detail,
+    })
+    const ok = response.data?.data?.ok
+    if (ok) {
+      const path = response.data?.data?.path
+      if (Array.isArray(path) && path.length > 1) {
+        parkingPathStore.setPreviewPath(path, true)
+        const manager = getManagerSafe()
+        manager?.updateParkingPathPreviewPath(path, true)
+        ElMessageBox.alert('混合A*路径生成成功，请确认下发', '路径规划完成', {
+          confirmButtonText: '确定',
+          type: 'success',
+        })
+      } else {
+        parkingPathStore.setPreviewPath(null, false)
+        const manager = getManagerSafe()
+        manager?.clearParkingPathPreview()
+        ElMessageBox.alert('混合A*路径生成失败', '路径规划失败', {
+          confirmButtonText: '确定',
+          type: 'warning',
+        })
+      }
+    } else {
+      parkingPathStore.setPreviewPath(null, false)
+      const manager = getManagerSafe()
+      manager?.clearParkingPathPreview()
+      ElMessageBox.alert('混合A*路径生成失败', '路径规划失败', {
+        confirmButtonText: '确定',
+        type: 'warning',
+      })
+    }
+  } catch (error) {
+    parkingPathStore.setPreviewPath(null, false)
+    const manager = getManagerSafe()
+    manager?.clearParkingPathPreview()
+    ElMessageBox.alert('混合A*路径生成失败', '路径规划失败', {
+      confirmButtonText: '确定',
+      type: 'warning',
+    })
+  } finally {
+    parkingPathStore.planning = false
   }
 }
 
@@ -316,6 +413,12 @@ const manualTargetHandler = (event: Event) => {
     handleManualPathSelected(detail)
   }
 }
+const parkingTargetHandler = (event: Event) => {
+  const detail = (event as CustomEvent).detail
+  if (detail) {
+    handleParkingPathSelected(detail)
+  }
+}
 const clickHandler = () => closeVehicleContextMenu()
 
 watch(
@@ -329,6 +432,57 @@ watch(
     } catch (error) {
       console.error('手控模式同步失败:', error)
     }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => [appReady.value, parkingModeActive.value],
+  async ([ready, active]) => {
+    if (!ready) return
+    await nextTick()
+    try {
+      const manager = getManagerSafe()
+      manager?.setParkingPathMode(active)
+    } catch (error) {
+      console.error('寄车模式同步失败:', error)
+    }
+  },
+  { immediate: true },
+)
+
+const parkingObstacleTimer = ref<number | null>(null)
+
+const fetchParkingObstacles = async () => {
+  try {
+    const response = await axios.get('/api/parking_path/obstacles', {
+      params: { vehicle_id: parkingPathStore.vehicleId },
+    })
+    if (!response.data?.data?.ok) return
+    const points = response.data?.data?.points || []
+    const manager = getManagerSafe()
+    if (manager && Array.isArray(points)) {
+      manager.updateParkingObstacles(points)
+    }
+  } catch (error) {
+    // ignore polling errors
+  }
+}
+
+watch(
+  () => parkingModeActive.value,
+  (active) => {
+    if (!active) {
+      if (parkingObstacleTimer.value) {
+        clearInterval(parkingObstacleTimer.value)
+        parkingObstacleTimer.value = null
+      }
+      const manager = getManagerSafe()
+      manager?.clearParkingObstacles()
+      return
+    }
+    fetchParkingObstacles()
+    parkingObstacleTimer.value = window.setInterval(fetchParkingObstacles, 1000)
   },
   { immediate: true },
 )
@@ -352,13 +506,18 @@ const getManagerSafe = () => {
 onMounted(() => {
   window.addEventListener('vehicle-contextmenu', contextMenuHandler)
   window.addEventListener('manual-path-target-selected', manualTargetHandler)
+  window.addEventListener('parking-path-target-selected', parkingTargetHandler)
   window.addEventListener('click', clickHandler)
 })
 
 onUnmounted(() => {
   window.removeEventListener('vehicle-contextmenu', contextMenuHandler)
   window.removeEventListener('manual-path-target-selected', manualTargetHandler)
+  window.removeEventListener('parking-path-target-selected', parkingTargetHandler)
   window.removeEventListener('click', clickHandler)
+  if (parkingObstacleTimer.value) {
+    clearInterval(parkingObstacleTimer.value)
+  }
 })
 
 // 滑块变化处理函数
@@ -647,6 +806,18 @@ const openInfosDialog = () => {
                 </el-button>
                 <el-button size="small" @click="handleManualModeExit">退出</el-button>
               </div>
+              <div v-if="parkingModeActive" class="manual-mode-banner parking-mode-banner">
+                <span class="manual-mode-text">寄车模式 ({{ parkingVehicleId }})</span>
+                <el-button
+                  type="primary"
+                  size="small"
+                  :disabled="!parkingPlanValid"
+                  @click="handleParkingModeConfirm"
+                >
+                  确认
+                </el-button>
+                <el-button size="small" @click="handleParkingModeExit">退出</el-button>
+              </div>
               <!-- 两列布局 -->
               <div class="control-grid">
                 <!-- 左上：坐标信息 -->
@@ -835,6 +1006,7 @@ const openInfosDialog = () => {
     @click.stop
   >
     <div class="menu-item" @click="handleManualModeEnter(contextMenuVehicleId)">进入手控路径模式</div>
+    <div class="menu-item" @click="handleParkingModeEnter(contextMenuVehicleId)">进入寄车模式</div>
   </div>
 </template>
 
@@ -937,6 +1109,12 @@ const openInfosDialog = () => {
   border-radius: 6px;
   color: #ad6800;
   font-weight: 600;
+}
+
+.parking-mode-banner {
+  background: #e6f7ff;
+  border: 1px solid #91d5ff;
+  color: #0958d9;
 }
 
 .manual-mode-text {
