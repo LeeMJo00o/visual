@@ -255,6 +255,33 @@ def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, fl
     return []
 
 
+def _build_simple_path(start: dict, goal: dict) -> list[dict]:
+    path: list[dict] = []
+    heading_delta = normalize_angle(goal["heading"] - start["heading"])
+    heading_steps = max(1, int(math.ceil(abs(heading_delta) / 0.1)))
+    for step in range(heading_steps + 1):
+        ratio = step / heading_steps
+        heading = normalize_angle(start["heading"] + ratio * heading_delta)
+        path.append({"x": start["x"], "y": start["y"], "heading": heading})
+
+    dx = goal["x"] - start["x"]
+    dy = goal["y"] - start["y"]
+    distance = math.hypot(dx, dy)
+    if distance <= 0.0:
+        return path
+    steps = max(1, int(math.ceil(distance / PLANNER_STEP_SIZE)))
+    for step in range(1, steps + 1):
+        ratio = step / steps
+        path.append(
+            {
+                "x": start["x"] + ratio * dx,
+                "y": start["y"] + ratio * dy,
+                "heading": goal["heading"],
+            }
+        )
+    return path
+
+
 @router.post("/enter")
 async def enter_parking_path(req: dict = Body()) -> StdRes:
     vehicle_id = req.get("vehicle_id")
@@ -325,6 +352,12 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
     path = _plan_hybrid_a_star(start_pose, end_pose, obstacles)
     if not path:
+        if not obstacles:
+            fallback_path = _build_simple_path(start_pose, end_pose)
+            logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
+            return StdRes(
+                data={"ok": True, "target": end_pose, "path": fallback_path, "fallback": True}
+            )
         logger.warning(
             "parking_path plan: failed, start_pose=%s, end_pose=%s, obstacles=%s",
             start_pose,
