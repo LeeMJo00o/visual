@@ -259,52 +259,114 @@ def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, fl
 
 
 def _build_simple_path(start: dict, goal: dict) -> list[dict]:
-    path: list[dict] = []
     max_steer = 0.3
     wheel_base = 3.576
-    min_radius = wheel_base / math.tan(max_steer)
-    heading_step = 0.1
+    rho = wheel_base / math.tan(max_steer)
+    path: list[dict] = []
 
-    dx = goal["x"] - start["x"]
-    dy = goal["y"] - start["y"]
-    target_heading = math.atan2(dy, dx) if dx or dy else start["heading"]
-    turn_delta = normalize_angle(target_heading - start["heading"])
-    turn_sign = 1.0 if turn_delta >= 0 else -1.0
-    turn_angle = abs(turn_delta)
-    arc_length = min_radius * turn_angle
-    arc_steps = max(1, int(math.ceil(arc_length / PLANNER_STEP_SIZE)))
-    center_x = start["x"] - turn_sign * min_radius * math.sin(start["heading"])
-    center_y = start["y"] + turn_sign * min_radius * math.cos(start["heading"])
+    def _mod2pi(theta: float) -> float:
+        return (theta + 2.0 * math.pi) % (2.0 * math.pi)
 
-    for step in range(arc_steps + 1):
-        ratio = step / arc_steps
-        heading = normalize_angle(start["heading"] + turn_sign * turn_angle * ratio)
-        x = center_x + turn_sign * min_radius * math.sin(heading)
-        y = center_y - turn_sign * min_radius * math.cos(heading)
-        path.append({"x": x, "y": y, "heading": heading})
+    def _dubins_params():
+        dx = goal["x"] - start["x"]
+        dy = goal["y"] - start["y"]
+        distance = math.hypot(dx, dy)
+        if distance < 1e-6:
+            return ("S", (0.0, 0.0, 0.0))
+        theta = math.atan2(dy, dx)
+        alpha = _mod2pi(start["heading"] - theta)
+        beta = _mod2pi(goal["heading"] - theta)
+        d = distance / rho
 
-    arc_end = path[-1]
-    dx_line = goal["x"] - arc_end["x"]
-    dy_line = goal["y"] - arc_end["y"]
-    distance = math.hypot(dx_line, dy_line)
-    if distance > 0.0:
-        steps = max(1, int(math.ceil(distance / PLANNER_STEP_SIZE)))
-        for step in range(1, steps + 1):
-            ratio = step / steps
-            path.append(
-                {
-                    "x": arc_end["x"] + ratio * dx_line,
-                    "y": arc_end["y"] + ratio * dy_line,
-                    "heading": target_heading,
-                }
+        def lsl():
+            tmp0 = d + math.sin(alpha) - math.sin(beta)
+            p2 = 2 + d * d - 2 * math.cos(alpha - beta) + 2 * d * (math.sin(alpha) - math.sin(beta))
+            if p2 < 0:
+                return None
+            tmp1 = math.atan2((math.cos(beta) - math.cos(alpha)), tmp0)
+            t = _mod2pi(-alpha + tmp1)
+            p = math.sqrt(p2)
+            q = _mod2pi(beta - tmp1)
+            return ("LSL", (t, p, q))
+
+        def rsr():
+            tmp0 = d - math.sin(alpha) + math.sin(beta)
+            p2 = 2 + d * d - 2 * math.cos(alpha - beta) + 2 * d * (-math.sin(alpha) + math.sin(beta))
+            if p2 < 0:
+                return None
+            tmp1 = math.atan2((math.cos(alpha) - math.cos(beta)), tmp0)
+            t = _mod2pi(alpha - tmp1)
+            p = math.sqrt(p2)
+            q = _mod2pi(-beta + tmp1)
+            return ("RSR", (t, p, q))
+
+        def lsr():
+            p2 = -2 + d * d + 2 * math.cos(alpha - beta) + 2 * d * (math.sin(alpha) + math.sin(beta))
+            if p2 < 0:
+                return None
+            p = math.sqrt(p2)
+            tmp2 = math.atan2((-math.cos(alpha) - math.cos(beta)), d + math.sin(alpha) + math.sin(beta)) - math.atan2(
+                -2.0, p
             )
+            t = _mod2pi(-alpha + tmp2)
+            q = _mod2pi(-beta + tmp2)
+            return ("LSR", (t, p, q))
 
-    final_delta = normalize_angle(goal["heading"] - target_heading)
-    final_steps = max(1, int(math.ceil(abs(final_delta) / heading_step)))
-    for step in range(1, final_steps + 1):
-        ratio = step / final_steps
-        heading = normalize_angle(target_heading + ratio * final_delta)
-        path.append({"x": goal["x"], "y": goal["y"], "heading": heading})
+        def rsl():
+            p2 = -2 + d * d + 2 * math.cos(alpha - beta) - 2 * d * (math.sin(alpha) + math.sin(beta))
+            if p2 < 0:
+                return None
+            p = math.sqrt(p2)
+            tmp2 = math.atan2((math.cos(alpha) + math.cos(beta)), d - math.sin(alpha) - math.sin(beta)) - math.atan2(
+                2.0, p
+            )
+            t = _mod2pi(alpha - tmp2)
+            q = _mod2pi(beta - tmp2)
+            return ("RSL", (t, p, q))
+
+        candidates = [lsl(), rsr(), lsr(), rsl()]
+        valid = [c for c in candidates if c is not None]
+        if not valid:
+            return ("S", (0.0, d, 0.0))
+        best = min(valid, key=lambda item: sum(item[1]))
+        return best
+
+    mode, (t, p, q) = _dubins_params()
+    x, y, heading = start["x"], start["y"], start["heading"]
+    path.append({"x": x, "y": y, "heading": heading})
+
+    def _segment(seg_type: str, seg_length: float):
+        nonlocal x, y, heading
+        remaining = seg_length * rho
+        while remaining > 1e-6:
+            step = min(PLANNER_STEP_SIZE, remaining)
+            if seg_type == "S":
+                x += step * math.cos(heading)
+                y += step * math.sin(heading)
+            else:
+                delta = step / rho
+                if seg_type == "L":
+                    heading = normalize_angle(heading + delta)
+                    x += rho * (math.sin(heading) - math.sin(heading - delta))
+                    y -= rho * (math.cos(heading) - math.cos(heading - delta))
+                else:
+                    heading = normalize_angle(heading - delta)
+                    x -= rho * (math.sin(heading) - math.sin(heading + delta))
+                    y += rho * (math.cos(heading) - math.cos(heading + delta))
+            path.append({"x": x, "y": y, "heading": heading})
+            remaining -= step
+
+    segments = {
+        "LSL": ("L", "S", "L"),
+        "RSR": ("R", "S", "R"),
+        "LSR": ("L", "S", "R"),
+        "RSL": ("R", "S", "L"),
+        "S": ("S", "S", "S"),
+    }
+    seg_types = segments.get(mode, ("S", "S", "S"))
+    _segment(seg_types[0], t)
+    _segment(seg_types[1], p)
+    _segment(seg_types[2], q)
     return path
 
 
