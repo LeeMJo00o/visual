@@ -7,6 +7,8 @@ export interface ManualPathTarget {
   heading: number
 }
 
+export type ManualPathPlanType = 'lane' | 'hybrid' | null
+
 export const useManualPathStore = defineStore('manualPath', () => {
   const readStoredState = () => {
     try {
@@ -28,16 +30,20 @@ export const useManualPathStore = defineStore('manualPath', () => {
   const vehicleId = ref(storedState.vehicleId || '')
   const target = ref<ManualPathTarget | null>(null)
   const preview = ref<ManualPathTarget | null>(null)
+  const previewPath = ref<ManualPathTarget[] | null>(null)
   const planning = ref(false)
   const planValid = ref(false)
+  const planType = ref<ManualPathPlanType>(null)
 
   function startMode(id: string) {
     active.value = true
     vehicleId.value = id
     target.value = null
     preview.value = null
+    previewPath.value = null
     planning.value = false
     planValid.value = false
+    planType.value = null
   }
 
   function setTarget(next: ManualPathTarget | null) {
@@ -46,7 +52,16 @@ export const useManualPathStore = defineStore('manualPath', () => {
 
   function setPreview(next: ManualPathTarget | null, valid: boolean) {
     preview.value = next
+    previewPath.value = null
     planValid.value = valid
+    planType.value = next ? 'lane' : null
+  }
+
+  function setPreviewPath(next: ManualPathTarget[] | null, valid: boolean) {
+    previewPath.value = next
+    preview.value = null
+    planValid.value = valid
+    planType.value = next ? 'hybrid' : null
   }
 
   function reset() {
@@ -54,8 +69,10 @@ export const useManualPathStore = defineStore('manualPath', () => {
     vehicleId.value = ''
     target.value = null
     preview.value = null
+    previewPath.value = null
     planning.value = false
     planValid.value = false
+    planType.value = null
   }
 
   watch(
@@ -78,11 +95,14 @@ export const useManualPathStore = defineStore('manualPath', () => {
     vehicleId,
     target,
     preview,
+    previewPath,
     planning,
     planValid,
+    planType,
     startMode,
     setTarget,
     setPreview,
+    setPreviewPath,
     reset,
   }
 })

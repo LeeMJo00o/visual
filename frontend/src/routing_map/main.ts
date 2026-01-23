@@ -857,6 +857,36 @@ export default class ApplicationManager extends GraphicTools {
     this.drawArrow(g, 0, 0, 0, 3, fillColor, 0.5)
   }
 
+  updateManualPathPreviewPath(points: { x: number; y: number; heading: number }[], valid = true) {
+    if (!this.manualPathPreviewGraphics || points.length < 2) return
+    const g = this.manualPathPreviewGraphics
+    g.clear()
+    const lineColor = valid ? 0x00d60b : 0xff4d4f
+    this.drawLine(
+      g,
+      'manual-path-preview',
+      points.map((point) => [point.x, point.y]),
+      false,
+      lineColor,
+      2,
+      0.8,
+    )
+    const end = points[points.length - 1]
+    const [appX, appY] = this.map_xy_to_app([end.x, end.y])
+    const width = 16
+    const height = 3.1
+    g.pivot.set(appX, appY)
+    g.position.set(appX, appY)
+    g.rect(-width / 2, -height / 2, width, height)
+      .fill({ color: lineColor, alpha: 0.4 })
+      .stroke({ color: lineColor, width: 0.6, alpha: 0.6 })
+    g.rotation = -end.heading
+    g.pivot.set(0, 0)
+    const prev = points[points.length - 2]
+    const arrowHeading = Math.atan2(end.y - prev.y, end.x - prev.x)
+    this.drawArrow(g, 0, 0, -arrowHeading, 3, lineColor, 0.5)
+  }
+
   clearManualPathPreview() {
     if (this.manualPathPreviewGraphics) {
       this.manualPathPreviewGraphics.clear()

@@ -156,7 +156,76 @@ const handleManualModeExit = async () => {
   }
 }
 
+const formatBridgeTimestamp = () => {
+  const now = new Date()
+  const pad = (value: number, len = 2) => value.toString().padStart(len, '0')
+  return `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(
+    now.getUTCHours(),
+  )}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}${pad(now.getUTCMilliseconds(), 3)}Z`
+}
+
+const buildHybridBridgePayload = (vehicleId: string, path: { x: number; y: number; heading: number }[]) => {
+  const lastPoint = path[path.length - 1]
+  const transId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`
+  return {
+    qosCode: 2,
+    topName: `veh/${vehicleId}/missioncmd/request`,
+    payload: JSON.stringify({
+      header: {
+        transId,
+        deviceId: vehicleId,
+        timestamp: formatBridgeTimestamp(),
+      },
+      body: {
+        device_id: vehicleId,
+        command_reference_lines: path.map((point, index) => ({
+          index,
+          x: point.x,
+          y: point.y,
+          theta: point.heading,
+        })),
+        destination: {
+          description: 'manual_path',
+          locationId: 'manual_path',
+          locationType: 'YCTP',
+          refPosition: {
+            elevation: 0,
+            latitude: lastPoint.y,
+            longitude: lastPoint.x,
+          },
+        },
+        global_destination: {
+          x: lastPoint.x,
+          y: lastPoint.y,
+          theta: lastPoint.heading,
+        },
+        timestamp: formatBridgeTimestamp(),
+        trans_id: transId,
+        type: 2,
+      },
+    }),
+  }
+}
+
 const handleManualModeConfirm = async () => {
+  if (!manualPathStore.preview && !manualPathStore.previewPath) return
+  if (manualPathStore.planType === 'hybrid' && manualPathStore.previewPath) {
+    try {
+      const payload = buildHybridBridgePayload(manualPathStore.vehicleId, manualPathStore.previewPath)
+      const response = await axios.post('/api/bridge/message', payload)
+      if (response.data?.data?.ok) {
+        ElMessage({ message: '混合A*路径已下发', type: 'success' })
+        manualPathStore.setPreviewPath(null, false)
+        const manager = getManagerSafe()
+        manager?.clearManualPathPreview()
+      } else {
+        ElMessage({ message: response.data?.data?.message || '混合A*路径下发失败', type: 'error' })
+      }
+    } catch (error) {
+      ElMessage({ message: `混合A*路径下发失败: ${error}`, type: 'error' })
+    }
+    return
+  }
   if (!manualPathStore.preview) return
   try {
     const response = await axios.post('/api/manual_path/start', {
@@ -187,7 +256,27 @@ const handleManualPathSelected = async (detail: { x: number; y: number; heading:
       points: detail,
     })
     const ok = response.data?.data?.ok
-    if (ok) {
+    const planType = response.data?.data?.plan_type
+    if (ok && planType === 'hybrid') {
+      const path = response.data?.data?.path
+      if (Array.isArray(path) && path.length > 1) {
+        manualPathStore.setPreviewPath(path, true)
+        const manager = getManagerSafe()
+        manager?.updateManualPathPreviewPath(path, true)
+        ElMessageBox.alert('混合A*路径生成成功，请确认下发', '路径规划完成', {
+          confirmButtonText: '确定',
+          type: 'success',
+        })
+      } else {
+        manualPathStore.setPreviewPath(null, false)
+        const manager = getManagerSafe()
+        manager?.clearManualPathPreview()
+        ElMessageBox.alert('混合A*路径生成失败', '路径规划失败', {
+          confirmButtonText: '确定',
+          type: 'warning',
+        })
+      }
+    } else if (ok) {
       const target = response.data?.data?.target || detail
       manualPathStore.setPreview(target, true)
       const manager = getManagerSafe()
@@ -203,6 +292,7 @@ const handleManualPathSelected = async (detail: { x: number; y: number; heading:
     }
   } catch (error) {
     manualPathStore.setPreview(null, false)
+    manualPathStore.setPreviewPath(null, false)
     const manager = getManagerSafe()
     manager?.clearManualPathPreview()
     ElMessageBox.alert('当前选择的手控目标点无可规划路径', '路径规划失败', {

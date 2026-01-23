@@ -14,6 +14,7 @@ from src.api.routes.http.info import router as info_router
 from src.api.routes.http.dynamic_vpb import router as dynamic_vpb_router
 from src.api.routes.http.arbiter import router as arbiter_router
 from src.api.routes.http.manual_path import router as manual_path_router
+from src.api.routes.http.bridge import router as bridge_router
 
 router = APIRouter()
 
@@ -29,6 +30,7 @@ router.include_router(info_router, tags=["infos"], prefix="/infos")
 router.include_router(dynamic_vpb_router, tags=["dynamic_vpb"], prefix="/dynamic/vpb")
 router.include_router(arbiter_router, tags=["arbiter"], prefix="/arbiter")
 router.include_router(manual_path_router, tags=["manual_path"], prefix="/manual_path")
+router.include_router(bridge_router, tags=["bridge"], prefix="/bridge")
 
 
 # 转发collector的值

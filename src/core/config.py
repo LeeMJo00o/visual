@@ -86,6 +86,7 @@ pp_visual_WELLROUTING_VERSION_URL: str = config("pp_visual_WELLROUTING_VERSION_U
                                                 default="http://127.0.0.1:8008/api/routing/map_graph")
 
 pp_visual_COLLECTOR_URL: str = config("pp_visual_COLLECTOR_URL", cast=str, default="http://127.0.0.1:2040")
+pp_visual_BRIDGE_URL: str = config("pp_visual_BRIDGE_URL", cast=str, default="http://127.0.0.1:2040")
 
 # arbiter清除轮廓的接口
 pp_visual_ARBITER_CLEAR_AREA_URL: str = config("pp_visual_ARBITER_CLEAR_AREA_URL", cast=str,
