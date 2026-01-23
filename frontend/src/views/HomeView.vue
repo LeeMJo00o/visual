@@ -51,6 +51,7 @@ const {
   active: parkingModeActive,
   planValid: parkingPlanValid,
   vehicleId: parkingVehicleId,
+  previewPath: parkingPreviewPath,
 } = storeToRefs(parkingPathStore)
 
 // 监听地图显示状态
@@ -246,16 +247,11 @@ const buildParkingBridgePayload = (vehicleId: string, path: { x: number; y: numb
       },
       body: {
         backward_motion: true,
-        command_reference_lines: path.map((point, index) => ({
-          index,
-          x: point.x,
-          y: point.y,
-          theta: point.heading,
-        })),
+        command_reference_lines: [],
         dense_park: false,
         destination: {
-          description: 'parking_path',
-          locationId: 'parking_path',
+          description: '01',
+          locationId: '01',
           locationType: 'YCTP',
           refPosition: {
             elevation: 0,
@@ -265,19 +261,28 @@ const buildParkingBridgePayload = (vehicleId: string, path: { x: number; y: numb
         },
         device_id: vehicleId,
         global_destination: {
+          id: 0,
+          s: 0,
           x: lastPoint.x,
           y: lastPoint.y,
           theta: lastPoint.heading,
         },
+        global_lane_sequence: [],
         isFinalNavi: true,
         lane_sequence: [],
+        lane_sequence_s: [],
+        map_firmware_id: '',
+        navi_task_type: 0,
         occupancy_list: [],
         request_timestamp: Math.floor(Date.now() / 1000),
         reverse_done: false,
-        route_waypoints: path.map((point) => ({
+        route_graph: { nodes: [] },
+        route_waypoints: path.map((point, index) => ({
+          node_index: 0,
+          s: index * 0.5,
+          theta: point.heading,
           x: point.x,
           y: point.y,
-          theta: point.heading,
         })),
         timestamp: formatBridgeTimestamp(),
         trans_id: transId,
@@ -483,6 +488,21 @@ watch(
     }
     fetchParkingObstacles()
     parkingObstacleTimer.value = window.setInterval(fetchParkingObstacles, 1000)
+  },
+  { immediate: true },
+)
+
+watch(
+  () => [appReady.value, parkingModeActive.value, parkingPreviewPath.value],
+  ([ready, active, previewPath]) => {
+    if (!ready || !active) return
+    const manager = getManagerSafe()
+    if (!manager) return
+    if (Array.isArray(previewPath) && previewPath.length > 1) {
+      manager.updateParkingPathPreviewPath(previewPath, true)
+    } else {
+      manager.clearParkingPathPreview()
+    }
   },
   { immediate: true },
 )

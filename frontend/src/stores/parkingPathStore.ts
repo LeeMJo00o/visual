@@ -23,13 +23,18 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
     }
   }
 
-  const storedState = readStoredState() as { active?: boolean; vehicleId?: string }
+  const storedState = readStoredState() as {
+    active?: boolean
+    vehicleId?: string
+    previewPath?: ParkingPathTarget[] | null
+    planValid?: boolean
+  }
   const active = ref(Boolean(storedState.active))
   const vehicleId = ref(storedState.vehicleId || '')
   const target = ref<ParkingPathTarget | null>(null)
-  const previewPath = ref<ParkingPathTarget[] | null>(null)
+  const previewPath = ref<ParkingPathTarget[] | null>(storedState.previewPath || null)
   const planning = ref(false)
-  const planValid = ref(false)
+  const planValid = ref(Boolean(storedState.planValid))
 
   function startMode(id: string) {
     active.value = true
@@ -59,8 +64,13 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
   }
 
   watch(
-    () => ({ active: active.value, vehicleId: vehicleId.value }),
-    (state: { active: boolean; vehicleId: string }) => {
+    () => ({
+      active: active.value,
+      vehicleId: vehicleId.value,
+      previewPath: previewPath.value,
+      planValid: planValid.value,
+    }),
+    (state: { active: boolean; vehicleId: string; previewPath: ParkingPathTarget[] | null; planValid: boolean }) => {
       try {
         if (typeof window === 'undefined' || !window.localStorage) {
           return

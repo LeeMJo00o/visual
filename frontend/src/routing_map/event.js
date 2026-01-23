@@ -49,7 +49,13 @@ export class EventManager {
     if (this.manager.mouse_func === 'manual_path') {
       this.manager.handleManualPathPointerDown(e)
     } else if (this.manager.mouse_func === 'parking_path') {
-      this.manager.handleParkingPathPointerDown(e)
+      if (e.button === 1) {
+        this.isDragging = true
+        this.lastX = e.global.x
+        this.lastY = e.global.y
+      } else {
+        this.manager.handleParkingPathPointerDown(e)
+      }
     } else if (this.manager.mouse_func === 'default') {
       this.isDragging = true
       this.lastX = e.global.x
@@ -68,7 +74,19 @@ export class EventManager {
     if (this.manager.mouse_func === 'manual_path') {
       this.manager.handleManualPathPointerMove(e)
     } else if (this.manager.mouse_func === 'parking_path') {
-      this.manager.handleParkingPathPointerMove(e)
+      if (this.isDragging) {
+        if (this.rafId) cancelAnimationFrame(this.rafId)
+        this.rafId = requestAnimationFrame(() => {
+          const off_x = e.global.x - this.lastX
+          const off_y = e.global.y - this.lastY
+          this.manager.move_all(off_x, off_y)
+          this.lastX = e.global.x
+          this.lastY = e.global.y
+          this.rafId = null
+        })
+      } else {
+        this.manager.handleParkingPathPointerMove(e)
+      }
     } else if (this.manager.mouse_func === 'default') {
       let raw_pos = this.manager.raw_xy(e.global.x, e.global.y)
       // 使用Pinia store更新
@@ -131,7 +149,11 @@ export class EventManager {
     if (this.manager.mouse_func === 'manual_path') {
       this.manager.handleManualPathPointerUp(e)
     } else if (this.manager.mouse_func === 'parking_path') {
-      this.manager.handleParkingPathPointerUp(e)
+      if (this.isDragging) {
+        this.isDragging = false
+      } else {
+        this.manager.handleParkingPathPointerUp(e)
+      }
     } else if (this.manager.mouse_func === 'default') {
       this.isDragging = false
     } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {
@@ -144,7 +166,11 @@ export class EventManager {
     if (this.manager.mouse_func === 'manual_path') {
       this.manager.handleManualPathPointerUp(e)
     } else if (this.manager.mouse_func === 'parking_path') {
-      this.manager.handleParkingPathPointerUp(e)
+      if (this.isDragging) {
+        this.isDragging = false
+      } else {
+        this.manager.handleParkingPathPointerUp(e)
+      }
     } else if (this.manager.mouse_func === 'default') {
       this.isDragging = false
     } else if (this.manager.mouse_func === 'draw' && this.manager.drawingHandlers) {
