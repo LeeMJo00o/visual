@@ -896,7 +896,7 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    const target = { x: start.x, y: start.y, heading }
+    const target = { x, y, heading }
     this.parkingPathState.dragging = false
     this.parkingPathState.startPoint = null
     this.clearParkingPathArrow()
@@ -952,12 +952,14 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   updateParkingPathPreviewPath(points: { x: number; y: number; heading: number }[], valid = true) {
-    if (!this.parkingPathPreviewGraphics || points.length < 2) return
-    const g = this.parkingPathPreviewGraphics
-    g.clear()
+    if (!this.parkingPathPreviewGraphics || !this.parkingPathArrowGraphics || points.length < 2) return
+    const lineGraphics = this.parkingPathPreviewGraphics
+    const markerGraphics = this.parkingPathArrowGraphics
+    lineGraphics.clear()
+    markerGraphics.clear()
     const lineColor = valid ? 0x00d60b : 0xff4d4f
     this.drawLine(
-      g,
+      lineGraphics,
       'parking-path-preview',
       points.map((point) => [point.x, point.y]),
       false,
@@ -969,16 +971,14 @@ export default class ApplicationManager extends GraphicTools {
     const [appX, appY] = this.map_xy_to_app([end.x, end.y])
     const width = 16
     const height = 3.1
-    g.pivot.set(appX, appY)
-    g.position.set(appX, appY)
-    g.rect(-width / 2, -height / 2, width, height)
+    markerGraphics.pivot.set(appX, appY)
+    markerGraphics.position.set(appX, appY)
+    markerGraphics.rect(-width / 2, -height / 2, width, height)
       .fill({ color: lineColor, alpha: 0.4 })
       .stroke({ color: lineColor, width: 0.6, alpha: 0.6 })
-    g.rotation = -end.heading
-    g.pivot.set(0, 0)
-    const prev = points[points.length - 2]
-    const arrowHeading = Math.atan2(end.y - prev.y, end.x - prev.x)
-    this.drawArrow(g, 0, 0, -arrowHeading, 3, lineColor, 0.5)
+    markerGraphics.rotation = -end.heading
+    markerGraphics.pivot.set(0, 0)
+    this.drawArrow(markerGraphics, 0, 0, 0, 3, lineColor, 0.5)
   }
 
   clearManualPathPreview() {
@@ -990,6 +990,9 @@ export default class ApplicationManager extends GraphicTools {
   clearParkingPathPreview() {
     if (this.parkingPathPreviewGraphics) {
       this.parkingPathPreviewGraphics.clear()
+    }
+    if (this.parkingPathArrowGraphics) {
+      this.parkingPathArrowGraphics.clear()
     }
   }
 
