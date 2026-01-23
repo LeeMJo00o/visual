@@ -197,11 +197,12 @@ def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, fl
     heading_bins = 24
     max_iter = 20000
     wheel_base = 3.576
-    max_steer = 0.6
+    max_steer = 0.3
     goal_tolerance = 0.8
     heading_tolerance = 0.5
     vehicle_radius = 1.2
     obstacle_radius = vehicle_radius + OBSTACLE_INFLATION
+    position_limit = 10000.0
 
     def _heading_index(theta: float) -> int:
         return int(round((normalize_angle(theta) + math.pi) / (2 * math.pi) * heading_bins)) % heading_bins
@@ -242,6 +243,8 @@ def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, fl
                 )
                 next_x = current.x + direction * PLANNER_STEP_SIZE * math.cos(current.heading)
                 next_y = current.y + direction * PLANNER_STEP_SIZE * math.sin(current.heading)
+                if abs(next_x) > position_limit or abs(next_y) > position_limit:
+                    continue
                 if _is_collision(next_x, next_y, obstacles, obstacle_radius):
                     continue
                 next_node = _HybridNode(next_x, next_y, next_heading, current.cost + PLANNER_STEP_SIZE, current)
@@ -346,6 +349,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         "heading": float(points.get("heading", 0.0)),
     }
     logger.info(f"parking_path plan: start_pose={start_pose}, end_pose={end_pose}")
+    logger.info("parking_path plan: limits max_steer=0.3, position_limit=10000")
     obstacles = await _load_perception_obstacles(vehicle_id)
     logger.info(f"parking_path plan: obstacles={len(obstacles)}")
     if obstacles:
