@@ -310,6 +310,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
             pose = raw_pose
     except Exception as exc:
         logger.error(f"parking_path plan: read pose failed: {exc}")
+    logger.info(f"parking_path plan: raw_pose={pose}")
 
     start_pose = _build_start_pose(pose)
     end_pose = {
@@ -317,10 +318,21 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         "y": float(points["y"]),
         "heading": float(points.get("heading", 0.0)),
     }
+    logger.info(f"parking_path plan: start_pose={start_pose}, end_pose={end_pose}")
     obstacles = await _load_perception_obstacles(vehicle_id)
+    logger.info(f"parking_path plan: obstacles={len(obstacles)}")
+    if obstacles:
+        logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
     path = _plan_hybrid_a_star(start_pose, end_pose, obstacles)
     if not path:
+        logger.warning(
+            "parking_path plan: failed, start_pose=%s, end_pose=%s, obstacles=%s",
+            start_pose,
+            end_pose,
+            len(obstacles),
+        )
         return StdRes(data={"ok": False, "message": "hybrid plan failed"})
+    logger.info(f"parking_path plan: success, path_size={len(path)}")
     return StdRes(data={"ok": True, "target": end_pose, "path": path})
 
 
