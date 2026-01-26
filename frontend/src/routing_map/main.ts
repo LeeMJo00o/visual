@@ -897,7 +897,7 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    const target = { x, y, heading }
+    const target = { x: start.x, y: start.y, heading }
     this.parkingPathState.dragging = false
     this.parkingPathState.startPoint = null
     this.clearParkingPathArrow()
