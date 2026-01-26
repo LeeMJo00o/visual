@@ -35,8 +35,10 @@ TURN_PENALTY = 0.2
 CURVATURE_CHANGE_PENALTY = 0.5
 DIRECTION_CHANGE_PENALTY = 2.0
 REVERSE_PENALTY = 1.0
-MAX_REVERSE_RATIO = 0.3
+MAX_REVERSE_RATIO = 0.6
 ALLOW_REVERSE_DEFAULT = True
+STRAIGHT_FALLBACK_MIN_DISTANCE = MIN_TURN_RADIUS * 0.6
+REVERSE_STRAIGHT_MAX_DISTANCE = MIN_TURN_RADIUS * 1.5
 
 
 @dataclass(order=True)
@@ -418,9 +420,15 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool) -> list[dic
     straight_heading_tolerance = _adaptive_heading_tolerance(distance, 0.4, 1.0)
     start_heading_error = abs(normalize_angle(start["heading"] - line_heading))
     goal_heading_error = abs(normalize_angle(goal["heading"] - line_heading))
-    if start_heading_error <= straight_heading_tolerance and goal_heading_error <= straight_heading_tolerance:
+    if (
+        distance >= STRAIGHT_FALLBACK_MIN_DISTANCE
+        and start_heading_error <= straight_heading_tolerance
+        and goal_heading_error <= straight_heading_tolerance
+    ):
         return _build_straight_path(start, goal, line_heading, False)
-    if allow_reverse and MAX_REVERSE_RATIO >= 1.0:
+    if allow_reverse and distance >= STRAIGHT_FALLBACK_MIN_DISTANCE:
+        if distance > REVERSE_STRAIGHT_MAX_DISTANCE and MAX_REVERSE_RATIO < 1.0:
+            return path
         reverse_heading = normalize_angle(line_heading + math.pi)
         start_reverse_error = abs(normalize_angle(start["heading"] - reverse_heading))
         goal_reverse_error = abs(normalize_angle(goal["heading"] - reverse_heading))
