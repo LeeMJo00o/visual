@@ -988,9 +988,9 @@ export default class ApplicationManager extends GraphicTools {
     const height = 3.1
     const maxPoseMarkers = 10
     const minStride = 10
-    const stride = Math.max(minStride, Math.ceil(points.length / maxPoseMarkers))
-    points.forEach((point, index) => {
-      if (index % stride !== 0 && index !== points.length - 1) return
+    const previewPoints = points.slice(0, maxPoseMarkers * minStride)
+    previewPoints.forEach((point, index) => {
+      if (index % minStride !== 0) return
       const [appX, appY] = this.map_xy_to_app([point.x, point.y])
       const rect = new Graphics()
       rect
