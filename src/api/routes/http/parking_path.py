@@ -197,6 +197,15 @@ def _heuristic_distance(x: float, y: float, goal: dict) -> float:
     return math.hypot(goal["x"] - x, goal["y"] - y)
 
 
+def _adaptive_heading_tolerance(distance: float, base: float, maximum: float) -> float:
+    if distance >= 10.0:
+        return maximum
+    if distance <= 2.0:
+        return base
+    ratio = (distance - 2.0) / 8.0
+    return base + ratio * (maximum - base)
+
+
 def _is_collision(x: float, y: float, obstacles: list[tuple[float, float]], radius: float) -> bool:
     if not obstacles:
         return False
@@ -237,14 +246,6 @@ def _plan_hybrid_a_star(
             int(node.direction),
         )
 
-    def _heading_tolerance(distance: float) -> float:
-        if distance >= 10.0:
-            return max_heading_tolerance
-        if distance <= 2.0:
-            return base_heading_tolerance
-        ratio = (distance - 2.0) / 8.0
-        return base_heading_tolerance + ratio * (max_heading_tolerance - base_heading_tolerance)
-
     open_queue: list[_HybridQueueNode] = []
     seen: dict[tuple[int, int, int, int], float] = {}
     counter = 0
@@ -269,7 +270,8 @@ def _plan_hybrid_a_star(
         distance_to_goal = _heuristic_distance(current.x, current.y, goal)
         if (
             distance_to_goal <= goal_tolerance
-            and abs(normalize_angle(current.heading - goal["heading"])) <= _heading_tolerance(distance_to_goal)
+            and abs(normalize_angle(current.heading - goal["heading"]))
+            <= _adaptive_heading_tolerance(distance_to_goal, base_heading_tolerance, max_heading_tolerance)
         ):
             path: list[dict] = []
             node = current
@@ -412,12 +414,13 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool) -> list[dic
     dx = goal["x"] - start["x"]
     dy = goal["y"] - start["y"]
     line_heading = math.atan2(dy, dx)
+    distance = math.hypot(dx, dy)
+    straight_heading_tolerance = _adaptive_heading_tolerance(distance, 0.4, 1.0)
     start_heading_error = abs(normalize_angle(start["heading"] - line_heading))
     goal_heading_error = abs(normalize_angle(goal["heading"] - line_heading))
-    straight_heading_tolerance = 0.6
     if start_heading_error <= straight_heading_tolerance and goal_heading_error <= straight_heading_tolerance:
         return _build_straight_path(start, goal, line_heading, False)
-    if allow_reverse:
+    if allow_reverse and MAX_REVERSE_RATIO >= 1.0:
         reverse_heading = normalize_angle(line_heading + math.pi)
         start_reverse_error = abs(normalize_angle(start["heading"] - reverse_heading))
         goal_reverse_error = abs(normalize_angle(goal["heading"] - reverse_heading))
