@@ -32,6 +32,7 @@ MAX_STEER = 0.34
 MIN_TURN_RADIUS = 8.1
 MAX_CURVATURE = 0.14
 ALLOW_REVERSE_DEFAULT = True
+REVERSE_HEADING_DIFF_THRESHOLD = math.radians(120)
 
 
 @dataclass(order=True)
@@ -494,9 +495,14 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     }
     logger.info(f"parking_path plan: start_pose={start_pose}, end_pose={end_pose}")
     allow_reverse = bool(req.get("allow_reverse", ALLOW_REVERSE_DEFAULT))
+    heading_diff = abs(normalize_angle(start_pose["heading"] - end_pose["heading"]))
+    reverse_start = heading_diff >= REVERSE_HEADING_DIFF_THRESHOLD
+    start_for_plan = start_pose.copy()
+    if reverse_start:
+        start_for_plan["heading"] = normalize_angle(start_for_plan["heading"] + math.pi)
     logger.info(
         "parking_path plan: limits max_curvature=%.4f, min_turn_radius=%.2f, max_steer=%.2f, wheel_base=%.2f, "
-        "vehicle_size=%.2fx%.2f, allow_reverse=%s",
+        "vehicle_size=%.2fx%.2f, allow_reverse=%s, reverse_start=%s, heading_diff=%.2f",
         min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, abs(math.tan(MAX_STEER) / WHEEL_BASE)),
         MIN_TURN_RADIUS,
         MAX_STEER,
@@ -504,18 +510,26 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         VEHICLE_LENGTH,
         VEHICLE_WIDTH,
         allow_reverse,
+        reverse_start,
+        heading_diff,
     )
     obstacles = await _load_perception_obstacles(vehicle_id)
     logger.info(f"parking_path plan: obstacles={len(obstacles)}")
     if obstacles:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
-    path = _plan_hybrid_a_star(start_pose, end_pose, obstacles, allow_reverse)
+    path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
     if not path:
         if not obstacles:
-            fallback_path = _build_simple_path(start_pose, end_pose, allow_reverse)
+            fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse)
             logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
             return StdRes(
-                data={"ok": True, "target": end_pose, "path": fallback_path, "fallback": True}
+                data={
+                    "ok": True,
+                    "target": end_pose,
+                    "path": fallback_path,
+                    "fallback": True,
+                    "reverse_start": reverse_start,
+                }
             )
         logger.warning(
             "parking_path plan: failed, start_pose=%s, end_pose=%s, obstacles=%s",
@@ -525,7 +539,9 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         )
         return StdRes(data={"ok": False, "message": "hybrid plan failed"})
     logger.info(f"parking_path plan: success, path_size={len(path)}")
-    return StdRes(data={"ok": True, "target": end_pose, "path": path})
+    return StdRes(
+        data={"ok": True, "target": end_pose, "path": path, "reverse_start": reverse_start}
+    )
 
 
 @router.get("/obstacles")

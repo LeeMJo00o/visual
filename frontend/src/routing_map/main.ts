@@ -139,6 +139,7 @@ export default class ApplicationManager extends GraphicTools {
   }
   public parkingPathContainer: Container | null = null
   public parkingPathPreviewGraphics: Graphics | null = null
+  public parkingPathPoseContainer: Container | null = null
   public parkingPathArrowGraphics: Graphics | null = null
   public parkingObstacleGraphics: Graphics | null = null
   public parkingPathState = {
@@ -210,6 +211,7 @@ export default class ApplicationManager extends GraphicTools {
     this.manualPathArrowGraphics = null
     this.parkingPathContainer = null
     this.parkingPathPreviewGraphics = null
+    this.parkingPathPoseContainer = null
     this.parkingPathArrowGraphics = null
     this.parkingObstacleGraphics = null
   }
@@ -498,9 +500,11 @@ export default class ApplicationManager extends GraphicTools {
 
       this.parkingPathContainer = new Container()
       this.parkingPathPreviewGraphics = new Graphics()
+      this.parkingPathPoseContainer = new Container()
       this.parkingPathArrowGraphics = new Graphics()
       this.parkingObstacleGraphics = new Graphics()
       this.parkingPathContainer.addChild(this.parkingPathPreviewGraphics)
+      this.parkingPathContainer.addChild(this.parkingPathPoseContainer)
       this.parkingPathContainer.addChild(this.parkingPathArrowGraphics)
       this.parkingPathContainer.addChild(this.parkingObstacleGraphics)
       this.mainContainer.addChild(this.parkingPathContainer)
@@ -956,12 +960,21 @@ export default class ApplicationManager extends GraphicTools {
   }
 
   updateParkingPathPreviewPath(points: { x: number; y: number; heading: number }[], valid = true) {
-    if (!this.parkingPathPreviewGraphics || !this.parkingPathArrowGraphics || points.length < 2) return
+    if (
+      !this.parkingPathPreviewGraphics ||
+      !this.parkingPathArrowGraphics ||
+      !this.parkingPathPoseContainer ||
+      points.length < 2
+    )
+      return
     const lineGraphics = this.parkingPathPreviewGraphics
     const markerGraphics = this.parkingPathArrowGraphics
+    const poseContainer = this.parkingPathPoseContainer
     lineGraphics.clear()
     markerGraphics.clear()
+    poseContainer.removeChildren()
     const lineColor = valid ? 0x00d60b : 0xff4d4f
+    const poseColor = lineColor
     this.drawLine(
       lineGraphics,
       'parking-path-preview',
@@ -971,10 +984,21 @@ export default class ApplicationManager extends GraphicTools {
       2,
       0.8,
     )
-    const end = points[points.length - 1]
-    const [appX, appY] = this.map_xy_to_app([end.x, end.y])
     const width = 16
     const height = 3.1
+    points.forEach((point) => {
+      const [appX, appY] = this.map_xy_to_app([point.x, point.y])
+      const rect = new Graphics()
+      rect
+        .rect(-width / 2, -height / 2, width, height)
+        .fill({ color: poseColor, alpha: 0.18 })
+        .stroke({ color: poseColor, width: 0.5, alpha: 0.4 })
+      rect.position.set(appX, appY)
+      rect.rotation = -point.heading
+      poseContainer.addChild(rect)
+    })
+    const end = points[points.length - 1]
+    const [appX, appY] = this.map_xy_to_app([end.x, end.y])
     markerGraphics.pivot.set(appX, appY)
     markerGraphics.position.set(appX, appY)
     markerGraphics.rect(-width / 2, -height / 2, width, height)
@@ -994,6 +1018,9 @@ export default class ApplicationManager extends GraphicTools {
   clearParkingPathPreview() {
     if (this.parkingPathPreviewGraphics) {
       this.parkingPathPreviewGraphics.clear()
+    }
+    if (this.parkingPathPoseContainer) {
+      this.parkingPathPoseContainer.removeChildren()
     }
     if (this.parkingPathArrowGraphics) {
       this.parkingPathArrowGraphics.clear()
