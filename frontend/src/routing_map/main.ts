@@ -986,8 +986,9 @@ export default class ApplicationManager extends GraphicTools {
     )
     const width = 16
     const height = 3.1
-    const maxPoseMarkers = 120
-    const stride = Math.max(1, Math.ceil(points.length / maxPoseMarkers))
+    const maxPoseMarkers = 60
+    const minStride = 3
+    const stride = Math.max(minStride, Math.ceil(points.length / maxPoseMarkers))
     points.forEach((point, index) => {
       if (index % stride !== 0 && index !== points.length - 1) return
       const [appX, appY] = this.map_xy_to_app([point.x, point.y])
