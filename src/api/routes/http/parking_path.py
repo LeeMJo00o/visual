@@ -31,14 +31,7 @@ WHEEL_BASE = 9.3
 MAX_STEER = 0.34
 MIN_TURN_RADIUS = 8.1
 MAX_CURVATURE = 0.14
-TURN_PENALTY = 0.2
-CURVATURE_CHANGE_PENALTY = 0.5
-DIRECTION_CHANGE_PENALTY = 2.0
-REVERSE_PENALTY = 1.0
-MAX_REVERSE_RATIO = 0.9
 ALLOW_REVERSE_DEFAULT = True
-STRAIGHT_FALLBACK_MIN_DISTANCE = MIN_TURN_RADIUS * 1.2
-REVERSE_STRAIGHT_MAX_DISTANCE = MIN_TURN_RADIUS * 1.5
 
 
 @dataclass(order=True)
@@ -54,10 +47,6 @@ class _HybridNode:
     y: float
     heading: float
     cost: float
-    direction: float
-    curvature: float
-    reverse_distance: float
-    total_distance: float
     parent: "_HybridNode | None" = None
 
 
@@ -199,15 +188,6 @@ def _heuristic_distance(x: float, y: float, goal: dict) -> float:
     return math.hypot(goal["x"] - x, goal["y"] - y)
 
 
-def _adaptive_heading_tolerance(distance: float, base: float, maximum: float) -> float:
-    if distance >= 10.0:
-        return maximum
-    if distance <= 2.0:
-        return base
-    ratio = (distance - 2.0) / 8.0
-    return base + ratio * (maximum - base)
-
-
 def _is_collision(x: float, y: float, obstacles: list[tuple[float, float]], radius: float) -> bool:
     if not obstacles:
         return False
@@ -226,11 +206,10 @@ def _plan_hybrid_a_star(
     obstacles: list[tuple[float, float]],
     allow_reverse: bool,
 ) -> list[dict]:
-    heading_bins = 36
-    max_iter = 40000
-    goal_tolerance = 1.0
-    base_heading_tolerance = 0.4
-    max_heading_tolerance = 1.2
+    heading_bins = 24
+    max_iter = 20000
+    goal_tolerance = 0.8
+    heading_tolerance = 0.5
     vehicle_radius = VEHICLE_WIDTH / 2.0
     obstacle_radius = vehicle_radius + OBSTACLE_INFLATION
     position_limit = 10000.0
@@ -240,25 +219,20 @@ def _plan_hybrid_a_star(
     def _heading_index(theta: float) -> int:
         return int(round((normalize_angle(theta) + math.pi) / (2 * math.pi) * heading_bins)) % heading_bins
 
-    def _node_key(node: _HybridNode) -> tuple[int, int, int, int]:
+    def _node_key(node: _HybridNode) -> tuple[int, int, int]:
         return (
             int(round(node.x / PLANNER_STEP_SIZE)),
             int(round(node.y / PLANNER_STEP_SIZE)),
             _heading_index(node.heading),
-            int(node.direction),
         )
 
     open_queue: list[_HybridQueueNode] = []
-    seen: dict[tuple[int, int, int, int], float] = {}
+    seen: dict[tuple[int, int, int], float] = {}
     counter = 0
     start_node = _HybridNode(
         start["x"],
         start["y"],
         start["heading"],
-        0.0,
-        1.0,
-        0.0,
-        0.0,
         0.0,
         None,
     )
@@ -272,8 +246,7 @@ def _plan_hybrid_a_star(
         distance_to_goal = _heuristic_distance(current.x, current.y, goal)
         if (
             distance_to_goal <= goal_tolerance
-            and abs(normalize_angle(current.heading - goal["heading"]))
-            <= _adaptive_heading_tolerance(distance_to_goal, base_heading_tolerance, max_heading_tolerance)
+            and abs(normalize_angle(current.heading - goal["heading"])) <= heading_tolerance
         ):
             path: list[dict] = []
             node = current
@@ -285,12 +258,6 @@ def _plan_hybrid_a_star(
         directions = (1.0, -1.0) if allow_reverse else (1.0,)
         for direction in directions:
             for curvature in (-max_curvature, 0.0, max_curvature):
-                if (
-                    distance_to_goal < STRAIGHT_FALLBACK_MIN_DISTANCE
-                    and curvature == 0.0
-                    and abs(normalize_angle(current.heading - goal["heading"])) > 0.2
-                ):
-                    continue
                 next_heading = normalize_angle(current.heading + direction * PLANNER_STEP_SIZE * curvature)
                 next_x = current.x + direction * PLANNER_STEP_SIZE * math.cos(current.heading)
                 next_y = current.y + direction * PLANNER_STEP_SIZE * math.sin(current.heading)
@@ -298,24 +265,12 @@ def _plan_hybrid_a_star(
                     continue
                 if _is_collision(next_x, next_y, obstacles, obstacle_radius):
                     continue
-                next_total = current.total_distance + PLANNER_STEP_SIZE
-                next_reverse = current.reverse_distance + (PLANNER_STEP_SIZE if direction < 0 else 0.0)
-                if allow_reverse and next_total > 0.0 and next_reverse / next_total > MAX_REVERSE_RATIO:
-                    continue
-                turn_cost = TURN_PENALTY * abs(curvature)
-                curvature_change = CURVATURE_CHANGE_PENALTY * abs(curvature - current.curvature)
-                direction_change = DIRECTION_CHANGE_PENALTY if direction != current.direction else 0.0
-                reverse_cost = REVERSE_PENALTY if direction < 0 else 0.0
-                next_cost = current.cost + PLANNER_STEP_SIZE + turn_cost + curvature_change + direction_change + reverse_cost
+                next_cost = current.cost + PLANNER_STEP_SIZE
                 next_node = _HybridNode(
                     next_x,
                     next_y,
                     next_heading,
                     next_cost,
-                    direction,
-                    curvature,
-                    next_reverse,
-                    next_total,
                     current,
                 )
                 key = _node_key(next_node)
@@ -423,18 +378,12 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool) -> list[dic
     dy = goal["y"] - start["y"]
     line_heading = math.atan2(dy, dx)
     distance = math.hypot(dx, dy)
-    straight_heading_tolerance = min(_adaptive_heading_tolerance(distance, 0.35, 0.8), 0.6)
+    straight_heading_tolerance = 0.6
     start_heading_error = abs(normalize_angle(start["heading"] - line_heading))
     goal_heading_error = abs(normalize_angle(goal["heading"] - line_heading))
-    if (
-        distance >= STRAIGHT_FALLBACK_MIN_DISTANCE
-        and start_heading_error <= straight_heading_tolerance
-        and goal_heading_error <= straight_heading_tolerance
-    ):
+    if start_heading_error <= straight_heading_tolerance and goal_heading_error <= straight_heading_tolerance:
         return _build_straight_path(start, goal, line_heading, False)
-    if allow_reverse and distance >= STRAIGHT_FALLBACK_MIN_DISTANCE:
-        if distance > REVERSE_STRAIGHT_MAX_DISTANCE and MAX_REVERSE_RATIO < 1.0:
-            return path
+    if allow_reverse:
         reverse_heading = normalize_angle(line_heading + math.pi)
         start_reverse_error = abs(normalize_angle(start["heading"] - reverse_heading))
         goal_reverse_error = abs(normalize_angle(goal["heading"] - reverse_heading))
@@ -547,14 +496,13 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     allow_reverse = bool(req.get("allow_reverse", ALLOW_REVERSE_DEFAULT))
     logger.info(
         "parking_path plan: limits max_curvature=%.4f, min_turn_radius=%.2f, max_steer=%.2f, wheel_base=%.2f, "
-        "vehicle_size=%.2fx%.2f, max_reverse_ratio=%.2f, allow_reverse=%s",
+        "vehicle_size=%.2fx%.2f, allow_reverse=%s",
         min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, abs(math.tan(MAX_STEER) / WHEEL_BASE)),
         MIN_TURN_RADIUS,
         MAX_STEER,
         WHEEL_BASE,
         VEHICLE_LENGTH,
         VEHICLE_WIDTH,
-        MAX_REVERSE_RATIO,
         allow_reverse,
     )
     obstacles = await _load_perception_obstacles(vehicle_id)
