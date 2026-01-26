@@ -37,7 +37,7 @@ DIRECTION_CHANGE_PENALTY = 2.0
 REVERSE_PENALTY = 1.0
 MAX_REVERSE_RATIO = 0.9
 ALLOW_REVERSE_DEFAULT = True
-STRAIGHT_FALLBACK_MIN_DISTANCE = MIN_TURN_RADIUS * 0.8
+STRAIGHT_FALLBACK_MIN_DISTANCE = MIN_TURN_RADIUS * 1.2
 REVERSE_STRAIGHT_MAX_DISTANCE = MIN_TURN_RADIUS * 1.5
 
 
@@ -423,7 +423,7 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool) -> list[dic
     dy = goal["y"] - start["y"]
     line_heading = math.atan2(dy, dx)
     distance = math.hypot(dx, dy)
-    straight_heading_tolerance = _adaptive_heading_tolerance(distance, 0.4, 1.0)
+    straight_heading_tolerance = min(_adaptive_heading_tolerance(distance, 0.35, 0.8), 0.6)
     start_heading_error = abs(normalize_angle(start["heading"] - line_heading))
     goal_heading_error = abs(normalize_angle(goal["heading"] - line_heading))
     if (
