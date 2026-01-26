@@ -981,16 +981,13 @@ export default class ApplicationManager extends GraphicTools {
       points.map((point) => [point.x, point.y]),
       false,
       lineColor,
-      2,
+      1,
       0.8,
     )
     const width = 16
     const height = 3.1
-    const maxPoseMarkers = 60
-    const minStride = 3
-    const stride = Math.max(minStride, Math.ceil(points.length / maxPoseMarkers))
-    points.forEach((point, index) => {
-      if (index % stride !== 0 && index !== points.length - 1) return
+    const maxPoseMarkers = 10
+    points.slice(0, maxPoseMarkers).forEach((point) => {
       const [appX, appY] = this.map_xy_to_app([point.x, point.y])
       const rect = new Graphics()
       rect
