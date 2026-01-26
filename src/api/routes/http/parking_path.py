@@ -35,9 +35,9 @@ TURN_PENALTY = 0.2
 CURVATURE_CHANGE_PENALTY = 0.5
 DIRECTION_CHANGE_PENALTY = 2.0
 REVERSE_PENALTY = 1.0
-MAX_REVERSE_RATIO = 0.6
+MAX_REVERSE_RATIO = 0.9
 ALLOW_REVERSE_DEFAULT = True
-STRAIGHT_FALLBACK_MIN_DISTANCE = MIN_TURN_RADIUS * 0.6
+STRAIGHT_FALLBACK_MIN_DISTANCE = MIN_TURN_RADIUS * 0.8
 REVERSE_STRAIGHT_MAX_DISTANCE = MIN_TURN_RADIUS * 1.5
 
 
@@ -226,9 +226,9 @@ def _plan_hybrid_a_star(
     obstacles: list[tuple[float, float]],
     allow_reverse: bool,
 ) -> list[dict]:
-    heading_bins = 24
-    max_iter = 20000
-    goal_tolerance = 0.8
+    heading_bins = 36
+    max_iter = 40000
+    goal_tolerance = 1.0
     base_heading_tolerance = 0.4
     max_heading_tolerance = 1.2
     vehicle_radius = VEHICLE_WIDTH / 2.0
@@ -285,6 +285,12 @@ def _plan_hybrid_a_star(
         directions = (1.0, -1.0) if allow_reverse else (1.0,)
         for direction in directions:
             for curvature in (-max_curvature, 0.0, max_curvature):
+                if (
+                    distance_to_goal < STRAIGHT_FALLBACK_MIN_DISTANCE
+                    and curvature == 0.0
+                    and abs(normalize_angle(current.heading - goal["heading"])) > 0.2
+                ):
+                    continue
                 next_heading = normalize_angle(current.heading + direction * PLANNER_STEP_SIZE * curvature)
                 next_x = current.x + direction * PLANNER_STEP_SIZE * math.cos(current.heading)
                 next_y = current.y + direction * PLANNER_STEP_SIZE * math.sin(current.heading)
