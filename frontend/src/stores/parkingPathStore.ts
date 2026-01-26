@@ -1,19 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
-export interface ManualPathTarget {
+export interface ParkingPathTarget {
   x: number
   y: number
   heading: number
 }
 
-export const useManualPathStore = defineStore('manualPath', () => {
+export const useParkingPathStore = defineStore('parkingPath', () => {
   const readStoredState = () => {
     try {
       if (typeof window === 'undefined' || !window.localStorage) {
         return {}
       }
-      const storedStateRaw = window.localStorage.getItem('manualPathState')
+      const storedStateRaw = window.localStorage.getItem('parkingPathState')
       if (!storedStateRaw) {
         return {}
       }
@@ -23,29 +23,34 @@ export const useManualPathStore = defineStore('manualPath', () => {
     }
   }
 
-  const storedState = readStoredState() as { active?: boolean; vehicleId?: string }
+  const storedState = readStoredState() as {
+    active?: boolean
+    vehicleId?: string
+    previewPath?: ParkingPathTarget[] | null
+    planValid?: boolean
+  }
   const active = ref(Boolean(storedState.active))
   const vehicleId = ref(storedState.vehicleId || '')
-  const target = ref<ManualPathTarget | null>(null)
-  const preview = ref<ManualPathTarget | null>(null)
+  const target = ref<ParkingPathTarget | null>(null)
+  const previewPath = ref<ParkingPathTarget[] | null>(storedState.previewPath || null)
   const planning = ref(false)
-  const planValid = ref(false)
+  const planValid = ref(Boolean(storedState.planValid))
 
   function startMode(id: string) {
     active.value = true
     vehicleId.value = id
     target.value = null
-    preview.value = null
+    previewPath.value = null
     planning.value = false
     planValid.value = false
   }
 
-  function setTarget(next: ManualPathTarget | null) {
+  function setTarget(next: ParkingPathTarget | null) {
     target.value = next
   }
 
-  function setPreview(next: ManualPathTarget | null, valid: boolean) {
-    preview.value = next
+  function setPreviewPath(next: ParkingPathTarget[] | null, valid: boolean) {
+    previewPath.value = next
     planValid.value = valid
   }
 
@@ -53,19 +58,24 @@ export const useManualPathStore = defineStore('manualPath', () => {
     active.value = false
     vehicleId.value = ''
     target.value = null
-    preview.value = null
+    previewPath.value = null
     planning.value = false
     planValid.value = false
   }
 
   watch(
-    () => ({ active: active.value, vehicleId: vehicleId.value }),
-    (state: { active: boolean; vehicleId: string }) => {
+    () => ({
+      active: active.value,
+      vehicleId: vehicleId.value,
+      previewPath: previewPath.value,
+      planValid: planValid.value,
+    }),
+    (state: { active: boolean; vehicleId: string; previewPath: ParkingPathTarget[] | null; planValid: boolean }) => {
       try {
         if (typeof window === 'undefined' || !window.localStorage) {
           return
         }
-        window.localStorage.setItem('manualPathState', JSON.stringify(state))
+        window.localStorage.setItem('parkingPathState', JSON.stringify(state))
       } catch (error) {
         // ignore storage failures
       }
@@ -77,12 +87,12 @@ export const useManualPathStore = defineStore('manualPath', () => {
     active,
     vehicleId,
     target,
-    preview,
+    previewPath,
     planning,
     planValid,
     startMode,
     setTarget,
-    setPreview,
+    setPreviewPath,
     reset,
   }
 })
