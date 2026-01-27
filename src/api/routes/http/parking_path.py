@@ -495,10 +495,6 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     }
     logger.info(f"parking_path plan: start_pose={start_pose}, end_pose={end_pose}")
     allow_reverse = bool(req.get("allow_reverse", ALLOW_REVERSE_DEFAULT))
-    forward_heading_diff = abs(normalize_angle(start_pose["heading"] - end_pose["heading"]))
-    reverse_heading = normalize_angle(start_pose["heading"] + math.pi)
-    reverse_heading_diff = abs(normalize_angle(reverse_heading - end_pose["heading"]))
-    heading_eps = 1e-3
     half_length = VEHICLE_LENGTH / 2.0
     front_mid_x = start_pose["x"] + math.cos(start_pose["heading"]) * half_length
     front_mid_y = start_pose["y"] + math.sin(start_pose["heading"]) * half_length
@@ -506,19 +502,15 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     rear_mid_y = start_pose["y"] - math.sin(start_pose["heading"]) * half_length
     front_mid_dist = math.hypot(end_pose["x"] - front_mid_x, end_pose["y"] - front_mid_y)
     rear_mid_dist = math.hypot(end_pose["x"] - rear_mid_x, end_pose["y"] - rear_mid_y)
-    reverse_start = False
-    if allow_reverse:
-        if reverse_heading_diff < forward_heading_diff - heading_eps:
-            reverse_start = True
-        elif abs(reverse_heading_diff - forward_heading_diff) <= heading_eps:
-            reverse_start = rear_mid_dist < front_mid_dist
+    dist_diff = rear_mid_dist - front_mid_dist
+    reverse_start = allow_reverse and dist_diff < 0
     start_for_plan = start_pose.copy()
     if reverse_start:
-        start_for_plan["heading"] = reverse_heading
+        start_for_plan["heading"] = normalize_angle(start_for_plan["heading"] + math.pi)
     logger.info(
         "parking_path plan: limits max_curvature=%.4f, min_turn_radius=%.2f, max_steer=%.2f, wheel_base=%.2f, "
-        "vehicle_size=%.2fx%.2f, allow_reverse=%s, heading_diff=%.2f, reverse_heading_diff=%.2f, "
-        "front_mid_dist=%.2f, rear_mid_dist=%.2f, reverse_start=%s",
+        "vehicle_size=%.2fx%.2f, allow_reverse=%s, front_mid_dist=%.2f, rear_mid_dist=%.2f, dist_diff=%.2f, "
+        "reverse_start=%s",
         min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, abs(math.tan(MAX_STEER) / WHEEL_BASE)),
         MIN_TURN_RADIUS,
         MAX_STEER,
@@ -526,10 +518,9 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         VEHICLE_LENGTH,
         VEHICLE_WIDTH,
         allow_reverse,
-        forward_heading_diff,
-        reverse_heading_diff,
         front_mid_dist,
         rear_mid_dist,
+        dist_diff,
         reverse_start,
     )
     obstacles = await _load_perception_obstacles(vehicle_id)
@@ -537,12 +528,6 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     if obstacles:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
     path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
-    if not path and allow_reverse:
-        reverse_start = not reverse_start
-        start_for_plan = start_pose.copy()
-        start_for_plan["heading"] = reverse_heading if reverse_start else start_pose["heading"]
-        logger.info("parking_path plan: retry with reverse_start")
-        path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
     if not path:
         if not obstacles:
             fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse)
