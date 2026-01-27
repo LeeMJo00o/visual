@@ -502,13 +502,15 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     rear_mid_y = start_pose["y"] - math.sin(start_pose["heading"]) * half_length
     front_mid_dist = math.hypot(end_pose["x"] - front_mid_x, end_pose["y"] - front_mid_y)
     rear_mid_dist = math.hypot(end_pose["x"] - rear_mid_x, end_pose["y"] - rear_mid_y)
-    reverse_start = allow_reverse and rear_mid_dist < front_mid_dist
+    dist_diff = rear_mid_dist - front_mid_dist
+    reverse_start = allow_reverse and dist_diff < 0
     start_for_plan = start_pose.copy()
     if reverse_start:
         start_for_plan["heading"] = normalize_angle(start_for_plan["heading"] + math.pi)
     logger.info(
         "parking_path plan: limits max_curvature=%.4f, min_turn_radius=%.2f, max_steer=%.2f, wheel_base=%.2f, "
-        "vehicle_size=%.2fx%.2f, allow_reverse=%s, front_mid_dist=%.2f, rear_mid_dist=%.2f, reverse_start=%s",
+        "vehicle_size=%.2fx%.2f, allow_reverse=%s, front_mid_dist=%.2f, rear_mid_dist=%.2f, dist_diff=%.2f, "
+        "reverse_start=%s",
         min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, abs(math.tan(MAX_STEER) / WHEEL_BASE)),
         MIN_TURN_RADIUS,
         MAX_STEER,
@@ -518,6 +520,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         allow_reverse,
         front_mid_dist,
         rear_mid_dist,
+        dist_diff,
         reverse_start,
     )
     obstacles = await _load_perception_obstacles(vehicle_id)
@@ -525,12 +528,12 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     if obstacles:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
     path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
-    if not path and allow_reverse:
+    if not path and allow_reverse and abs(dist_diff) <= 0.1:
         reverse_start = not reverse_start
         start_for_plan = start_pose.copy()
         if reverse_start:
             start_for_plan["heading"] = normalize_angle(start_for_plan["heading"] + math.pi)
-        logger.info("parking_path plan: retry with reverse_start")
+        logger.info("parking_path plan: retry with reverse_start (distance tie)")
         path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
     if not path:
         if not obstacles:
