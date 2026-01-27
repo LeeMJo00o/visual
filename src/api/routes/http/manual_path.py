@@ -184,7 +184,9 @@ def _build_start_pose(pose: dict | None) -> dict:
     }
 
 
-def _project_point_to_segment(point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]) -> tuple[float, float, float]:
+def _project_point_to_segment(
+    point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]
+) -> tuple[float, float, float]:
     px, py = point
     x1, y1 = start
     x2, y2 = end
