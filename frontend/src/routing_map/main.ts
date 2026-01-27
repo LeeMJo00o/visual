@@ -137,6 +137,16 @@ export default class ApplicationManager extends GraphicTools {
     dragging: false,
     startPoint: null as Position | null,
   }
+  public parkingPathContainer: Container | null = null
+  public parkingPathPreviewGraphics: Graphics | null = null
+  public parkingPathPoseContainer: Container | null = null
+  public parkingPathArrowGraphics: Graphics | null = null
+  public parkingObstacleGraphics: Graphics | null = null
+  public parkingPathState = {
+    active: false,
+    dragging: false,
+    startPoint: null as Position | null,
+  }
 
   constructor() {
     // 如果已经存在实例，返回现有实例
@@ -199,6 +209,11 @@ export default class ApplicationManager extends GraphicTools {
     this.manualPathContainer = null
     this.manualPathPreviewGraphics = null
     this.manualPathArrowGraphics = null
+    this.parkingPathContainer = null
+    this.parkingPathPreviewGraphics = null
+    this.parkingPathPoseContainer = null
+    this.parkingPathArrowGraphics = null
+    this.parkingObstacleGraphics = null
   }
 
   /**
@@ -482,6 +497,17 @@ export default class ApplicationManager extends GraphicTools {
       this.manualPathContainer.addChild(this.manualPathPreviewGraphics)
       this.manualPathContainer.addChild(this.manualPathArrowGraphics)
       this.mainContainer.addChild(this.manualPathContainer)
+
+      this.parkingPathContainer = new Container()
+      this.parkingPathPreviewGraphics = new Graphics()
+      this.parkingPathPoseContainer = new Container()
+      this.parkingPathArrowGraphics = new Graphics()
+      this.parkingObstacleGraphics = new Graphics()
+      this.parkingPathContainer.addChild(this.parkingPathPreviewGraphics)
+      this.parkingPathContainer.addChild(this.parkingPathPoseContainer)
+      this.parkingPathContainer.addChild(this.parkingPathArrowGraphics)
+      this.parkingPathContainer.addChild(this.parkingObstacleGraphics)
+      this.mainContainer.addChild(this.parkingPathContainer)
 
       this.graphics_path_apply_area.alpha = 0.5
 
@@ -780,10 +806,34 @@ export default class ApplicationManager extends GraphicTools {
     this.manualPathState.active = active
     this.manualPathState.dragging = false
     this.manualPathState.startPoint = null
-    this.mouse_func = active ? 'manual_path' : 'default'
+    if (active) {
+      this.mouse_func = 'manual_path'
+    } else if (this.parkingPathState.active) {
+      this.mouse_func = 'parking_path'
+    } else {
+      this.mouse_func = 'default'
+    }
     if (!active) {
       this.clearManualPathPreview()
       this.clearManualPathArrow()
+    }
+  }
+
+  setParkingPathMode(active: boolean) {
+    this.parkingPathState.active = active
+    this.parkingPathState.dragging = false
+    this.parkingPathState.startPoint = null
+    if (active) {
+      this.mouse_func = 'parking_path'
+    } else if (this.manualPathState.active) {
+      this.mouse_func = 'manual_path'
+    } else {
+      this.mouse_func = 'default'
+    }
+    if (!active) {
+      this.clearParkingPathPreview()
+      this.clearParkingPathArrow()
+      this.clearParkingObstacles()
     }
   }
 
@@ -799,6 +849,16 @@ export default class ApplicationManager extends GraphicTools {
     this.updateManualPathArrow(startX, startY, 0)
   }
 
+  handleParkingPathPointerDown(e) {
+    if (!this.parkingPathState.active) return
+    if (e.button !== 0) return
+    const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    this.clearParkingPathPreview()
+    this.parkingPathState.dragging = true
+    this.parkingPathState.startPoint = { x, y, theta: 0 }
+    this.updateParkingPathArrow(x, y, 0)
+  }
+
   handleManualPathPointerMove(e) {
     if (!this.manualPathState.active || !this.manualPathState.dragging) return
     const start = this.manualPathState.startPoint
@@ -806,6 +866,15 @@ export default class ApplicationManager extends GraphicTools {
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
     this.updateManualPathArrow(start.x, start.y, heading)
+  }
+
+  handleParkingPathPointerMove(e) {
+    if (!this.parkingPathState.active || !this.parkingPathState.dragging) return
+    const start = this.parkingPathState.startPoint
+    if (!start) return
+    const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    const heading = Math.atan2(y - start.y, x - start.x)
+    this.updateParkingPathArrow(start.x, start.y, heading)
   }
 
   handleManualPathPointerUp(e) {
@@ -826,6 +895,23 @@ export default class ApplicationManager extends GraphicTools {
     )
   }
 
+  handleParkingPathPointerUp(e) {
+    if (!this.parkingPathState.active || !this.parkingPathState.dragging) return
+    const start = this.parkingPathState.startPoint
+    if (!start) return
+    const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    const heading = Math.atan2(y - start.y, x - start.x)
+    const target = { x: start.x, y: start.y, heading }
+    this.parkingPathState.dragging = false
+    this.parkingPathState.startPoint = null
+    this.clearParkingPathArrow()
+    window.dispatchEvent(
+      new CustomEvent('parking-path-target-selected', {
+        detail: target,
+      }),
+    )
+  }
+
   updateManualPathArrow(x: number, y: number, heading: number) {
     if (!this.manualPathArrowGraphics) return
     const [appX, appY] = this.map_xy_to_app([x, y])
@@ -833,9 +919,25 @@ export default class ApplicationManager extends GraphicTools {
     this.drawArrow(this.manualPathArrowGraphics, appX, appY, -heading, 3, '#ffaa00', 0.8)
   }
 
+  updateParkingPathArrow(x: number, y: number, heading: number) {
+    if (!this.parkingPathArrowGraphics) return
+    const [appX, appY] = this.map_xy_to_app([x, y])
+    this.parkingPathArrowGraphics.clear()
+    this.parkingPathArrowGraphics.pivot.set(0, 0)
+    this.parkingPathArrowGraphics.position.set(0, 0)
+    this.parkingPathArrowGraphics.rotation = 0
+    this.drawArrow(this.parkingPathArrowGraphics, appX, appY, -heading, 3, '#00c2ff', 0.8)
+  }
+
   clearManualPathArrow() {
     if (this.manualPathArrowGraphics) {
       this.manualPathArrowGraphics.clear()
+    }
+  }
+
+  clearParkingPathArrow() {
+    if (this.parkingPathArrowGraphics) {
+      this.parkingPathArrowGraphics.clear()
     }
   }
 
@@ -857,9 +959,93 @@ export default class ApplicationManager extends GraphicTools {
     this.drawArrow(g, 0, 0, 0, 3, fillColor, 0.5)
   }
 
+  updateParkingPathPreviewPath(points: { x: number; y: number; heading: number }[], valid = true) {
+    if (
+      !this.parkingPathPreviewGraphics ||
+      !this.parkingPathArrowGraphics ||
+      !this.parkingPathPoseContainer ||
+      points.length < 2
+    )
+      return
+    const lineGraphics = this.parkingPathPreviewGraphics
+    const markerGraphics = this.parkingPathArrowGraphics
+    const poseContainer = this.parkingPathPoseContainer
+    lineGraphics.clear()
+    markerGraphics.clear()
+    poseContainer.removeChildren()
+    const lineColor = valid ? 0x00d60b : 0xff4d4f
+    const poseColor = lineColor
+    this.drawLine(
+      lineGraphics,
+      'parking-path-preview',
+      points.map((point) => [point.x, point.y]),
+      false,
+      lineColor,
+      1,
+      0.8,
+    )
+    const width = 16
+    const height = 3.1
+    const maxPoseMarkers = 10
+    const minStride = 10
+    const previewPoints = points.slice(0, maxPoseMarkers * minStride)
+    previewPoints.forEach((point, index) => {
+      if (index % minStride !== 0) return
+      const [appX, appY] = this.map_xy_to_app([point.x, point.y])
+      const rect = new Graphics()
+      rect
+        .rect(-width / 2, -height / 2, width, height)
+        .fill({ color: poseColor, alpha: 0.18 })
+        .stroke({ color: poseColor, width: 0.5, alpha: 0.4 })
+      rect.position.set(appX, appY)
+      rect.rotation = -point.heading
+      poseContainer.addChild(rect)
+    })
+    const end = points[points.length - 1]
+    const [appX, appY] = this.map_xy_to_app([end.x, end.y])
+    markerGraphics.pivot.set(appX, appY)
+    markerGraphics.position.set(appX, appY)
+    markerGraphics.rect(-width / 2, -height / 2, width, height)
+      .fill({ color: lineColor, alpha: 0.4 })
+      .stroke({ color: lineColor, width: 0.6, alpha: 0.6 })
+    markerGraphics.rotation = -end.heading
+    markerGraphics.pivot.set(0, 0)
+    this.drawArrow(markerGraphics, 0, 0, 0, 3, lineColor, 0.5)
+  }
+
   clearManualPathPreview() {
     if (this.manualPathPreviewGraphics) {
       this.manualPathPreviewGraphics.clear()
+    }
+  }
+
+  clearParkingPathPreview() {
+    if (this.parkingPathPreviewGraphics) {
+      this.parkingPathPreviewGraphics.clear()
+    }
+    if (this.parkingPathPoseContainer) {
+      this.parkingPathPoseContainer.removeChildren()
+    }
+    if (this.parkingPathArrowGraphics) {
+      this.parkingPathArrowGraphics.clear()
+    }
+  }
+
+  updateParkingObstacles(points: { x: number; y: number }[]) {
+    if (!this.parkingObstacleGraphics) return
+    const g = this.parkingObstacleGraphics
+    g.clear()
+    points.forEach((point) => {
+      const [appX, appY] = this.map_xy_to_app([point.x, point.y])
+      g.circle(appX, appY, 2)
+        .fill({ color: 0xff7a45, alpha: 0.8 })
+        .stroke({ color: 0xff7a45, width: 0.6, alpha: 0.8 })
+    })
+  }
+
+  clearParkingObstacles() {
+    if (this.parkingObstacleGraphics) {
+      this.parkingObstacleGraphics.clear()
     }
   }
 
