@@ -528,13 +528,6 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     if obstacles:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
     path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
-    if not path and allow_reverse and abs(dist_diff) <= 0.1:
-        reverse_start = not reverse_start
-        start_for_plan = start_pose.copy()
-        if reverse_start:
-            start_for_plan["heading"] = normalize_angle(start_for_plan["heading"] + math.pi)
-        logger.info("parking_path plan: retry with reverse_start (distance tie)")
-        path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
     if not path:
         if not obstacles:
             fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse)
