@@ -239,38 +239,24 @@ const buildParkingBridgePayload = (vehicleId: string, path: { x: number; y: numb
   const transId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`
   const naviId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`
   const timestamp = formatBridgeTimestamp()
-  const resolveHeading = (index: number) => {
-    if (path.length === 1) return path[0].heading
-    const prev = path[Math.max(0, index - 1)]
-    const next = path[Math.min(path.length - 1, index + 1)]
-    const dx = next.x - prev.x
-    const dy = next.y - prev.y
-    if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) {
-      return path[index].heading
-    }
-    return Math.atan2(dy, dx)
-  }
   const commandReferenceLines = [
     {
       command_id: 0,
-      points: path.map((point, index) => {
-        const heading = resolveHeading(index)
-        return {
-          x: point.x,
-          y: point.y,
-          z: 0,
-          course_angle: heading,
-          heading_angle: heading,
-          s: 0,
-          k: 0,
-          d: 0,
-          v: 2,
-        }
-      }),
+      points: path.map((point) => ({
+        x: point.x,
+        y: point.y,
+        z: 0,
+        course_angle: point.heading,
+        heading_angle: point.heading,
+        s: 0,
+        k: 0,
+        d: 0,
+        v: 2,
+      })),
     },
   ]
-  const startHeading = resolveHeading(0)
-  const endHeading = resolveHeading(path.length - 1)
+  const startHeading = firstPoint.heading
+  const endHeading = lastPoint.heading
   const guidanceDefaults = {
     direction: 2,
     deviation: null,
