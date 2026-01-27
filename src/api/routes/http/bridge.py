@@ -16,6 +16,7 @@ async def bridge_message(req: dict = Body()) -> StdRes:
     top_name = req.get("topName")
     qos_code = req.get("qosCode")
     payload = req.get("payload")
+    forward_req = req
     payload_len = len(payload) if isinstance(payload, str) else None
     payload_obj = payload if isinstance(payload, dict) else None
     if payload_obj is None and isinstance(payload, str):
@@ -51,8 +52,21 @@ async def bridge_message(req: dict = Body()) -> StdRes:
             len(command_lines) if isinstance(command_lines, list) else None,
             command_points,
         )
-    logger.info("bridge message forwarding raw: payload={}", req)
-    res = await aio_http.post(bridge_url, json=req, timeout=10)
+        forward_payload = {
+            "header": header_info or {},
+            "body": json.dumps(body_info, ensure_ascii=False),
+            "type": payload_obj.get("type", 2) if isinstance(payload_obj, dict) else 2,
+        }
+        forward_req = {
+            **req,
+            "payload": json.dumps(forward_payload, ensure_ascii=False),
+        }
+        logger.info(
+            "bridge message payload reformatted: payloadLen={}",
+            len(forward_req["payload"]),
+        )
+    logger.info("bridge message forwarding raw: payload={}", forward_req)
+    res = await aio_http.post(bridge_url, json=forward_req, timeout=10)
     try:
         json_attr = getattr(res, "json", None)
         if callable(json_attr):
