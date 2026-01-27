@@ -235,7 +235,43 @@ const formatBridgeTimestamp = () => {
 
 const buildParkingBridgePayload = (vehicleId: string, path: { x: number; y: number; heading: number }[]) => {
   const lastPoint = path[path.length - 1]
+  const firstPoint = path[0]
   const transId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`
+  const naviId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`
+  const timestamp = formatBridgeTimestamp()
+  const commandReferenceLines = [
+    {
+      command_id: 0,
+      points: path.map((point) => ({
+        x: point.x,
+        y: point.y,
+        z: 0,
+        course_angle: point.heading,
+        heading_angle: point.heading,
+        s: 0,
+        k: 0,
+        d: 0,
+        v: 2,
+      })),
+    },
+  ]
+  const startHeading = firstPoint.heading
+  const endHeading = lastPoint.heading
+  const guidanceDefaults = {
+    direction: 2,
+    deviation: null,
+    speeds: {
+      vmax: 200.0,
+      vmaxDev: 1,
+    },
+    timeWindow: null,
+    type: 'STRAIGHT',
+    laneId: -1,
+    equipmentLimit: {
+      maxHeight: 11.2,
+      minHeight: 11.1,
+    },
+  }
   return {
     qosCode: 2,
     topName: `veh/${vehicleId}/missioncmd/request`,
@@ -243,51 +279,63 @@ const buildParkingBridgePayload = (vehicleId: string, path: { x: number; y: numb
       header: {
         transId,
         deviceId: vehicleId,
-        timestamp: formatBridgeTimestamp(),
+        timestamp,
       },
       body: {
-        backward_motion: true,
-        command_reference_lines: [],
-        dense_park: false,
+        naviId,
         destination: {
-          description: '01',
           locationId: '01',
-          locationType: 'YCTP',
           refPosition: {
-            elevation: 0,
-            latitude: lastPoint.y,
             longitude: lastPoint.x,
+            latitude: lastPoint.y,
+            elevation: 0,
           },
+          locationType: 'YCTP',
+          description: '01',
         },
-        device_id: vehicleId,
-        global_destination: {
-          id: 0,
-          s: 0,
-          x: lastPoint.x,
-          y: lastPoint.y,
-          theta: lastPoint.heading,
+        estimatedTime: '0',
+        pathGuidance: {
+          routeId: '1',
+          points: [
+            {
+              pos: {
+                longitude: firstPoint.x,
+                latitude: firstPoint.y,
+                elevation: 0,
+              },
+              heading: startHeading,
+              ...guidanceDefaults,
+            },
+            {
+              pos: {
+                longitude: lastPoint.x,
+                latitude: lastPoint.y,
+                elevation: 0,
+              },
+              heading: endHeading,
+              ...guidanceDefaults,
+            },
+          ],
         },
-        global_lane_sequence: [],
+        routeUpdate: 0,
+        referId: naviId,
         isFinalNavi: true,
-        lane_sequence: [],
-        lane_sequence_s: [],
-        map_firmware_id: '',
-        navi_task_type: 0,
-        occupancy_list: [],
-        request_timestamp: Math.floor(Date.now() / 1000),
-        reverse_done: false,
-        route_graph: { nodes: [] },
-        route_waypoints: path.map((point, index) => ({
-          node_index: 0,
-          s: index * 0.5,
-          theta: point.heading,
-          x: point.x,
-          y: point.y,
-        })),
-        timestamp: formatBridgeTimestamp(),
+        shortNavi: true,
+        navi_task_type: 1,
         trans_id: transId,
-        type: 2,
+        timestamp: Date.now(),
+        task_id: naviId,
+        map_firmware_id: '',
+        backward_motion: true,
+        dense_park: false,
+        lane_sequence: [],
+        route_graph: { nodes: [] },
+        route_waypoints: [],
+        command_reference_lines: commandReferenceLines,
+        global_lane_sequence: [],
+        global_destination: {},
       },
+      type: 2,
     }),
   }
 }
