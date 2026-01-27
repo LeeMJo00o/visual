@@ -25,6 +25,14 @@ BUSINESS_KEY_CACHE_PREFIX = "pp_visual:parking_path:business_key:"
 PERCEPTION_OBSTACLES_KEY = "pp_visual:perception:obstacles"
 PLANNER_STEP_SIZE = 0.5
 OBSTACLE_INFLATION = 0.5
+VEHICLE_LENGTH = 15.48
+VEHICLE_WIDTH = 2.8
+WHEEL_BASE = 9.3
+MAX_STEER = 0.34
+MIN_TURN_RADIUS = 8.1
+MAX_CURVATURE = 0.14
+ALLOW_REVERSE_DEFAULT = True
+REVERSE_HEADING_DIFF_THRESHOLD = math.radians(120)
 
 
 @dataclass(order=True)
@@ -193,16 +201,21 @@ def _is_collision(x: float, y: float, obstacles: list[tuple[float, float]], radi
     return False
 
 
-def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, float]]) -> list[dict]:
+def _plan_hybrid_a_star(
+    start: dict,
+    goal: dict,
+    obstacles: list[tuple[float, float]],
+    allow_reverse: bool,
+) -> list[dict]:
     heading_bins = 24
     max_iter = 20000
-    wheel_base = 3.576
-    max_steer = 0.3
     goal_tolerance = 0.8
     heading_tolerance = 0.5
-    vehicle_radius = 1.2
+    vehicle_radius = VEHICLE_WIDTH / 2.0
     obstacle_radius = vehicle_radius + OBSTACLE_INFLATION
     position_limit = 10000.0
+    steer_curvature = abs(math.tan(MAX_STEER) / WHEEL_BASE)
+    max_curvature = min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, steer_curvature)
 
     def _heading_index(theta: float) -> int:
         return int(round((normalize_angle(theta) + math.pi) / (2 * math.pi) * heading_bins)) % heading_bins
@@ -217,7 +230,13 @@ def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, fl
     open_queue: list[_HybridQueueNode] = []
     seen: dict[tuple[int, int, int], float] = {}
     counter = 0
-    start_node = _HybridNode(start["x"], start["y"], start["heading"], 0.0, None)
+    start_node = _HybridNode(
+        start["x"],
+        start["y"],
+        start["heading"],
+        0.0,
+        None,
+    )
     start_key = _node_key(start_node)
     seen[start_key] = 0.0
     start_priority = _heuristic_distance(start_node.x, start_node.y, goal)
@@ -225,8 +244,9 @@ def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, fl
 
     while open_queue and len(seen) < max_iter:
         current = heapq.heappop(open_queue).node
+        distance_to_goal = _heuristic_distance(current.x, current.y, goal)
         if (
-            _heuristic_distance(current.x, current.y, goal) <= goal_tolerance
+            distance_to_goal <= goal_tolerance
             and abs(normalize_angle(current.heading - goal["heading"])) <= heading_tolerance
         ):
             path: list[dict] = []
@@ -236,18 +256,24 @@ def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, fl
                 node = node.parent
             return list(reversed(path))
 
-        for direction in (1.0, -1.0):
-            for steer in (-max_steer, 0.0, max_steer):
-                next_heading = normalize_angle(
-                    current.heading + direction * PLANNER_STEP_SIZE / wheel_base * math.tan(steer)
-                )
+        directions = (1.0, -1.0) if allow_reverse else (1.0,)
+        for direction in directions:
+            for curvature in (-max_curvature, 0.0, max_curvature):
+                next_heading = normalize_angle(current.heading + direction * PLANNER_STEP_SIZE * curvature)
                 next_x = current.x + direction * PLANNER_STEP_SIZE * math.cos(current.heading)
                 next_y = current.y + direction * PLANNER_STEP_SIZE * math.sin(current.heading)
                 if abs(next_x) > position_limit or abs(next_y) > position_limit:
                     continue
                 if _is_collision(next_x, next_y, obstacles, obstacle_radius):
                     continue
-                next_node = _HybridNode(next_x, next_y, next_heading, current.cost + PLANNER_STEP_SIZE, current)
+                next_cost = current.cost + PLANNER_STEP_SIZE
+                next_node = _HybridNode(
+                    next_x,
+                    next_y,
+                    next_heading,
+                    next_cost,
+                    current,
+                )
                 key = _node_key(next_node)
                 if key in seen and seen[key] <= next_node.cost:
                     continue
@@ -258,10 +284,28 @@ def _plan_hybrid_a_star(start: dict, goal: dict, obstacles: list[tuple[float, fl
     return []
 
 
-def _build_simple_path(start: dict, goal: dict) -> list[dict]:
-    max_steer = 0.3
-    wheel_base = 3.576
-    rho = wheel_base / math.tan(max_steer)
+def _build_straight_path(start: dict, goal: dict, heading: float, reverse: bool) -> list[dict]:
+    path: list[dict] = [{"x": start["x"], "y": start["y"], "heading": heading}]
+    dx = goal["x"] - start["x"]
+    dy = goal["y"] - start["y"]
+    distance = math.hypot(dx, dy)
+    if distance < 1e-6:
+        return path
+    steps = max(1, int(math.ceil(distance / PLANNER_STEP_SIZE)))
+    step = distance / steps
+    x, y = start["x"], start["y"]
+    direction = -1.0 if reverse else 1.0
+    for _ in range(steps):
+        x += direction * step * math.cos(heading)
+        y += direction * step * math.sin(heading)
+        path.append({"x": x, "y": y, "heading": heading})
+    return path
+
+
+def _build_simple_path(start: dict, goal: dict, allow_reverse: bool) -> list[dict]:
+    steer_curvature = abs(math.tan(MAX_STEER) / WHEEL_BASE)
+    max_curvature = min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, steer_curvature)
+    rho = 1.0 / max_curvature
     path: list[dict] = []
 
     def _mod2pi(theta: float) -> float:
@@ -330,6 +374,22 @@ def _build_simple_path(start: dict, goal: dict) -> list[dict]:
             return ("S", (0.0, d, 0.0))
         best = min(valid, key=lambda item: sum(item[1]))
         return best
+
+    dx = goal["x"] - start["x"]
+    dy = goal["y"] - start["y"]
+    line_heading = math.atan2(dy, dx)
+    distance = math.hypot(dx, dy)
+    straight_heading_tolerance = 0.6
+    start_heading_error = abs(normalize_angle(start["heading"] - line_heading))
+    goal_heading_error = abs(normalize_angle(goal["heading"] - line_heading))
+    if start_heading_error <= straight_heading_tolerance and goal_heading_error <= straight_heading_tolerance:
+        return _build_straight_path(start, goal, line_heading, False)
+    if allow_reverse:
+        reverse_heading = normalize_angle(line_heading + math.pi)
+        start_reverse_error = abs(normalize_angle(start["heading"] - reverse_heading))
+        goal_reverse_error = abs(normalize_angle(goal["heading"] - reverse_heading))
+        if start_reverse_error <= straight_heading_tolerance and goal_reverse_error <= straight_heading_tolerance:
+            return _build_straight_path(start, goal, reverse_heading, True)
 
     mode, (t, p, q) = _dubins_params()
     x, y, heading = start["x"], start["y"], start["heading"]
@@ -434,18 +494,67 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         "heading": float(points.get("heading", 0.0)),
     }
     logger.info(f"parking_path plan: start_pose={start_pose}, end_pose={end_pose}")
-    logger.info("parking_path plan: limits max_steer=0.3, position_limit=10000")
+    allow_reverse = bool(req.get("allow_reverse", ALLOW_REVERSE_DEFAULT))
+    forward_heading_diff = abs(normalize_angle(start_pose["heading"] - end_pose["heading"]))
+    reverse_heading = normalize_angle(start_pose["heading"] + math.pi)
+    reverse_heading_diff = abs(normalize_angle(reverse_heading - end_pose["heading"]))
+    heading_eps = 1e-3
+    half_length = VEHICLE_LENGTH / 2.0
+    front_mid_x = start_pose["x"] + math.cos(start_pose["heading"]) * half_length
+    front_mid_y = start_pose["y"] + math.sin(start_pose["heading"]) * half_length
+    rear_mid_x = start_pose["x"] - math.cos(start_pose["heading"]) * half_length
+    rear_mid_y = start_pose["y"] - math.sin(start_pose["heading"]) * half_length
+    front_mid_dist = math.hypot(end_pose["x"] - front_mid_x, end_pose["y"] - front_mid_y)
+    rear_mid_dist = math.hypot(end_pose["x"] - rear_mid_x, end_pose["y"] - rear_mid_y)
+    reverse_start = False
+    if allow_reverse:
+        if reverse_heading_diff < forward_heading_diff - heading_eps:
+            reverse_start = True
+        elif abs(reverse_heading_diff - forward_heading_diff) <= heading_eps:
+            reverse_start = rear_mid_dist < front_mid_dist
+    start_for_plan = start_pose.copy()
+    if reverse_start:
+        start_for_plan["heading"] = reverse_heading
+    logger.info(
+        "parking_path plan: limits max_curvature=%.4f, min_turn_radius=%.2f, max_steer=%.2f, wheel_base=%.2f, "
+        "vehicle_size=%.2fx%.2f, allow_reverse=%s, heading_diff=%.2f, reverse_heading_diff=%.2f, "
+        "front_mid_dist=%.2f, rear_mid_dist=%.2f, reverse_start=%s",
+        min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, abs(math.tan(MAX_STEER) / WHEEL_BASE)),
+        MIN_TURN_RADIUS,
+        MAX_STEER,
+        WHEEL_BASE,
+        VEHICLE_LENGTH,
+        VEHICLE_WIDTH,
+        allow_reverse,
+        forward_heading_diff,
+        reverse_heading_diff,
+        front_mid_dist,
+        rear_mid_dist,
+        reverse_start,
+    )
     obstacles = await _load_perception_obstacles(vehicle_id)
     logger.info(f"parking_path plan: obstacles={len(obstacles)}")
     if obstacles:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
-    path = _plan_hybrid_a_star(start_pose, end_pose, obstacles)
+    path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
+    if not path and allow_reverse:
+        reverse_start = not reverse_start
+        start_for_plan = start_pose.copy()
+        start_for_plan["heading"] = reverse_heading if reverse_start else start_pose["heading"]
+        logger.info("parking_path plan: retry with reverse_start")
+        path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
     if not path:
         if not obstacles:
-            fallback_path = _build_simple_path(start_pose, end_pose)
+            fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse)
             logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
             return StdRes(
-                data={"ok": True, "target": end_pose, "path": fallback_path, "fallback": True}
+                data={
+                    "ok": True,
+                    "target": end_pose,
+                    "path": fallback_path,
+                    "fallback": True,
+                    "reverse_start": reverse_start,
+                }
             )
         logger.warning(
             "parking_path plan: failed, start_pose=%s, end_pose=%s, obstacles=%s",
@@ -455,7 +564,9 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         )
         return StdRes(data={"ok": False, "message": "hybrid plan failed"})
     logger.info(f"parking_path plan: success, path_size={len(path)}")
-    return StdRes(data={"ok": True, "target": end_pose, "path": path})
+    return StdRes(
+        data={"ok": True, "target": end_pose, "path": path, "reverse_start": reverse_start}
+    )
 
 
 @router.get("/obstacles")
