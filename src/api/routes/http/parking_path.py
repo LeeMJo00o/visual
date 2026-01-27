@@ -529,18 +529,6 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
     path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
     if not path:
-        if not obstacles:
-            fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse)
-            logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
-            return StdRes(
-                data={
-                    "ok": True,
-                    "target": end_pose,
-                    "path": fallback_path,
-                    "fallback": True,
-                    "reverse_start": reverse_start,
-                }
-            )
         logger.warning(
             "parking_path plan: failed, start_pose=%s, end_pose=%s, obstacles=%s",
             start_pose,
