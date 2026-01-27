@@ -430,6 +430,41 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool) -> list[dic
     return path
 
 
+RUN_AREAS = [
+    [(84.726, -572.809), (-37.087, -1268.711), (-21.702, -1270.487), (105.851, -575.139)],
+    [(352.309, -620.029), (229.085, -1318.748), (245.866, -1319.991), (370.430, -622.527)],
+    [(618.297, -666.568), (497.099, -1361.706), (510.565, -1365.208), (638.766, -667.107)],
+    [(-250.847, 55.085), (-240.235, -512.303), (643.740, -668.288), (742.151, -121.034)],
+    [(-257.877, -1232.300), (-268.381, -1274.584), (643.298, -1435.105), (647.876, -1394.167)],
+]
+
+
+def _point_in_polygon(x: float, y: float, polygon: list[tuple[float, float]]) -> bool:
+    inside = False
+    j = len(polygon) - 1
+    for i, (xi, yi) in enumerate(polygon):
+        xj, yj = polygon[j]
+        intersects = (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi + 1e-9) + xi
+        if intersects:
+            inside = not inside
+        j = i
+    return inside
+
+
+def _filter_path_by_run_area(path: list[dict]) -> list[dict]:
+    filtered: list[dict] = []
+    for point in path:
+        x = point.get("x")
+        y = point.get("y")
+        if x is None or y is None:
+            continue
+        for polygon in RUN_AREAS:
+            if _point_in_polygon(float(x), float(y), polygon):
+                filtered.append(point)
+                break
+    return filtered
+
+
 @router.post("/enter")
 async def enter_parking_path(req: dict = Body()) -> StdRes:
     vehicle_id = req.get("vehicle_id")
@@ -532,11 +567,18 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         if not obstacles:
             fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse)
             logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
+            filtered_path = _filter_path_by_run_area(fallback_path)
+            logger.info(
+                "parking_path plan: fallback filtered_path_size=%s",
+                len(filtered_path),
+            )
+            if not filtered_path:
+                return StdRes(data={"ok": False, "message": "path out of run area"})
             return StdRes(
                 data={
                     "ok": True,
                     "target": end_pose,
-                    "path": fallback_path,
+                    "path": filtered_path,
                     "fallback": True,
                     "reverse_start": reverse_start,
                 }
@@ -548,9 +590,21 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
             len(obstacles),
         )
         return StdRes(data={"ok": False, "message": "hybrid plan failed"})
-    logger.info(f"parking_path plan: success, path_size={len(path)}")
+    filtered_path = _filter_path_by_run_area(path)
+    logger.info(
+        "parking_path plan: success, path_size=%s, filtered_path_size=%s",
+        len(path),
+        len(filtered_path),
+    )
+    if not filtered_path:
+        return StdRes(data={"ok": False, "message": "path out of run area"})
     return StdRes(
-        data={"ok": True, "target": end_pose, "path": path, "reverse_start": reverse_start}
+        data={
+            "ok": True,
+            "target": end_pose,
+            "path": filtered_path,
+            "reverse_start": reverse_start,
+        }
     )
 
 

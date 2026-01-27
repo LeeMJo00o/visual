@@ -28,6 +28,7 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
     vehicleId?: string
     previewPath?: ParkingPathTarget[] | null
     planValid?: boolean
+    reverseStart?: boolean
   }
   const active = ref(Boolean(storedState.active))
   const vehicleId = ref(storedState.vehicleId || '')
@@ -35,6 +36,7 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
   const previewPath = ref<ParkingPathTarget[] | null>(storedState.previewPath || null)
   const planning = ref(false)
   const planValid = ref(Boolean(storedState.planValid))
+  const reverseStart = ref(Boolean(storedState.reverseStart))
 
   function startMode(id: string) {
     active.value = true
@@ -43,15 +45,17 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
     previewPath.value = null
     planning.value = false
     planValid.value = false
+    reverseStart.value = false
   }
 
   function setTarget(next: ParkingPathTarget | null) {
     target.value = next
   }
 
-  function setPreviewPath(next: ParkingPathTarget[] | null, valid: boolean) {
+  function setPreviewPath(next: ParkingPathTarget[] | null, valid: boolean, reverse = false) {
     previewPath.value = next
     planValid.value = valid
+    reverseStart.value = reverse
   }
 
   function reset() {
@@ -61,6 +65,7 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
     previewPath.value = null
     planning.value = false
     planValid.value = false
+    reverseStart.value = false
   }
 
   watch(
@@ -69,8 +74,15 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
       vehicleId: vehicleId.value,
       previewPath: previewPath.value,
       planValid: planValid.value,
+      reverseStart: reverseStart.value,
     }),
-    (state: { active: boolean; vehicleId: string; previewPath: ParkingPathTarget[] | null; planValid: boolean }) => {
+    (state: {
+      active: boolean
+      vehicleId: string
+      previewPath: ParkingPathTarget[] | null
+      planValid: boolean
+      reverseStart: boolean
+    }) => {
       try {
         if (typeof window === 'undefined' || !window.localStorage) {
           return
@@ -90,6 +102,7 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
     previewPath,
     planning,
     planValid,
+    reverseStart,
     startMode,
     setTarget,
     setPreviewPath,
