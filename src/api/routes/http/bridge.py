@@ -13,7 +13,32 @@ router = APIRouter()
 @router.post("/message")
 async def bridge_message(req: dict = Body()) -> StdRes:
     bridge_url = f"{pp_visual_BRIDGE_URL.rstrip('/')}/api/bridge/message"
-    logger.info(f"bridge message forwarding: url={bridge_url}, payload={req}")
+    top_name = req.get("topName")
+    qos_code = req.get("qosCode")
+    payload = req.get("payload")
+    payload_len = len(payload) if isinstance(payload, str) else None
+    payload_obj = payload if isinstance(payload, dict) else None
+    if payload_obj is None and isinstance(payload, str):
+        try:
+            payload_obj = json.loads(payload)
+        except Exception:
+            payload_obj = None
+    header_info = payload_obj.get("header") if isinstance(payload_obj, dict) else None
+    body_info = payload_obj.get("body") if isinstance(payload_obj, dict) else None
+    logger.info(
+        "bridge message incoming: url=%s, topName=%s, qosCode=%s, payloadType=%s, payloadLen=%s",
+        bridge_url,
+        top_name,
+        qos_code,
+        type(payload).__name__,
+        payload_len,
+    )
+    logger.info(
+        "bridge message payload summary: header=%s, bodyKeys=%s",
+        header_info,
+        list(body_info.keys()) if isinstance(body_info, dict) else None,
+    )
+    logger.info("bridge message forwarding raw: payload=%s", req)
     res = await aio_http.post(bridge_url, json=req, timeout=10)
     try:
         json_attr = getattr(res, "json", None)
@@ -28,7 +53,7 @@ async def bridge_message(req: dict = Body()) -> StdRes:
         else:
             raw = text_attr
         data = {"raw": raw}
-    logger.info(f"bridge message response: status={res.status}, payload={data}")
+    logger.info("bridge message response: status=%s, payload=%s", res.status, data)
     if isinstance(data, str):
         try:
             data = json.loads(data)
