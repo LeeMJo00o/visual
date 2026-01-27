@@ -26,7 +26,7 @@ async def bridge_message(req: dict = Body()) -> StdRes:
     header_info = payload_obj.get("header") if isinstance(payload_obj, dict) else None
     body_info = payload_obj.get("body") if isinstance(payload_obj, dict) else None
     logger.info(
-        "bridge message incoming: url=%s, topName=%s, qosCode=%s, payloadType=%s, payloadLen=%s",
+        "bridge message incoming: url={}, topName={}, qosCode={}, payloadType={}, payloadLen={}",
         bridge_url,
         top_name,
         qos_code,
@@ -34,11 +34,24 @@ async def bridge_message(req: dict = Body()) -> StdRes:
         payload_len,
     )
     logger.info(
-        "bridge message payload summary: header=%s, bodyKeys=%s",
+        "bridge message payload summary: header={}, bodyKeys={}",
         header_info,
         list(body_info.keys()) if isinstance(body_info, dict) else None,
     )
-    logger.info("bridge message forwarding raw: payload=%s", req)
+    if isinstance(body_info, dict):
+        command_lines = body_info.get("command_reference_lines") or []
+        command_points = 0
+        if isinstance(command_lines, list):
+            for line in command_lines:
+                points = line.get("points") if isinstance(line, dict) else None
+                if isinstance(points, list):
+                    command_points += len(points)
+        logger.info(
+            "bridge message path summary: commandLines={}, commandPoints={}",
+            len(command_lines) if isinstance(command_lines, list) else None,
+            command_points,
+        )
+    logger.info("bridge message forwarding raw: payload={}", req)
     res = await aio_http.post(bridge_url, json=req, timeout=10)
     try:
         json_attr = getattr(res, "json", None)
@@ -53,7 +66,7 @@ async def bridge_message(req: dict = Body()) -> StdRes:
         else:
             raw = text_attr
         data = {"raw": raw}
-    logger.info("bridge message response: status=%s, payload=%s", res.status, data)
+    logger.info("bridge message response: status={}, payload={}", res.status, data)
     if isinstance(data, str):
         try:
             data = json.loads(data)
