@@ -233,7 +233,16 @@ const formatBridgeTimestamp = () => {
   )}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}${pad(now.getUTCMilliseconds(), 3)}Z`
 }
 
-const buildParkingBridgePayload = (vehicleId: string, path: { x: number; y: number; heading: number }[]) => {
+const normalizeAngle = (angle: number) => {
+  const twoPi = Math.PI * 2
+  return ((angle + Math.PI) % twoPi + twoPi) % twoPi - Math.PI
+}
+
+const buildParkingBridgePayload = (
+  vehicleId: string,
+  path: { x: number; y: number; heading: number }[],
+  reverseStart: boolean,
+) => {
   const lastPoint = path[path.length - 1]
   const firstPoint = path[0]
   const transId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`
@@ -246,8 +255,8 @@ const buildParkingBridgePayload = (vehicleId: string, path: { x: number; y: numb
         x: point.x,
         y: point.y,
         z: 0,
-        course_angle: point.heading,
-        heading_angle: point.heading,
+        course_angle: reverseStart ? normalizeAngle(point.heading + Math.PI) : point.heading,
+        heading_angle: reverseStart ? normalizeAngle(point.heading + Math.PI) : point.heading,
         s: 0,
         k: 0,
         d: 0,
@@ -326,7 +335,7 @@ const buildParkingBridgePayload = (vehicleId: string, path: { x: number; y: numb
         timestamp: Date.now(),
         task_id: naviId,
         map_firmware_id: '',
-        backward_motion: true,
+        backward_motion: reverseStart,
         dense_park: false,
         lane_sequence: [],
         route_graph: { nodes: [] },
@@ -388,7 +397,11 @@ const handleParkingModeExit = async () => {
 const handleParkingModeConfirm = async () => {
   if (!parkingPathStore.previewPath) return
   try {
-    const payload = buildParkingBridgePayload(parkingPathStore.vehicleId, parkingPathStore.previewPath)
+    const payload = buildParkingBridgePayload(
+      parkingPathStore.vehicleId,
+      parkingPathStore.previewPath,
+      parkingPathStore.reverseStart,
+    )
     const response = await axios.post('/api/bridge/message', payload)
     if (response.data?.data?.ok) {
       ElMessage({ message: '寄车路径已下发', type: 'success' })
@@ -415,8 +428,9 @@ const handleParkingPathSelected = async (detail: { x: number; y: number; heading
     const ok = response.data?.data?.ok
     if (ok) {
       const path = response.data?.data?.path
+      const reverseStart = Boolean(response.data?.data?.reverse_start)
       if (Array.isArray(path) && path.length > 1) {
-        parkingPathStore.setPreviewPath(path, true)
+        parkingPathStore.setPreviewPath(path, true, reverseStart)
         const manager = getManagerSafe()
         manager?.updateParkingPathPreviewPath(path, true)
         ElMessageBox.alert('混合A*路径生成成功，请确认下发', '路径规划完成', {

@@ -437,6 +437,7 @@ RUN_AREAS = [
     [(-250.847, 55.085), (-240.235, -512.303), (643.740, -668.288), (742.151, -121.034)],
     [(-257.877, -1232.300), (-268.381, -1274.584), (643.298, -1435.105), (647.876, -1394.167)],
 ]
+RUN_AREA_SEGMENT_STEP = 0.2
 
 
 def _point_in_polygon(x: float, y: float, polygon: list[tuple[float, float]]) -> bool:
@@ -451,18 +452,41 @@ def _point_in_polygon(x: float, y: float, polygon: list[tuple[float, float]]) ->
     return inside
 
 
-def _filter_path_by_run_area(path: list[dict]) -> list[dict]:
-    filtered: list[dict] = []
-    for point in path:
+def _point_in_any_run_area(x: float, y: float) -> bool:
+    for polygon in RUN_AREAS:
+        if _point_in_polygon(x, y, polygon):
+            return True
+    return False
+
+
+def _is_path_within_run_area(path: list[dict]) -> bool:
+    if not path:
+        return False
+    for index, point in enumerate(path):
         x = point.get("x")
         y = point.get("y")
         if x is None or y is None:
+            return False
+        if not _point_in_any_run_area(float(x), float(y)):
+            return False
+        if index == 0:
             continue
-        for polygon in RUN_AREAS:
-            if _point_in_polygon(float(x), float(y), polygon):
-                filtered.append(point)
-                break
-    return filtered
+        prev = path[index - 1]
+        prev_x = prev.get("x")
+        prev_y = prev.get("y")
+        if prev_x is None or prev_y is None:
+            return False
+        dx = float(x) - float(prev_x)
+        dy = float(y) - float(prev_y)
+        dist = math.hypot(dx, dy)
+        steps = max(1, int(math.ceil(dist / RUN_AREA_SEGMENT_STEP)))
+        for step_index in range(1, steps):
+            ratio = step_index / steps
+            sample_x = float(prev_x) + dx * ratio
+            sample_y = float(prev_y) + dy * ratio
+            if not _point_in_any_run_area(sample_x, sample_y):
+                return False
+    return True
 
 
 @router.post("/enter")
@@ -567,18 +591,18 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         if not obstacles:
             fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse)
             logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
-            filtered_path = _filter_path_by_run_area(fallback_path)
+            fallback_valid = _is_path_within_run_area(fallback_path)
             logger.info(
-                "parking_path plan: fallback filtered_path_size=%s",
-                len(filtered_path),
+                "parking_path plan: fallback run_area_valid=%s",
+                fallback_valid,
             )
-            if not filtered_path:
+            if not fallback_valid:
                 return StdRes(data={"ok": False, "message": "path out of run area"})
             return StdRes(
                 data={
                     "ok": True,
                     "target": end_pose,
-                    "path": filtered_path,
+                    "path": fallback_path,
                     "fallback": True,
                     "reverse_start": reverse_start,
                 }
@@ -590,19 +614,19 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
             len(obstacles),
         )
         return StdRes(data={"ok": False, "message": "hybrid plan failed"})
-    filtered_path = _filter_path_by_run_area(path)
+    path_valid = _is_path_within_run_area(path)
     logger.info(
-        "parking_path plan: success, path_size=%s, filtered_path_size=%s",
+        "parking_path plan: success, path_size=%s, run_area_valid=%s",
         len(path),
-        len(filtered_path),
+        path_valid,
     )
-    if not filtered_path:
+    if not path_valid:
         return StdRes(data={"ok": False, "message": "path out of run area"})
     return StdRes(
         data={
             "ok": True,
             "target": end_pose,
-            "path": filtered_path,
+            "path": path,
             "reverse_start": reverse_start,
         }
     )
