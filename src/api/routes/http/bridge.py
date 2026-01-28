@@ -1,4 +1,5 @@
 import json
+import math
 
 from fastapi import APIRouter, Body
 from chain_http import aio_http
@@ -6,6 +7,7 @@ from chain_model.model import StdRes
 
 from src.core.config import pp_visual_BRIDGE_URL
 from src.core.log import logger
+from src.routing import normalize_angle
 
 router = APIRouter()
 
@@ -27,20 +29,30 @@ async def bridge_message(req: dict = Body()) -> StdRes:
     header_info = payload_obj.get("header") if isinstance(payload_obj, dict) else None
     body_info = payload_obj.get("body") if isinstance(payload_obj, dict) else None
     logger.info(
-        "bridge message incoming: url={}, topName={}, qosCode={}, payloadType={}, payloadLen={}",
-        bridge_url,
-        top_name,
-        qos_code,
-        type(payload).__name__,
-        payload_len,
+        f"bridge message incoming: url={bridge_url}, topName={top_name}, qosCode={qos_code}, "
+        f"payloadType={type(payload).__name__}, payloadLen={payload_len}"
     )
     logger.info(
-        "bridge message payload summary: header={}, bodyKeys={}",
-        header_info,
-        list(body_info.keys()) if isinstance(body_info, dict) else None,
+        f"bridge message payload summary: header={header_info}, "
+        f"bodyKeys={list(body_info.keys()) if isinstance(body_info, dict) else None}"
     )
     if isinstance(body_info, dict):
         command_lines = body_info.get("command_reference_lines") or []
+        if body_info.get("backward_motion") and isinstance(command_lines, list):
+            for line in command_lines:
+                points = line.get("points") if isinstance(line, dict) else None
+                if not isinstance(points, list):
+                    continue
+                for point in points:
+                    if not isinstance(point, dict):
+                        continue
+                    for key in ("course_angle", "heading_angle"):
+                        if point.get(key) is None:
+                            continue
+                        try:
+                            point[key] = normalize_angle(float(point[key]) - math.pi)
+                        except (TypeError, ValueError):
+                            continue
         command_points = 0
         if isinstance(command_lines, list):
             for line in command_lines:
@@ -48,9 +60,8 @@ async def bridge_message(req: dict = Body()) -> StdRes:
                 if isinstance(points, list):
                     command_points += len(points)
         logger.info(
-            "bridge message path summary: commandLines={}, commandPoints={}",
-            len(command_lines) if isinstance(command_lines, list) else None,
-            command_points,
+            f"bridge message path summary: commandLines={len(command_lines) if isinstance(command_lines, list) else None}, "
+            f"commandPoints={command_points}"
         )
         forward_payload = {
             "header": header_info or {},
@@ -61,11 +72,8 @@ async def bridge_message(req: dict = Body()) -> StdRes:
             **req,
             "payload": json.dumps(forward_payload, ensure_ascii=False),
         }
-        logger.info(
-            "bridge message payload reformatted: payloadLen={}",
-            len(forward_req["payload"]),
-        )
-    logger.info("bridge message forwarding raw: payload={}", forward_req)
+        logger.info(f"bridge message payload reformatted: payloadLen={len(forward_req['payload'])}")
+    logger.info(f"bridge message forwarding raw: payload={forward_req}")
     res = await aio_http.post(bridge_url, json=forward_req, timeout=10)
     try:
         json_attr = getattr(res, "json", None)
@@ -80,7 +88,7 @@ async def bridge_message(req: dict = Body()) -> StdRes:
         else:
             raw = text_attr
         data = {"raw": raw}
-    logger.info("bridge message response: status={}, payload={}", res.status, data)
+    logger.info(f"bridge message response: status={res.status}, payload={data}")
     if isinstance(data, str):
         try:
             data = json.loads(data)
