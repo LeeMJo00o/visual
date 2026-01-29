@@ -1,5 +1,4 @@
 import json
-import math
 
 from fastapi import APIRouter, Body
 from chain_http import aio_http
@@ -7,7 +6,6 @@ from chain_model.model import StdRes
 
 from src.core.config import pp_visual_BRIDGE_URL
 from src.core.log import logger
-from src.routing import normalize_angle
 
 router = APIRouter()
 
@@ -47,21 +45,6 @@ async def bridge_message(req: dict = Body()) -> StdRes:
                     if isinstance(point, dict):
                         point["direction"] = desired_direction
         command_lines = body_info.get("command_reference_lines") or []
-        if backward_motion and isinstance(command_lines, list):
-            for line in command_lines:
-                points = line.get("points") if isinstance(line, dict) else None
-                if not isinstance(points, list):
-                    continue
-                for point in points:
-                    if not isinstance(point, dict):
-                        continue
-                    for key in ("course_angle", "heading_angle"):
-                        if point.get(key) is None:
-                            continue
-                        try:
-                            point[key] = normalize_angle(float(point[key]) - math.pi)
-                        except (TypeError, ValueError):
-                            continue
         command_points = 0
         if isinstance(command_lines, list):
             for line in command_lines:
