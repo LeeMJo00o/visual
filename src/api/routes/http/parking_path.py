@@ -33,6 +33,8 @@ MIN_TURN_RADIUS = 8.1
 MAX_CURVATURE = 0.14
 ALLOW_REVERSE_DEFAULT = True
 REVERSE_HEADING_DIFF_THRESHOLD = math.radians(120)
+STOP_SPEED_THRESHOLD = 0.02
+STOP_STEER_DEG = 0.5
 
 
 @dataclass(order=True)
@@ -94,6 +96,27 @@ def _parse_business_key(payload: Any, vehicle_id: str) -> str | None:
     return None
 
 
+def _extract_speed(pose: dict | None) -> float | None:
+    if not pose:
+        return None
+    for key in ("speed", "v", "velocity", "vel", "spd"):
+        value = pose.get(key)
+        if value is None:
+            continue
+        try:
+            return abs(float(value))
+        except (TypeError, ValueError):
+            continue
+    vx = pose.get("vx") if pose.get("vx") is not None else pose.get("v_x")
+    vy = pose.get("vy") if pose.get("vy") is not None else pose.get("v_y")
+    if vx is None and vy is None:
+        return None
+    try:
+        return math.hypot(float(vx or 0.0), float(vy or 0.0))
+    except (TypeError, ValueError):
+        return None
+
+
 def _build_start_pose(pose: dict | None) -> dict:
     if not pose:
         return {
@@ -103,6 +126,7 @@ def _build_start_pose(pose: dict | None) -> dict:
             "trailer_x": 0.0,
             "trailer_y": 0.0,
             "trailer_heading": 0.0,
+            "speed": None,
         }
 
     heading = pose.get("heading")
@@ -130,6 +154,7 @@ def _build_start_pose(pose: dict | None) -> dict:
         "trailer_x": float(trailer_x),
         "trailer_y": float(trailer_y),
         "trailer_heading": float(trailer_heading),
+        "speed": _extract_speed(pose),
     }
 
 
@@ -206,6 +231,7 @@ def _plan_hybrid_a_star(
     goal: dict,
     obstacles: list[tuple[float, float]],
     allow_reverse: bool,
+    start_speed: float = 0.0,
 ) -> list[dict]:
     heading_bins = 24
     max_iter = 20000
@@ -216,6 +242,9 @@ def _plan_hybrid_a_star(
     position_limit = 10000.0
     steer_curvature = abs(math.tan(MAX_STEER) / WHEEL_BASE)
     max_curvature = min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, steer_curvature)
+    stop_curvature = abs(math.tan(math.radians(STOP_STEER_DEG)) / WHEEL_BASE)
+    is_stopped = abs(start_speed) < STOP_SPEED_THRESHOLD
+    start_curvature_limit = min(max_curvature, stop_curvature) if is_stopped else max_curvature
 
     def _heading_index(theta: float) -> int:
         return int(round((normalize_angle(theta) + math.pi) / (2 * math.pi) * heading_bins)) % heading_bins
@@ -257,8 +286,10 @@ def _plan_hybrid_a_star(
             return list(reversed(path))
 
         directions = (1.0, -1.0) if allow_reverse else (1.0,)
+        curvature_limit = start_curvature_limit if current.parent is None else max_curvature
+        curvatures = (0.0,) if curvature_limit < 1e-6 else (-curvature_limit, 0.0, curvature_limit)
         for direction in directions:
-            for curvature in (-max_curvature, 0.0, max_curvature):
+            for curvature in curvatures:
                 next_heading = normalize_angle(current.heading + direction * PLANNER_STEP_SIZE * curvature)
                 next_x = current.x + direction * PLANNER_STEP_SIZE * math.cos(current.heading)
                 next_y = current.y + direction * PLANNER_STEP_SIZE * math.sin(current.heading)
@@ -302,7 +333,7 @@ def _build_straight_path(start: dict, goal: dict, heading: float, reverse: bool)
     return path
 
 
-def _build_simple_path(start: dict, goal: dict, allow_reverse: bool) -> list[dict]:
+def _build_simple_path(start: dict, goal: dict, allow_reverse: bool, start_speed: float = 0.0) -> list[dict]:
     steer_curvature = abs(math.tan(MAX_STEER) / WHEEL_BASE)
     max_curvature = min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, steer_curvature)
     rho = 1.0 / max_curvature
@@ -380,6 +411,8 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool) -> list[dic
     line_heading = math.atan2(dy, dx)
     distance = math.hypot(dx, dy)
     straight_heading_tolerance = 0.6
+    if abs(start_speed) < STOP_SPEED_THRESHOLD:
+        straight_heading_tolerance = min(straight_heading_tolerance, math.radians(STOP_STEER_DEG))
     start_heading_error = abs(normalize_angle(start["heading"] - line_heading))
     goal_heading_error = abs(normalize_angle(goal["heading"] - line_heading))
     if start_heading_error <= straight_heading_tolerance and goal_heading_error <= straight_heading_tolerance:
@@ -562,10 +595,13 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     logger.info(f"parking_path plan: obstacles={len(obstacles)}")
     if obstacles:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
-    path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse)
+    start_speed = start_pose.get("speed")
+    if start_speed is None:
+        start_speed = STOP_SPEED_THRESHOLD
+    path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse, start_speed)
     if not path:
         if not obstacles:
-            fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse)
+            fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse, start_speed)
             logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
             filtered_path = _filter_path_by_run_area(fallback_path)
             logger.info(
