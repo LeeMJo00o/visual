@@ -37,6 +37,7 @@ REVERSE_HEADING_DIFF_THRESHOLD = math.radians(120)
 STOP_SPEED_THRESHOLD = 0.02
 STOP_STEER_DEG = 0.5
 SNAP_LANE_DISTANCE_THRESHOLD = 0.3
+START_LANE_DISTANCE_THRESHOLD = 1.0
 
 
 def _project_point_to_segment(
@@ -57,7 +58,7 @@ def _project_point_to_segment(
     return proj_x, proj_y, dist
 
 
-def _snap_end_pose_to_lane(point: dict) -> tuple[float, float, float, float] | None:
+def _find_nearest_lane(point: dict) -> tuple[float, float, float, float] | None:
     if not g_roads or not getattr(g_roads, "road_info", None):
         return None
 
@@ -90,13 +91,22 @@ def _snap_end_pose_to_lane(point: dict) -> tuple[float, float, float, float] | N
                 best_projection = (proj_x, proj_y)
                 best_heading = math.atan2(y2 - y1, x2 - x1)
 
-    if best_projection is None or best_heading is None or best_distance >= SNAP_LANE_DISTANCE_THRESHOLD:
+    if best_projection is None or best_heading is None:
         return None
 
     heading = best_heading
 
     proj_x, proj_y = best_projection
     return proj_x, proj_y, heading, best_distance
+
+
+def _snap_end_pose_to_lane(point: dict) -> tuple[float, float, float, float] | None:
+    nearest = _find_nearest_lane(point)
+    if nearest is None:
+        return None
+    if nearest[3] >= SNAP_LANE_DISTANCE_THRESHOLD:
+        return None
+    return nearest
 
 
 @dataclass(order=True)
@@ -689,13 +699,18 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     start_speed = start_pose.get("speed")
     if start_speed is None:
         start_speed = STOP_SPEED_THRESHOLD
-    snapped_start = _snap_end_pose_to_lane(start_pose)
-    if snapped is not None and snapped_start is not None and not obstacles:
-        start_lane_heading = snapped_start[2]
+    nearest_start = _find_nearest_lane(start_pose)
+    if snapped is not None and nearest_start is not None and not obstacles:
+        start_lane_heading = nearest_start[2]
         end_lane_heading = end_pose["heading"]
+        start_lane_dist = nearest_start[3]
         heading_diff = abs(normalize_angle(end_lane_heading - start_pose["heading"]))
         lane_heading_diff = abs(normalize_angle(end_lane_heading - start_lane_heading))
-        if heading_diff < 0.15 and lane_heading_diff < 0.1:
+        if (
+            start_lane_dist <= START_LANE_DISTANCE_THRESHOLD
+            and heading_diff < 0.15
+            and lane_heading_diff < 0.1
+        ):
             straight_path = _build_simple_path(start_for_plan, end_pose, allow_reverse, start_speed)
             logger.info(f"parking_path plan: straight path_size={len(straight_path)}")
             straight_valid = _is_path_within_run_area(straight_path)
