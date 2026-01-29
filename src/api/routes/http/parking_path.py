@@ -36,7 +36,7 @@ ALLOW_REVERSE_DEFAULT = True
 REVERSE_HEADING_DIFF_THRESHOLD = math.radians(120)
 STOP_SPEED_THRESHOLD = 0.02
 STOP_STEER_DEG = 0.5
-SNAP_LANE_DISTANCE_THRESHOLD = 0.5
+SNAP_LANE_DISTANCE_THRESHOLD = 1.0
 
 
 def _project_point_to_segment(
@@ -59,7 +59,7 @@ def _project_point_to_segment(
 
 def _is_bidirectional_lane(attrs: dict | None) -> bool:
     if not attrs:
-        return False
+        return True
     for key in ("oneway", "one_way", "oneWay", "one-way"):
         value = attrs.get(key)
         if value is None:
@@ -76,7 +76,7 @@ def _is_bidirectional_lane(attrs: dict | None) -> bool:
             return True
         if value_str in ("forward", "backward", "oneway", "one-way"):
             return False
-    return False
+    return True
 
 
 def _snap_end_pose_to_lane(point: dict) -> tuple[float, float, float, float] | None:
