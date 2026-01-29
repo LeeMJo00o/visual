@@ -58,7 +58,12 @@ def _project_point_to_segment(
     return proj_x, proj_y, dist
 
 
-def _find_nearest_lane(point: dict) -> tuple[float, float, float, float] | None:
+def _find_nearest_lane(
+    point: dict,
+    *,
+    only_lane_id: str | None = None,
+    requested_heading: float | None = None,
+) -> tuple[float, float, float, float, str] | None:
     if not g_roads or not getattr(g_roads, "road_info", None):
         return None
 
@@ -74,10 +79,14 @@ def _find_nearest_lane(point: dict) -> tuple[float, float, float, float] | None:
         return None
 
     best_distance = float("inf")
+    best_heading_diff = float("inf")
     best_projection = None
     best_heading = None
+    best_lane_id = None
     for lane_id, lane_info in g_roads.road_info.items():
         if str(lane_id).startswith("junction_"):
+            continue
+        if only_lane_id is not None and str(lane_id) != str(only_lane_id):
             continue
         line = lane_info.get("points") or []
         if len(line) < 2:
@@ -86,25 +95,57 @@ def _find_nearest_lane(point: dict) -> tuple[float, float, float, float] | None:
             x1, y1 = line[idx]
             x2, y2 = line[idx + 1]
             proj_x, proj_y, dist = _project_point_to_segment((x, y), (x1, y1), (x2, y2))
-            if dist < best_distance:
+            lane_heading = math.atan2(y2 - y1, x2 - x1)
+            heading_diff = (
+                abs(normalize_angle(requested_heading - lane_heading))
+                if requested_heading is not None
+                else 0.0
+            )
+            if dist < best_distance - 1e-6:
                 best_distance = dist
+                best_heading_diff = heading_diff
                 best_projection = (proj_x, proj_y)
-                best_heading = math.atan2(y2 - y1, x2 - x1)
+                best_heading = lane_heading
+                best_lane_id = str(lane_id)
+            elif (
+                requested_heading is not None
+                and abs(dist - best_distance) <= 0.05
+                and heading_diff < best_heading_diff
+            ):
+                best_heading_diff = heading_diff
+                best_projection = (proj_x, proj_y)
+                best_heading = lane_heading
+                best_lane_id = str(lane_id)
 
-    if best_projection is None or best_heading is None:
+    if best_projection is None or best_heading is None or best_lane_id is None:
         return None
 
     heading = best_heading
 
     proj_x, proj_y = best_projection
-    return proj_x, proj_y, heading, best_distance
+    return proj_x, proj_y, heading, best_distance, best_lane_id
 
 
-def _snap_end_pose_to_lane(point: dict) -> tuple[float, float, float, float] | None:
-    nearest = _find_nearest_lane(point)
-    if nearest is None:
-        return None
-    if nearest[3] >= SNAP_LANE_DISTANCE_THRESHOLD:
+def _snap_end_pose_to_lane(
+    point: dict,
+    *,
+    preferred_lane_id: str | None = None,
+) -> tuple[float, float, float, float, str] | None:
+    requested_heading = point.get("heading")
+    try:
+        requested_heading = float(requested_heading) if requested_heading is not None else None
+    except (TypeError, ValueError):
+        requested_heading = None
+    if preferred_lane_id is not None:
+        preferred = _find_nearest_lane(
+            point,
+            only_lane_id=preferred_lane_id,
+            requested_heading=requested_heading,
+        )
+        if preferred is not None and preferred[3] < SNAP_LANE_DISTANCE_THRESHOLD:
+            return preferred
+    nearest = _find_nearest_lane(point, requested_heading=requested_heading)
+    if nearest is None or nearest[3] >= SNAP_LANE_DISTANCE_THRESHOLD:
         return None
     return nearest
 
@@ -652,9 +693,11 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     logger.info(f"parking_path plan: raw_pose={pose}")
 
     start_pose = _build_start_pose(pose)
-    snapped = _snap_end_pose_to_lane(points)
+    nearest_start = _find_nearest_lane(start_pose)
+    preferred_lane_id = nearest_start[4] if nearest_start is not None else None
+    snapped = _snap_end_pose_to_lane(points, preferred_lane_id=preferred_lane_id)
     if snapped is not None:
-        snap_x, snap_y, snap_heading, snap_dist = snapped
+        snap_x, snap_y, snap_heading, snap_dist, snap_lane_id = snapped
         end_pose = {
             "x": snap_x,
             "y": snap_y,
@@ -662,7 +705,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         }
         logger.info(
             f"parking_path plan: snap end_pose to lane x={snap_x:.3f}, y={snap_y:.3f}, "
-            f"heading={snap_heading:.3f}, dist={snap_dist:.3f}"
+            f"heading={snap_heading:.3f}, dist={snap_dist:.3f}, lane_id={snap_lane_id}"
         )
     else:
         end_pose = {
@@ -703,7 +746,6 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     start_speed = start_pose.get("speed")
     if start_speed is None:
         start_speed = STOP_SPEED_THRESHOLD
-    nearest_start = _find_nearest_lane(start_pose)
     if snapped is not None and nearest_start is not None and not obstacles:
         start_lane_heading = nearest_start[2]
         end_lane_heading = end_pose["heading"]
