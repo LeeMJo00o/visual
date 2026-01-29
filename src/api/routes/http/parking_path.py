@@ -36,7 +36,7 @@ ALLOW_REVERSE_DEFAULT = True
 REVERSE_HEADING_DIFF_THRESHOLD = math.radians(120)
 STOP_SPEED_THRESHOLD = 0.02
 STOP_STEER_DEG = 0.5
-SNAP_LANE_DISTANCE_THRESHOLD = 1.5
+SNAP_LANE_DISTANCE_THRESHOLD = 0.3
 
 
 def _project_point_to_segment(
@@ -57,28 +57,6 @@ def _project_point_to_segment(
     return proj_x, proj_y, dist
 
 
-def _is_bidirectional_lane(attrs: dict | None) -> bool:
-    if not attrs:
-        return True
-    for key in ("oneway", "one_way", "oneWay", "one-way"):
-        value = attrs.get(key)
-        if value is None:
-            continue
-        value_str = str(value).lower()
-        if value_str in ("no", "false", "0", "both", "bidirectional", "bi-directional", "two-way", "two_way"):
-            return True
-        if value_str in ("yes", "true", "1", "oneway", "one-way", "forward", "backward"):
-            return False
-    direction = attrs.get("direction")
-    if direction is not None:
-        value_str = str(direction).lower()
-        if value_str in ("both", "bidirectional", "bi-directional", "two-way", "two_way"):
-            return True
-        if value_str in ("forward", "backward", "oneway", "one-way"):
-            return False
-    return True
-
-
 def _snap_end_pose_to_lane(point: dict) -> tuple[float, float, float, float] | None:
     if not g_roads or not getattr(g_roads, "road_info", None):
         return None
@@ -94,24 +72,15 @@ def _snap_end_pose_to_lane(point: dict) -> tuple[float, float, float, float] | N
     except (TypeError, ValueError):
         return None
 
-    raw_heading = point.get("heading")
-    try:
-        requested_heading = float(raw_heading) if raw_heading is not None else None
-    except (TypeError, ValueError):
-        requested_heading = None
-
     best_distance = float("inf")
     best_projection = None
     best_heading = None
-    best_bidirectional = False
-
     for lane_id, lane_info in g_roads.road_info.items():
         if str(lane_id).startswith("junction_"):
             continue
         line = lane_info.get("points") or []
         if len(line) < 2:
             continue
-        lane_bidirectional = _is_bidirectional_lane(lane_info.get("attrs"))
         for idx in range(len(line) - 1):
             x1, y1 = line[idx]
             x2, y2 = line[idx + 1]
@@ -120,18 +89,11 @@ def _snap_end_pose_to_lane(point: dict) -> tuple[float, float, float, float] | N
                 best_distance = dist
                 best_projection = (proj_x, proj_y)
                 best_heading = math.atan2(y2 - y1, x2 - x1)
-                best_bidirectional = lane_bidirectional
 
     if best_projection is None or best_heading is None or best_distance >= SNAP_LANE_DISTANCE_THRESHOLD:
         return None
 
     heading = best_heading
-    if best_bidirectional and requested_heading is not None:
-        opposite_heading = normalize_angle(best_heading + math.pi)
-        direct_diff = abs(normalize_angle(requested_heading - best_heading))
-        opposite_diff = abs(normalize_angle(requested_heading - opposite_heading))
-        if opposite_diff < direct_diff:
-            heading = opposite_heading
 
     proj_x, proj_y = best_projection
     return proj_x, proj_y, heading, best_distance
