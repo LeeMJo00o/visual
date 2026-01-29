@@ -146,6 +146,7 @@ export default class ApplicationManager extends GraphicTools {
     active: false,
     dragging: false,
     startPoint: null as Position | null,
+    startSnapped: false,
   }
 
   constructor() {
@@ -823,6 +824,7 @@ export default class ApplicationManager extends GraphicTools {
     this.parkingPathState.active = active
     this.parkingPathState.dragging = false
     this.parkingPathState.startPoint = null
+    this.parkingPathState.startSnapped = false
     if (active) {
       this.mouse_func = 'parking_path'
     } else if (this.manualPathState.active) {
@@ -855,11 +857,12 @@ export default class ApplicationManager extends GraphicTools {
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     this.clearParkingPathPreview()
     this.parkingPathState.dragging = true
-    this.parkingPathState.startPoint = { x, y, theta: 0 }
     const snapped = this.snapParkingPathTarget(x, y, 0, false)
     const targetX = snapped?.x ?? x
     const targetY = snapped?.y ?? y
     const targetHeading = snapped?.heading ?? 0
+    this.parkingPathState.startPoint = { x: targetX, y: targetY, theta: 0 }
+    this.parkingPathState.startSnapped = Boolean(snapped)
     this.updateParkingPathArrow(targetX, targetY, targetHeading)
   }
 
@@ -881,7 +884,9 @@ export default class ApplicationManager extends GraphicTools {
     const dy = y - start.y
     const moved = Math.hypot(dx, dy) > 0.1
     const heading = moved ? Math.atan2(dy, dx) : 0
-    const snapped = this.snapParkingPathTarget(start.x, start.y, heading, moved)
+    const snapped = this.parkingPathState.startSnapped
+      ? this.snapParkingPathTarget(start.x, start.y, heading, moved)
+      : null
     const targetX = snapped?.x ?? start.x
     const targetY = snapped?.y ?? start.y
     const targetHeading = snapped?.heading ?? heading
@@ -915,10 +920,13 @@ export default class ApplicationManager extends GraphicTools {
     const dy = y - start.y
     const moved = Math.hypot(dx, dy) > 0.1
     const heading = moved ? Math.atan2(dy, dx) : 0
-    const snapped = this.snapParkingPathTarget(start.x, start.y, heading, moved)
+    const snapped = this.parkingPathState.startSnapped
+      ? this.snapParkingPathTarget(start.x, start.y, heading, moved)
+      : null
     const target = snapped ?? { x: start.x, y: start.y, heading }
     this.parkingPathState.dragging = false
     this.parkingPathState.startPoint = null
+    this.parkingPathState.startSnapped = false
     this.clearParkingPathArrow()
     window.dispatchEvent(
       new CustomEvent('parking-path-target-selected', {
@@ -1160,7 +1168,6 @@ export default class ApplicationManager extends GraphicTools {
   snapParkingPathTarget(x: number, y: number, heading: number, useHeading = true) {
     const mapInfo = this.map_path_info || {}
     let bestDistance = Number.POSITIVE_INFINITY
-    let bestAngleDiff = Number.POSITIVE_INFINITY
     let bestPoint: { x: number; y: number; heading: number; bidirectional: boolean } | null = null
 
     Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
@@ -1174,14 +1181,8 @@ export default class ApplicationManager extends GraphicTools {
         const [x2, y2] = points[i + 1]
         const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
         const laneHeading = Math.atan2(y2 - y1, x2 - x1)
-        const angleDiff = useHeading ? Math.abs(this.normalizeAngle(heading - laneHeading)) : 0
-        const distanceDelta = Math.abs(projection.distance - bestDistance)
-        if (
-          projection.distance < bestDistance ||
-          (distanceDelta <= 0.5 && angleDiff < bestAngleDiff)
-        ) {
+        if (projection.distance < bestDistance) {
           bestDistance = projection.distance
-          bestAngleDiff = angleDiff
           bestPoint = {
             x: projection.x,
             y: projection.y,
