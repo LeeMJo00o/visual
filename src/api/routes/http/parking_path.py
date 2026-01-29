@@ -680,7 +680,11 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     front_mid_dist = math.hypot(end_pose["x"] - front_mid_x, end_pose["y"] - front_mid_y)
     rear_mid_dist = math.hypot(end_pose["x"] - rear_mid_x, end_pose["y"] - rear_mid_y)
     dist_diff = rear_mid_dist - front_mid_dist
-    reverse_start = allow_reverse and dist_diff < 0
+    dx_to_target = end_pose["x"] - start_pose["x"]
+    dy_to_target = end_pose["y"] - start_pose["y"]
+    heading_dot = math.cos(start_pose["heading"]) * dx_to_target + math.sin(start_pose["heading"]) * dy_to_target
+    reverse_by_heading = allow_reverse and heading_dot < 0
+    reverse_start = allow_reverse and (dist_diff < 0 or reverse_by_heading)
     start_for_plan = start_pose.copy()
     if reverse_start:
         start_for_plan["heading"] = normalize_angle(start_for_plan["heading"] + math.pi)
@@ -690,7 +694,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         f"max_steer={MAX_STEER:.2f}, wheel_base={WHEEL_BASE:.2f}, "
         f"vehicle_size={VEHICLE_LENGTH:.2f}x{VEHICLE_WIDTH:.2f}, allow_reverse={allow_reverse}, "
         f"front_mid_dist={front_mid_dist:.2f}, rear_mid_dist={rear_mid_dist:.2f}, dist_diff={dist_diff:.2f}, "
-        f"reverse_start={reverse_start}"
+        f"heading_dot={heading_dot:.2f}, reverse_start={reverse_start}"
     )
     obstacles = await _load_perception_obstacles(vehicle_id)
     logger.info(f"parking_path plan: obstacles={len(obstacles)}")
