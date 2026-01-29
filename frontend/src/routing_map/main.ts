@@ -1186,7 +1186,7 @@ export default class ApplicationManager extends GraphicTools {
       }
     })
 
-    if (!bestPoint || bestDistance > 1) return null
+    if (!bestPoint || bestDistance > 1.5) return null
 
     let snappedHeading = bestPoint.heading
     if (bestPoint.bidirectional) {
