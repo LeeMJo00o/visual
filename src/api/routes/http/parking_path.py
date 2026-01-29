@@ -651,11 +651,8 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
             "heading": snap_heading,
         }
         logger.info(
-            "parking_path plan: snap end_pose to lane x=%.3f, y=%.3f, heading=%.3f, dist=%.3f",
-            snap_x,
-            snap_y,
-            snap_heading,
-            snap_dist,
+            f"parking_path plan: snap end_pose to lane x={snap_x:.3f}, y={snap_y:.3f}, "
+            f"heading={snap_heading:.3f}, dist={snap_dist:.3f}"
         )
     else:
         end_pose = {
@@ -677,21 +674,13 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     start_for_plan = start_pose.copy()
     if reverse_start:
         start_for_plan["heading"] = normalize_angle(start_for_plan["heading"] + math.pi)
+    max_curvature = min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, abs(math.tan(MAX_STEER) / WHEEL_BASE))
     logger.info(
-        "parking_path plan: limits max_curvature=%.4f, min_turn_radius=%.2f, max_steer=%.2f, wheel_base=%.2f, "
-        "vehicle_size=%.2fx%.2f, allow_reverse=%s, front_mid_dist=%.2f, rear_mid_dist=%.2f, dist_diff=%.2f, "
-        "reverse_start=%s",
-        min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, abs(math.tan(MAX_STEER) / WHEEL_BASE)),
-        MIN_TURN_RADIUS,
-        MAX_STEER,
-        WHEEL_BASE,
-        VEHICLE_LENGTH,
-        VEHICLE_WIDTH,
-        allow_reverse,
-        front_mid_dist,
-        rear_mid_dist,
-        dist_diff,
-        reverse_start,
+        f"parking_path plan: limits max_curvature={max_curvature:.4f}, min_turn_radius={MIN_TURN_RADIUS:.2f}, "
+        f"max_steer={MAX_STEER:.2f}, wheel_base={WHEEL_BASE:.2f}, "
+        f"vehicle_size={VEHICLE_LENGTH:.2f}x{VEHICLE_WIDTH:.2f}, allow_reverse={allow_reverse}, "
+        f"front_mid_dist={front_mid_dist:.2f}, rear_mid_dist={rear_mid_dist:.2f}, dist_diff={dist_diff:.2f}, "
+        f"reverse_start={reverse_start}"
     )
     obstacles = await _load_perception_obstacles(vehicle_id)
     logger.info(f"parking_path plan: obstacles={len(obstacles)}")
@@ -700,16 +689,35 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     start_speed = start_pose.get("speed")
     if start_speed is None:
         start_speed = STOP_SPEED_THRESHOLD
+    snapped_start = _snap_end_pose_to_lane(start_pose)
+    if snapped is not None and snapped_start is not None and not obstacles:
+        start_lane_heading = snapped_start[2]
+        end_lane_heading = end_pose["heading"]
+        heading_diff = abs(normalize_angle(end_lane_heading - start_pose["heading"]))
+        lane_heading_diff = abs(normalize_angle(end_lane_heading - start_lane_heading))
+        if heading_diff < 0.15 and lane_heading_diff < 0.1:
+            straight_path = _build_simple_path(start_for_plan, end_pose, allow_reverse, start_speed)
+            logger.info(f"parking_path plan: straight path_size={len(straight_path)}")
+            straight_valid = _is_path_within_run_area(straight_path)
+            logger.info(f"parking_path plan: straight run_area_valid={straight_valid}")
+            if not straight_valid:
+                return StdRes(data={"ok": False, "message": "path out of run area"})
+            return StdRes(
+                data={
+                    "ok": True,
+                    "target": end_pose,
+                    "path": straight_path,
+                    "fallback": True,
+                    "reverse_start": reverse_start,
+                }
+            )
     path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse, start_speed)
     if not path:
         if not obstacles:
             fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse, start_speed)
             logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
             fallback_valid = _is_path_within_run_area(fallback_path)
-            logger.info(
-                "parking_path plan: fallback run_area_valid=%s",
-                fallback_valid,
-            )
+            logger.info(f"parking_path plan: fallback run_area_valid={fallback_valid}")
             if not fallback_valid:
                 return StdRes(data={"ok": False, "message": "path out of run area"})
             return StdRes(
@@ -722,18 +730,12 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
                 }
             )
         logger.warning(
-            "parking_path plan: failed, start_pose=%s, end_pose=%s, obstacles=%s",
-            start_pose,
-            end_pose,
-            len(obstacles),
+            f"parking_path plan: failed, start_pose={start_pose}, end_pose={end_pose}, "
+            f"obstacles={len(obstacles)}"
         )
         return StdRes(data={"ok": False, "message": "hybrid plan failed"})
     path_valid = _is_path_within_run_area(path)
-    logger.info(
-        "parking_path plan: success, path_size=%s, run_area_valid=%s",
-        len(path),
-        path_valid,
-    )
+    logger.info(f"parking_path plan: success, path_size={len(path)}, run_area_valid={path_valid}")
     if not path_valid:
         return StdRes(data={"ok": False, "message": "path out of run area"})
     return StdRes(
