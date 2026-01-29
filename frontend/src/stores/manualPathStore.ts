@@ -5,6 +5,8 @@ export interface ManualPathTarget {
   x: number
   y: number
   heading: number
+  laneId?: string
+  distance?: number
 }
 
 export const useManualPathStore = defineStore('manualPath', () => {

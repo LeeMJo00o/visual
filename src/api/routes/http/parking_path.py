@@ -98,6 +98,17 @@ def _find_nearest_lane(point: dict) -> tuple[float, float, float, float, str] | 
 
     heading = best_heading
 
+    raw_heading = point.get("heading")
+    try:
+        requested_heading = float(raw_heading) if raw_heading is not None else None
+    except (TypeError, ValueError):
+        requested_heading = None
+    if requested_heading is not None:
+        opposite_heading = normalize_angle(best_heading + math.pi)
+        direct_diff = abs(normalize_angle(requested_heading - best_heading))
+        opposite_diff = abs(normalize_angle(requested_heading - opposite_heading))
+        heading = opposite_heading if opposite_diff < direct_diff else best_heading
+
     proj_x, proj_y = best_projection
     return proj_x, proj_y, heading, best_distance, best_lane_id
 

@@ -188,7 +188,13 @@ const handleManualModeConfirm = async () => {
   }
 }
 
-const handleManualPathSelected = async (detail: { x: number; y: number; heading: number }) => {
+const handleManualPathSelected = async (detail: {
+  x: number
+  y: number
+  heading: number
+  laneId?: string
+  distance?: number
+}) => {
   if (!manualPathStore.active) return
   manualPathStore.setTarget(detail)
   manualPathStore.planning = true
@@ -416,7 +422,13 @@ const handleParkingModeConfirm = async () => {
   }
 }
 
-const handleParkingPathSelected = async (detail: { x: number; y: number; heading: number }) => {
+const handleParkingPathSelected = async (detail: {
+  x: number
+  y: number
+  heading: number
+  laneId?: string
+  distance?: number
+}) => {
   if (!parkingPathStore.active) return
   parkingPathStore.setTarget(detail)
   parkingPathStore.planning = true

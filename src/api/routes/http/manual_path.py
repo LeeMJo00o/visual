@@ -20,6 +20,7 @@ from src.middlewares.redis_handler.connect import redis_cli, redis_cli_fms
 from src.routing import normalize_angle
 
 router = APIRouter()
+SNAP_LANE_DISTANCE_THRESHOLD = 0.3
 
 BUSINESS_KEY_CACHE_PREFIX = "pp_visual:manual_path:business_key:"
 
@@ -202,7 +203,7 @@ def _project_point_to_segment(
     return proj_x, proj_y, dist
 
 
-def _snap_heading_to_lane(point: dict) -> float | None:
+def _snap_heading_to_lane(point: dict) -> tuple[float, float, str] | None:
     if not g_roads or not getattr(g_roads, "road_info", None):
         return None
 
@@ -225,6 +226,7 @@ def _snap_heading_to_lane(point: dict) -> float | None:
 
     nearest_heading = None
     best_distance = float("inf")
+    best_lane_id = None
 
     for lane_id, lane_info in g_roads.road_info.items():
         if str(lane_id).startswith("junction_"):
@@ -240,19 +242,23 @@ def _snap_heading_to_lane(point: dict) -> float | None:
             if dist < best_distance:
                 best_distance = dist
                 nearest_heading = math.atan2(y2 - y1, x2 - x1)
+                best_lane_id = str(lane_id)
 
-    if nearest_heading is None:
+    if nearest_heading is None or best_lane_id is None:
+        return None
+
+    if best_distance > SNAP_LANE_DISTANCE_THRESHOLD:
         return None
 
     if requested_heading is None:
-        return nearest_heading
+        return nearest_heading, best_distance, best_lane_id
 
     opposite_heading = normalize_angle(nearest_heading + math.pi)
     direct_diff = abs(normalize_angle(requested_heading - nearest_heading))
     opposite_diff = abs(normalize_angle(requested_heading - opposite_heading))
     if opposite_diff < direct_diff:
-        return opposite_heading
-    return nearest_heading
+        return opposite_heading, best_distance, best_lane_id
+    return nearest_heading, best_distance, best_lane_id
 
 
 def _build_routing_payload(req: dict, vehicle_id: str, start_pose: dict, end_pose: dict) -> dict:
@@ -345,8 +351,16 @@ async def plan_manual_path(req: dict = Body()) -> StdRes:
     end_pose = {
         "x": float(points["x"]),
         "y": float(points["y"]),
-        "heading": float(snapped_heading if snapped_heading is not None else points["heading"]),
+        "heading": float(snapped_heading[0] if snapped_heading is not None else points["heading"]),
     }
+    if snapped_heading is not None:
+        snapped_heading_value, snapped_distance, snapped_lane_id = snapped_heading
+        logger.info(
+            "manual_path plan: snap end_pose heading to lane heading=%.3f, dist=%.3f, lane_id=%s",
+            snapped_heading_value,
+            snapped_distance,
+            snapped_lane_id,
+        )
     payload = _build_routing_payload(req, vehicle_id, start_pose, end_pose)
 
     plan_url = pp_visual_PATH_PLAN_URL.rstrip("/")

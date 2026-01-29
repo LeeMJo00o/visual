@@ -5,6 +5,8 @@ export interface ParkingPathTarget {
   x: number
   y: number
   heading: number
+  laneId?: string
+  distance?: number
 }
 
 export const useParkingPathStore = defineStore('parkingPath', () => {
