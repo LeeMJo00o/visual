@@ -38,6 +38,13 @@ async def bridge_message(req: dict = Body()) -> StdRes:
     )
     if isinstance(body_info, dict):
         command_lines = body_info.get("command_reference_lines") or []
+        if not body_info.get("backward_motion"):
+            path_guidance = body_info.get("pathGuidance")
+            points = path_guidance.get("points") if isinstance(path_guidance, dict) else None
+            if isinstance(points, list):
+                for point in points:
+                    if isinstance(point, dict):
+                        point["direction"] = 1
         if body_info.get("backward_motion") and isinstance(command_lines, list):
             for line in command_lines:
                 points = line.get("points") if isinstance(line, dict) else None
