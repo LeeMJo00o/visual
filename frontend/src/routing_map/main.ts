@@ -856,7 +856,11 @@ export default class ApplicationManager extends GraphicTools {
     this.clearParkingPathPreview()
     this.parkingPathState.dragging = true
     this.parkingPathState.startPoint = { x, y, theta: 0 }
-    this.updateParkingPathArrow(x, y, 0)
+    const snapped = this.snapParkingPathTarget(x, y, 0)
+    const targetX = snapped?.x ?? x
+    const targetY = snapped?.y ?? y
+    const targetHeading = snapped?.heading ?? 0
+    this.updateParkingPathArrow(targetX, targetY, targetHeading)
   }
 
   handleManualPathPointerMove(e) {
@@ -874,7 +878,11 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    this.updateParkingPathArrow(start.x, start.y, heading)
+    const snapped = this.snapParkingPathTarget(start.x, start.y, heading)
+    const targetX = snapped?.x ?? start.x
+    const targetY = snapped?.y ?? start.y
+    const targetHeading = snapped?.heading ?? heading
+    this.updateParkingPathArrow(targetX, targetY, targetHeading)
   }
 
   handleManualPathPointerUp(e) {
@@ -901,7 +909,8 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    const target = { x: start.x, y: start.y, heading }
+    const snapped = this.snapParkingPathTarget(start.x, start.y, heading)
+    const target = snapped ?? { x: start.x, y: start.y, heading }
     this.parkingPathState.dragging = false
     this.parkingPathState.startPoint = null
     this.clearParkingPathArrow()
@@ -1109,6 +1118,85 @@ export default class ApplicationManager extends GraphicTools {
     const directDiff = Math.abs(this.normalizeAngle(heading - bestPoint.heading))
     const oppositeDiff = Math.abs(this.normalizeAngle(heading - oppositeHeading))
     const snappedHeading = oppositeDiff < directDiff ? oppositeHeading : bestPoint.heading
+
+    return {
+      x: bestPoint.x,
+      y: bestPoint.y,
+      heading: snappedHeading,
+    }
+  }
+
+  isBidirectionalLane(attrs?: Record<string, any>) {
+    if (!attrs) return true
+    const directionValue = (value) => (value === undefined || value === null ? '' : String(value).toLowerCase())
+    for (const key of ['oneway', 'one_way', 'oneWay', 'one-way']) {
+      const value = directionValue(attrs[key])
+      if (!value) continue
+      if (['no', 'false', '0', 'both', 'bidirectional', 'bi-directional', 'two-way', 'two_way'].includes(value)) {
+        return true
+      }
+      if (['yes', 'true', '1', 'oneway', 'one-way', 'forward', 'backward'].includes(value)) {
+        return false
+      }
+    }
+    const direction = directionValue(attrs.direction)
+    if (direction) {
+      if (['both', 'bidirectional', 'bi-directional', 'two-way', 'two_way'].includes(direction)) {
+        return true
+      }
+      if (['forward', 'backward', 'oneway', 'one-way'].includes(direction)) {
+        return false
+      }
+    }
+    return true
+  }
+
+  snapParkingPathTarget(x: number, y: number, heading: number) {
+    const mapInfo = this.map_path_info || {}
+    let bestDistance = Number.POSITIVE_INFINITY
+    let bestAngleDiff = Number.POSITIVE_INFINITY
+    let bestPoint: { x: number; y: number; heading: number; bidirectional: boolean } | null = null
+
+    Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
+      if (laneId.startsWith('junction_')) return
+      const points = laneInfo?.points || []
+      if (points.length < 2) return
+      const bidirectional = this.isBidirectionalLane(laneInfo?.attrs)
+
+      for (let i = 0; i < points.length - 1; i += 1) {
+        const [x1, y1] = points[i]
+        const [x2, y2] = points[i + 1]
+        const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
+        const laneHeading = Math.atan2(y2 - y1, x2 - x1)
+        const angleDiff = Math.abs(this.normalizeAngle(heading - laneHeading))
+        const distanceDelta = Math.abs(projection.distance - bestDistance)
+        if (
+          projection.distance < bestDistance ||
+          (distanceDelta <= 0.5 && angleDiff < bestAngleDiff)
+        ) {
+          bestDistance = projection.distance
+          bestAngleDiff = angleDiff
+          bestPoint = {
+            x: projection.x,
+            y: projection.y,
+            heading: laneHeading,
+            bidirectional,
+          }
+        }
+      }
+    })
+
+    if (!bestPoint || bestDistance > 1) return null
+
+    let snappedHeading = bestPoint.heading
+    if (bestPoint.bidirectional) {
+      const oppositeHeading = this.normalizeAngle(bestPoint.heading + Math.PI)
+      const directDiff = Math.abs(this.normalizeAngle(heading - bestPoint.heading))
+      const oppositeDiff = Math.abs(this.normalizeAngle(heading - oppositeHeading))
+      if (oppositeDiff < directDiff) {
+        snappedHeading = oppositeHeading
+      }
+    }
 
     return {
       x: bestPoint.x,
