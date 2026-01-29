@@ -712,11 +712,15 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         lane_heading_diff = abs(normalize_angle(end_lane_heading - start_lane_heading))
         if (
             start_lane_dist <= START_LANE_DISTANCE_THRESHOLD
-            and heading_diff < 0.15
+            and heading_diff < 0.2
             and lane_heading_diff < 0.1
         ):
-            straight_path = _build_simple_path(start_for_plan, end_pose, allow_reverse, start_speed)
-            logger.info(f"parking_path plan: straight path_size={len(straight_path)}")
+            reverse_line = heading_dot < 0
+            straight_path = _build_straight_path(start_for_plan, end_pose, end_lane_heading, reverse_line)
+            logger.info(
+                f"parking_path plan: straight mode={'reverse' if reverse_line else 'forward'}, "
+                f"path_size={len(straight_path)}"
+            )
             straight_valid = _is_path_within_run_area(straight_path)
             logger.info(f"parking_path plan: straight run_area_valid={straight_valid}")
             if not straight_valid:
