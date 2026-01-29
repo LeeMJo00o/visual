@@ -1140,41 +1140,15 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  isBidirectionalLane(attrs?: Record<string, any>) {
-    if (!attrs) return true
-    const directionValue = (value) => (value === undefined || value === null ? '' : String(value).toLowerCase())
-    for (const key of ['oneway', 'one_way', 'oneWay', 'one-way']) {
-      const value = directionValue(attrs[key])
-      if (!value) continue
-      if (['no', 'false', '0', 'both', 'bidirectional', 'bi-directional', 'two-way', 'two_way'].includes(value)) {
-        return true
-      }
-      if (['yes', 'true', '1', 'oneway', 'one-way', 'forward', 'backward'].includes(value)) {
-        return false
-      }
-    }
-    const direction = directionValue(attrs.direction)
-    if (direction) {
-      if (['both', 'bidirectional', 'bi-directional', 'two-way', 'two_way'].includes(direction)) {
-        return true
-      }
-      if (['forward', 'backward', 'oneway', 'one-way'].includes(direction)) {
-        return false
-      }
-    }
-    return true
-  }
-
   snapParkingPathTarget(x: number, y: number, heading: number, useHeading = true) {
     const mapInfo = this.map_path_info || {}
     let bestDistance = Number.POSITIVE_INFINITY
-    let bestPoint: { x: number; y: number; heading: number; bidirectional: boolean } | null = null
+    let bestPoint: { x: number; y: number; heading: number } | null = null
 
     Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
       if (laneId.startsWith('junction_')) return
       const points = laneInfo?.points || []
       if (points.length < 2) return
-      const bidirectional = this.isBidirectionalLane(laneInfo?.attrs)
 
       for (let i = 0; i < points.length - 1; i += 1) {
         const [x1, y1] = points[i]
@@ -1187,7 +1161,6 @@ export default class ApplicationManager extends GraphicTools {
             x: projection.x,
             y: projection.y,
             heading: laneHeading,
-            bidirectional,
           }
         }
       }
@@ -1195,15 +1168,7 @@ export default class ApplicationManager extends GraphicTools {
 
     if (!bestPoint || bestDistance > 0.3) return null
 
-    let snappedHeading = bestPoint.heading
-    if (bestPoint.bidirectional && useHeading) {
-      const oppositeHeading = this.normalizeAngle(bestPoint.heading + Math.PI)
-      const directDiff = Math.abs(this.normalizeAngle(heading - bestPoint.heading))
-      const oppositeDiff = Math.abs(this.normalizeAngle(heading - oppositeHeading))
-      if (oppositeDiff < directDiff) {
-        snappedHeading = oppositeHeading
-      }
-    }
+    const snappedHeading = bestPoint.heading
 
     return {
       x: bestPoint.x,
