@@ -16,6 +16,7 @@ from src.core.config import (
     pp_visual_TASK_INFO_URL,
 )
 from src.core.log import logger
+from src.map_tools import g_roads
 from src.middlewares.redis_handler.connect import redis_cli, redis_cli_fms
 from src.routing import normalize_angle
 
@@ -35,6 +36,79 @@ ALLOW_REVERSE_DEFAULT = True
 REVERSE_HEADING_DIFF_THRESHOLD = math.radians(120)
 STOP_SPEED_THRESHOLD = 0.02
 STOP_STEER_DEG = 0.5
+SNAP_LANE_DISTANCE_THRESHOLD = 0.3
+START_LANE_DISTANCE_THRESHOLD = 1.0
+
+
+def _project_point_to_segment(
+    point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]
+) -> tuple[float, float, float]:
+    px, py = point
+    x1, y1 = start
+    x2, y2 = end
+    dx = x2 - x1
+    dy = y2 - y1
+    if dx == 0 and dy == 0:
+        return x1, y1, 0.0
+    t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+    t = max(0.0, min(1.0, t))
+    proj_x = x1 + t * dx
+    proj_y = y1 + t * dy
+    dist = math.hypot(px - proj_x, py - proj_y)
+    return proj_x, proj_y, dist
+
+
+def _find_nearest_lane(point: dict) -> tuple[float, float, float, float, str] | None:
+    if not g_roads or not getattr(g_roads, "road_info", None):
+        return None
+
+    x = point.get("x")
+    y = point.get("y")
+    if x is None or y is None:
+        return None
+
+    try:
+        x = float(x)
+        y = float(y)
+    except (TypeError, ValueError):
+        return None
+
+    best_distance = float("inf")
+    best_projection = None
+    best_heading = None
+    best_lane_id = None
+    for lane_id, lane_info in g_roads.road_info.items():
+        if str(lane_id).startswith("junction_"):
+            continue
+        line = lane_info.get("points") or []
+        if len(line) < 2:
+            continue
+        for idx in range(len(line) - 1):
+            x1, y1 = line[idx]
+            x2, y2 = line[idx + 1]
+            proj_x, proj_y, dist = _project_point_to_segment((x, y), (x1, y1), (x2, y2))
+            if dist < best_distance - 1e-6:
+                best_distance = dist
+                best_projection = (proj_x, proj_y)
+                best_heading = math.atan2(y2 - y1, x2 - x1)
+                best_lane_id = str(lane_id)
+
+    if best_projection is None or best_heading is None or best_lane_id is None:
+        return None
+
+    heading = best_heading
+
+    proj_x, proj_y = best_projection
+    return proj_x, proj_y, heading, best_distance, best_lane_id
+
+
+def _snap_end_pose_to_lane(
+    point: dict,
+) -> tuple[float, float, float, float, str] | None:
+    nearest = _find_nearest_lane(point)
+    if nearest is None or nearest[3] >= SNAP_LANE_DISTANCE_THRESHOLD:
+        return None
+    return nearest
 
 
 @dataclass(order=True)
@@ -580,11 +654,25 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     logger.info(f"parking_path plan: raw_pose={pose}")
 
     start_pose = _build_start_pose(pose)
-    end_pose = {
-        "x": float(points["x"]),
-        "y": float(points["y"]),
-        "heading": float(points.get("heading", 0.0)),
-    }
+    nearest_start = _find_nearest_lane(start_pose)
+    snapped = _snap_end_pose_to_lane(points)
+    if snapped is not None:
+        snap_x, snap_y, snap_heading, snap_dist, snap_lane_id = snapped
+        end_pose = {
+            "x": snap_x,
+            "y": snap_y,
+            "heading": snap_heading,
+        }
+        logger.info(
+            f"parking_path plan: snap end_pose to lane x={snap_x:.3f}, y={snap_y:.3f}, "
+            f"heading={snap_heading:.3f}, dist={snap_dist:.3f}, lane_id={snap_lane_id}"
+        )
+    else:
+        end_pose = {
+            "x": float(points["x"]),
+            "y": float(points["y"]),
+            "heading": float(points.get("heading", 0.0)),
+        }
     logger.info(f"parking_path plan: start_pose={start_pose}, end_pose={end_pose}")
     allow_reverse = bool(req.get("allow_reverse", ALLOW_REVERSE_DEFAULT))
     half_length = VEHICLE_LENGTH / 2.0
@@ -595,25 +683,21 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     front_mid_dist = math.hypot(end_pose["x"] - front_mid_x, end_pose["y"] - front_mid_y)
     rear_mid_dist = math.hypot(end_pose["x"] - rear_mid_x, end_pose["y"] - rear_mid_y)
     dist_diff = rear_mid_dist - front_mid_dist
-    reverse_start = allow_reverse and dist_diff < 0
+    dx_to_target = end_pose["x"] - start_pose["x"]
+    dy_to_target = end_pose["y"] - start_pose["y"]
+    heading_dot = math.cos(start_pose["heading"]) * dx_to_target + math.sin(start_pose["heading"]) * dy_to_target
+    reverse_by_heading = allow_reverse and heading_dot < 0
+    reverse_start = allow_reverse and (dist_diff < 0 or reverse_by_heading)
     start_for_plan = start_pose.copy()
     if reverse_start:
         start_for_plan["heading"] = normalize_angle(start_for_plan["heading"] + math.pi)
+    max_curvature = min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, abs(math.tan(MAX_STEER) / WHEEL_BASE))
     logger.info(
-        "parking_path plan: limits max_curvature=%.4f, min_turn_radius=%.2f, max_steer=%.2f, wheel_base=%.2f, "
-        "vehicle_size=%.2fx%.2f, allow_reverse=%s, front_mid_dist=%.2f, rear_mid_dist=%.2f, dist_diff=%.2f, "
-        "reverse_start=%s",
-        min(MAX_CURVATURE, 1.0 / MIN_TURN_RADIUS, abs(math.tan(MAX_STEER) / WHEEL_BASE)),
-        MIN_TURN_RADIUS,
-        MAX_STEER,
-        WHEEL_BASE,
-        VEHICLE_LENGTH,
-        VEHICLE_WIDTH,
-        allow_reverse,
-        front_mid_dist,
-        rear_mid_dist,
-        dist_diff,
-        reverse_start,
+        f"parking_path plan: limits max_curvature={max_curvature:.4f}, min_turn_radius={MIN_TURN_RADIUS:.2f}, "
+        f"max_steer={MAX_STEER:.2f}, wheel_base={WHEEL_BASE:.2f}, "
+        f"vehicle_size={VEHICLE_LENGTH:.2f}x{VEHICLE_WIDTH:.2f}, allow_reverse={allow_reverse}, "
+        f"front_mid_dist={front_mid_dist:.2f}, rear_mid_dist={rear_mid_dist:.2f}, dist_diff={dist_diff:.2f}, "
+        f"heading_dot={heading_dot:.2f}, reverse_start={reverse_start}"
     )
     obstacles = await _load_perception_obstacles(vehicle_id)
     logger.info(f"parking_path plan: obstacles={len(obstacles)}")
@@ -622,16 +706,43 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     start_speed = start_pose.get("speed")
     if start_speed is None:
         start_speed = STOP_SPEED_THRESHOLD
+    if snapped is not None and nearest_start is not None and not obstacles:
+        start_lane_heading = nearest_start[2]
+        end_lane_heading = end_pose["heading"]
+        start_lane_dist = nearest_start[3]
+        heading_diff = abs(normalize_angle(end_lane_heading - start_pose["heading"]))
+        lane_heading_diff = abs(normalize_angle(end_lane_heading - start_lane_heading))
+        if (
+            start_lane_dist <= START_LANE_DISTANCE_THRESHOLD
+            and heading_diff < 0.2
+            and lane_heading_diff < 0.1
+        ):
+            reverse_line = heading_dot < 0
+            straight_path = _build_straight_path(start_for_plan, end_pose, end_lane_heading, reverse_line)
+            logger.info(
+                f"parking_path plan: straight mode={'reverse' if reverse_line else 'forward'}, "
+                f"path_size={len(straight_path)}"
+            )
+            straight_valid = _is_path_within_run_area(straight_path)
+            logger.info(f"parking_path plan: straight run_area_valid={straight_valid}")
+            if not straight_valid:
+                return StdRes(data={"ok": False, "message": "path out of run area"})
+            return StdRes(
+                data={
+                    "ok": True,
+                    "target": end_pose,
+                    "path": straight_path,
+                    "fallback": True,
+                    "reverse_start": reverse_start,
+                }
+            )
     path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse, start_speed)
     if not path:
         if not obstacles:
             fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse, start_speed)
             logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
             fallback_valid = _is_path_within_run_area(fallback_path)
-            logger.info(
-                "parking_path plan: fallback run_area_valid=%s",
-                fallback_valid,
-            )
+            logger.info(f"parking_path plan: fallback run_area_valid={fallback_valid}")
             if not fallback_valid:
                 return StdRes(data={"ok": False, "message": "path out of run area"})
             return StdRes(
@@ -644,18 +755,12 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
                 }
             )
         logger.warning(
-            "parking_path plan: failed, start_pose=%s, end_pose=%s, obstacles=%s",
-            start_pose,
-            end_pose,
-            len(obstacles),
+            f"parking_path plan: failed, start_pose={start_pose}, end_pose={end_pose}, "
+            f"obstacles={len(obstacles)}"
         )
         return StdRes(data={"ok": False, "message": "hybrid plan failed"})
     path_valid = _is_path_within_run_area(path)
-    logger.info(
-        "parking_path plan: success, path_size=%s, run_area_valid=%s",
-        len(path),
-        path_valid,
-    )
+    logger.info(f"parking_path plan: success, path_size={len(path)}, run_area_valid={path_valid}")
     if not path_valid:
         return StdRes(data={"ok": False, "message": "path out of run area"})
     return StdRes(
