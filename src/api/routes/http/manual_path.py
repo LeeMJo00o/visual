@@ -341,7 +341,10 @@ async def plan_manual_path(req: dict = Body()) -> StdRes:
         logger.error(f"manual_path plan: read pose failed: {exc}")
 
     start_pose = _build_start_pose(pose)
-    snapped_heading = _snap_heading_to_lane(points)
+    snap_to_lane = req.get("snap_to_lane", True)
+    if isinstance(snap_to_lane, str):
+        snap_to_lane = snap_to_lane.lower() not in ("false", "0", "off", "no")
+    snapped_heading = _snap_heading_to_lane(points) if snap_to_lane else None
     end_pose = {
         "x": float(points["x"]),
         "y": float(points["y"]),

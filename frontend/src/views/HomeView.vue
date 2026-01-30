@@ -46,7 +46,7 @@ const parkingPathStore = useParkingPathStore()
 
 // 直接使用 store 的 isReplay 和 appReady，通过 storeToRefs 保持响应性
 const { isReplay, appReady } = storeToRefs(globalStore)
-const { active: manualModeActive, planValid, vehicleId } = storeToRefs(manualPathStore)
+const { active: manualModeActive, planValid, vehicleId, snapToLane } = storeToRefs(manualPathStore)
 const {
   active: parkingModeActive,
   planValid: parkingPlanValid,
@@ -196,6 +196,7 @@ const handleManualPathSelected = async (detail: { x: number; y: number; heading:
     const response = await axios.post('/api/manual_path/plan', {
       vehicle_id: manualPathStore.vehicleId,
       points: detail,
+      snap_to_lane: snapToLane.value,
     })
     const ok = response.data?.data?.ok
     if (ok) {
@@ -499,6 +500,17 @@ watch(
     } catch (error) {
       console.error('手控模式同步失败:', error)
     }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => [appReady.value, snapToLane.value],
+  async ([ready, enabled]) => {
+    if (!ready) return
+    await nextTick()
+    const manager = getManagerSafe()
+    manager?.setManualPathSnapToLane(enabled)
   },
   { immediate: true },
 )
@@ -887,6 +899,8 @@ const openInfosDialog = () => {
                   确认
                 </el-button>
                 <el-button size="small" @click="handleManualModeExit">退出</el-button>
+                <span class="cell-label">吸附道路</span>
+                <el-switch v-model="snapToLane" size="small" />
               </div>
               <div v-if="parkingModeActive" class="manual-mode-banner parking-mode-banner">
                 <span class="manual-mode-text">寄车模式 ({{ parkingVehicleId }})</span>

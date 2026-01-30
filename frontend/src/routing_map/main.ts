@@ -136,6 +136,7 @@ export default class ApplicationManager extends GraphicTools {
     active: false,
     dragging: false,
     startPoint: null as Position | null,
+    snapToLane: true,
   }
   public parkingPathContainer: Container | null = null
   public parkingPathPreviewGraphics: Graphics | null = null
@@ -819,6 +820,10 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
+  setManualPathSnapToLane(enabled: boolean) {
+    this.manualPathState.snapToLane = enabled
+  }
+
   setParkingPathMode(active: boolean) {
     this.parkingPathState.active = active
     this.parkingPathState.dragging = false
@@ -841,7 +846,7 @@ export default class ApplicationManager extends GraphicTools {
     if (!this.manualPathState.active) return
     if (e.button !== 0) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
-    const snapped = this.snapManualPathTarget(x, y, 0)
+    const snapped = this.manualPathState.snapToLane ? this.snapManualPathTarget(x, y, 0) : null
     const startX = snapped?.x ?? x
     const startY = snapped?.y ?? y
     this.manualPathState.dragging = true
@@ -883,7 +888,9 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    const snapped = this.snapManualPathTarget(start.x, start.y, heading)
+    const snapped = this.manualPathState.snapToLane
+      ? this.snapManualPathTarget(start.x, start.y, heading)
+      : null
     const target = snapped ?? { x: start.x, y: start.y, heading }
     this.manualPathState.dragging = false
     this.manualPathState.startPoint = null
@@ -1054,6 +1061,45 @@ export default class ApplicationManager extends GraphicTools {
     return ((angle + Math.PI) % twoPi + twoPi) % twoPi - Math.PI
   }
 
+  getLaneMidpoint(points: number[][]) {
+    if (points.length < 2) return null
+    let totalLength = 0
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const [x1, y1] = points[i]
+      const [x2, y2] = points[i + 1]
+      totalLength += Math.hypot(x2 - x1, y2 - y1)
+    }
+    if (totalLength === 0) return null
+    const halfLength = totalLength / 2
+    let accumulated = 0
+    for (let i = 0; i < points.length - 1; i += 1) {
+      const [x1, y1] = points[i]
+      const [x2, y2] = points[i + 1]
+      const segmentLength = Math.hypot(x2 - x1, y2 - y1)
+      if (segmentLength === 0) {
+        continue
+      }
+      if (accumulated + segmentLength >= halfLength) {
+        const ratio = (halfLength - accumulated) / segmentLength
+        const x = x1 + ratio * (x2 - x1)
+        const y = y1 + ratio * (y2 - y1)
+        return {
+          x,
+          y,
+          heading: Math.atan2(y2 - y1, x2 - x1),
+        }
+      }
+      accumulated += segmentLength
+    }
+    const [x1, y1] = points[points.length - 2]
+    const [x2, y2] = points[points.length - 1]
+    return {
+      x: x2,
+      y: y2,
+      heading: Math.atan2(y2 - y1, x2 - x1),
+    }
+  }
+
   projectPointToSegment(point: [number, number], start: [number, number], end: [number, number]) {
     const [px, py] = point
     const [x1, y1] = start
@@ -1073,33 +1119,17 @@ export default class ApplicationManager extends GraphicTools {
   snapManualPathTarget(x: number, y: number, heading: number) {
     const mapInfo = this.map_path_info || {}
     let bestDistance = Number.POSITIVE_INFINITY
-    let bestAngleDiff = Number.POSITIVE_INFINITY
     let bestPoint: { x: number; y: number; heading: number } | null = null
 
     Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
       if (laneId.startsWith('junction_')) return
       const points = laneInfo?.points || []
-      if (points.length < 2) return
-
-      for (let i = 0; i < points.length - 1; i += 1) {
-        const [x1, y1] = points[i]
-        const [x2, y2] = points[i + 1]
-        const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
-        const laneHeading = Math.atan2(y2 - y1, x2 - x1)
-        const angleDiff = Math.abs(this.normalizeAngle(heading - laneHeading))
-        const distanceDelta = Math.abs(projection.distance - bestDistance)
-        if (
-          projection.distance < bestDistance ||
-          (distanceDelta <= 0.5 && angleDiff < bestAngleDiff)
-        ) {
-          bestDistance = projection.distance
-          bestAngleDiff = angleDiff
-          bestPoint = {
-            x: projection.x,
-            y: projection.y,
-            heading: laneHeading,
-          }
-        }
+      const midpoint = this.getLaneMidpoint(points)
+      if (!midpoint) return
+      const distance = Math.hypot(x - midpoint.x, y - midpoint.y)
+      if (distance < bestDistance) {
+        bestDistance = distance
+        bestPoint = midpoint
       }
     })
 
