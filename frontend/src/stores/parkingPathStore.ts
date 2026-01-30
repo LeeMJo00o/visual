@@ -29,6 +29,7 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
     previewPath?: ParkingPathTarget[] | null
     planValid?: boolean
     reverseStart?: boolean
+    snapToLane?: boolean
   }
   const active = ref(Boolean(storedState.active))
   const vehicleId = ref(storedState.vehicleId || '')
@@ -37,6 +38,7 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
   const planning = ref(false)
   const planValid = ref(Boolean(storedState.planValid))
   const reverseStart = ref(Boolean(storedState.reverseStart))
+  const snapToLane = ref(storedState.snapToLane ?? true)
 
   function startMode(id: string) {
     active.value = true
@@ -75,6 +77,7 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
       previewPath: previewPath.value,
       planValid: planValid.value,
       reverseStart: reverseStart.value,
+      snapToLane: snapToLane.value,
     }),
     (state: {
       active: boolean
@@ -82,6 +85,7 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
       previewPath: ParkingPathTarget[] | null
       planValid: boolean
       reverseStart: boolean
+      snapToLane: boolean
     }) => {
       try {
         if (typeof window === 'undefined' || !window.localStorage) {
@@ -103,6 +107,7 @@ export const useParkingPathStore = defineStore('parkingPath', () => {
     planning,
     planValid,
     reverseStart,
+    snapToLane,
     startMode,
     setTarget,
     setPreviewPath,

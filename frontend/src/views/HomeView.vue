@@ -52,6 +52,7 @@ const {
   planValid: parkingPlanValid,
   vehicleId: parkingVehicleId,
   previewPath: parkingPreviewPath,
+  snapToLane: parkingSnapToLane,
 } = storeToRefs(parkingPathStore)
 
 // 监听地图显示状态
@@ -504,6 +505,17 @@ watch(
 )
 
 watch(
+  () => [appReady.value, parkingSnapToLane.value],
+  async ([ready, enabled]) => {
+    if (!ready) return
+    await nextTick()
+    const manager = getManagerSafe()
+    manager?.setParkingPathSnapToLane(enabled)
+  },
+  { immediate: true },
+)
+
+watch(
   () => [appReady.value, parkingModeActive.value],
   async ([ready, active]) => {
     if (!ready) return
@@ -899,6 +911,8 @@ const openInfosDialog = () => {
                   确认
                 </el-button>
                 <el-button size="small" @click="handleParkingModeExit">退出</el-button>
+                <span class="cell-label">吸附道路</span>
+                <el-switch v-model="parkingSnapToLane" size="small" />
               </div>
               <!-- 两列布局 -->
               <div class="control-grid">

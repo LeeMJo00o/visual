@@ -146,6 +146,7 @@ export default class ApplicationManager extends GraphicTools {
     active: false,
     dragging: false,
     startPoint: null as Position | null,
+    snapToLane: true,
   }
 
   constructor() {
@@ -837,26 +838,30 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
+  setParkingPathSnapToLane(enabled: boolean) {
+    this.parkingPathState.snapToLane = enabled
+  }
+
   handleManualPathPointerDown(e) {
     if (!this.manualPathState.active) return
     if (e.button !== 0) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
-    const snapped = this.snapManualPathTarget(x, y, 0)
-    const startX = snapped?.x ?? x
-    const startY = snapped?.y ?? y
     this.manualPathState.dragging = true
-    this.manualPathState.startPoint = { x: startX, y: startY, theta: 0 }
-    this.updateManualPathArrow(startX, startY, 0)
+    this.manualPathState.startPoint = { x, y, theta: 0 }
+    this.updateManualPathArrow(x, y, 0)
   }
 
   handleParkingPathPointerDown(e) {
     if (!this.parkingPathState.active) return
     if (e.button !== 0) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    const snapped = this.parkingPathState.snapToLane ? this.snapParkingPathTarget(x, y, 0) : null
+    const startX = snapped?.x ?? x
+    const startY = snapped?.y ?? y
     this.clearParkingPathPreview()
     this.parkingPathState.dragging = true
-    this.parkingPathState.startPoint = { x, y, theta: 0 }
-    this.updateParkingPathArrow(x, y, 0)
+    this.parkingPathState.startPoint = { x: startX, y: startY, theta: 0 }
+    this.updateParkingPathArrow(startX, startY, 0)
   }
 
   handleManualPathPointerMove(e) {
@@ -883,8 +888,7 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    const snapped = this.snapManualPathTarget(start.x, start.y, heading)
-    const target = snapped ?? { x: start.x, y: start.y, heading }
+    const target = { x: start.x, y: start.y, heading }
     this.manualPathState.dragging = false
     this.manualPathState.startPoint = null
     this.clearManualPathArrow()
@@ -901,7 +905,10 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    const target = { x: start.x, y: start.y, heading }
+    const snapped = this.parkingPathState.snapToLane
+      ? this.snapParkingPathTarget(start.x, start.y, heading)
+      : null
+    const target = snapped ?? { x: start.x, y: start.y, heading }
     this.parkingPathState.dragging = false
     this.parkingPathState.startPoint = null
     this.clearParkingPathArrow()
@@ -1070,10 +1077,9 @@ export default class ApplicationManager extends GraphicTools {
     return { x: projX, y: projY, distance: Math.hypot(px - projX, py - projY) }
   }
 
-  snapManualPathTarget(x: number, y: number, heading: number) {
+  snapParkingPathTarget(x: number, y: number, heading: number) {
     const mapInfo = this.map_path_info || {}
     let bestDistance = Number.POSITIVE_INFINITY
-    let bestAngleDiff = Number.POSITIVE_INFINITY
     let bestPoint: { x: number; y: number; heading: number } | null = null
 
     Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
@@ -1085,19 +1091,12 @@ export default class ApplicationManager extends GraphicTools {
         const [x1, y1] = points[i]
         const [x2, y2] = points[i + 1]
         const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
-        const laneHeading = Math.atan2(y2 - y1, x2 - x1)
-        const angleDiff = Math.abs(this.normalizeAngle(heading - laneHeading))
-        const distanceDelta = Math.abs(projection.distance - bestDistance)
-        if (
-          projection.distance < bestDistance ||
-          (distanceDelta <= 0.5 && angleDiff < bestAngleDiff)
-        ) {
+        if (projection.distance < bestDistance) {
           bestDistance = projection.distance
-          bestAngleDiff = angleDiff
           bestPoint = {
             x: projection.x,
             y: projection.y,
-            heading: laneHeading,
+            heading: Math.atan2(y2 - y1, x2 - x1),
           }
         }
       }
