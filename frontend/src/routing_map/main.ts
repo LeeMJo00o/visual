@@ -149,6 +149,7 @@ export default class ApplicationManager extends GraphicTools {
     dragging: false,
     startPoint: null as Position | null,
     startSnapped: false,
+    snapEnabled: true,
   }
 
   constructor() {
@@ -868,7 +869,9 @@ export default class ApplicationManager extends GraphicTools {
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     this.clearParkingPathPreview()
     this.parkingPathState.dragging = true
-    const snapped = this.snapParkingPathTarget(x, y, 0, false)
+    const snapped = this.parkingPathState.snapEnabled
+      ? this.snapParkingPathTarget(x, y, 0, false)
+      : null
     const targetX = snapped?.x ?? x
     const targetY = snapped?.y ?? y
     const targetHeading = snapped?.heading ?? 0
@@ -904,7 +907,7 @@ export default class ApplicationManager extends GraphicTools {
     const dy = y - start.y
     const moved = Math.hypot(dx, dy) > 0.1
     const heading = moved ? Math.atan2(dy, dx) : 0
-    const snapped = this.parkingPathState.startSnapped
+    const snapped = this.parkingPathState.startSnapped && this.parkingPathState.snapEnabled
       ? this.snapParkingPathTarget(start.x, start.y, heading, moved)
       : null
     const targetX = snapped?.x ?? start.x
@@ -944,7 +947,7 @@ export default class ApplicationManager extends GraphicTools {
     const dy = y - start.y
     const moved = Math.hypot(dx, dy) > 0.1
     const heading = moved ? Math.atan2(dy, dx) : 0
-    const snapped = this.parkingPathState.startSnapped
+    const snapped = this.parkingPathState.startSnapped && this.parkingPathState.snapEnabled
       ? this.snapParkingPathTarget(start.x, start.y, heading, moved)
       : null
     const target = snapped ?? { x: start.x, y: start.y, heading }
@@ -974,6 +977,10 @@ export default class ApplicationManager extends GraphicTools {
     this.parkingPathArrowGraphics.position.set(0, 0)
     this.parkingPathArrowGraphics.rotation = 0
     this.drawArrow(this.parkingPathArrowGraphics, appX, appY, -heading, 3, '#00c2ff', 0.8)
+  }
+
+  setParkingPathSnapEnabled(enabled: boolean) {
+    this.parkingPathState.snapEnabled = enabled
   }
 
   clearManualPathArrow() {
