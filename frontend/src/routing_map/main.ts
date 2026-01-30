@@ -1108,13 +1108,14 @@ export default class ApplicationManager extends GraphicTools {
     const dx = x2 - x1
     const dy = y2 - y1
     if (dx === 0 && dy === 0) {
-      return { x: x1, y: y1, distance: Math.hypot(px - x1, py - y1) }
+      return { x: x1, y: y1, distance: Math.hypot(px - x1, py - y1), t: 0, within: false }
     }
-    let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
-    t = Math.max(0, Math.min(1, t))
-    const projX = x1 + t * dx
-    const projY = y1 + t * dy
-    return { x: projX, y: projY, distance: Math.hypot(px - projX, py - projY) }
+    const t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+    const within = t >= 0 && t <= 1
+    const clampedT = Math.max(0, Math.min(1, t))
+    const projX = x1 + clampedT * dx
+    const projY = y1 + clampedT * dy
+    return { x: projX, y: projY, distance: Math.hypot(px - projX, py - projY), t, within }
   }
 
   snapManualPathTarget(x: number, y: number, heading: number) {
@@ -1131,6 +1132,9 @@ export default class ApplicationManager extends GraphicTools {
         const [x1, y1] = points[i]
         const [x2, y2] = points[i + 1]
         const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
+        if (!projection.within) {
+          continue
+        }
         const laneHeading = Math.atan2(y2 - y1, x2 - x1)
         if (projection.distance < bestDistance) {
           bestDistance = projection.distance
@@ -1174,6 +1178,9 @@ export default class ApplicationManager extends GraphicTools {
         const [x1, y1] = points[i]
         const [x2, y2] = points[i + 1]
         const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
+        if (!projection.within) {
+          continue
+        }
         const laneHeading = Math.atan2(y2 - y1, x2 - x1)
         if (projection.distance < bestDistance) {
           bestDistance = projection.distance
