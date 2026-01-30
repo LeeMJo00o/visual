@@ -46,12 +46,13 @@ const parkingPathStore = useParkingPathStore()
 
 // 直接使用 store 的 isReplay 和 appReady，通过 storeToRefs 保持响应性
 const { isReplay, appReady } = storeToRefs(globalStore)
-const { active: manualModeActive, planValid, vehicleId, snapToLane } = storeToRefs(manualPathStore)
+const { active: manualModeActive, planValid, vehicleId } = storeToRefs(manualPathStore)
 const {
   active: parkingModeActive,
   planValid: parkingPlanValid,
   vehicleId: parkingVehicleId,
   previewPath: parkingPreviewPath,
+  snapToLane: parkingSnapToLane,
 } = storeToRefs(parkingPathStore)
 
 // 监听地图显示状态
@@ -196,7 +197,6 @@ const handleManualPathSelected = async (detail: { x: number; y: number; heading:
     const response = await axios.post('/api/manual_path/plan', {
       vehicle_id: manualPathStore.vehicleId,
       points: detail,
-      snap_to_lane: snapToLane.value,
     })
     const ok = response.data?.data?.ok
     if (ok) {
@@ -505,12 +505,12 @@ watch(
 )
 
 watch(
-  () => [appReady.value, snapToLane.value],
+  () => [appReady.value, parkingSnapToLane.value],
   async ([ready, enabled]) => {
     if (!ready) return
     await nextTick()
     const manager = getManagerSafe()
-    manager?.setManualPathSnapToLane(enabled)
+    manager?.setParkingPathSnapToLane(enabled)
   },
   { immediate: true },
 )
@@ -899,8 +899,6 @@ const openInfosDialog = () => {
                   确认
                 </el-button>
                 <el-button size="small" @click="handleManualModeExit">退出</el-button>
-                <span class="cell-label">吸附道路</span>
-                <el-switch v-model="snapToLane" size="small" />
               </div>
               <div v-if="parkingModeActive" class="manual-mode-banner parking-mode-banner">
                 <span class="manual-mode-text">寄车模式 ({{ parkingVehicleId }})</span>
@@ -913,6 +911,8 @@ const openInfosDialog = () => {
                   确认
                 </el-button>
                 <el-button size="small" @click="handleParkingModeExit">退出</el-button>
+                <span class="cell-label">吸附道路</span>
+                <el-switch v-model="parkingSnapToLane" size="small" />
               </div>
               <!-- 两列布局 -->
               <div class="control-grid">

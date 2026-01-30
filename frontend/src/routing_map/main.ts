@@ -136,7 +136,6 @@ export default class ApplicationManager extends GraphicTools {
     active: false,
     dragging: false,
     startPoint: null as Position | null,
-    snapToLane: true,
   }
   public parkingPathContainer: Container | null = null
   public parkingPathPreviewGraphics: Graphics | null = null
@@ -147,6 +146,7 @@ export default class ApplicationManager extends GraphicTools {
     active: false,
     dragging: false,
     startPoint: null as Position | null,
+    snapToLane: true,
   }
 
   constructor() {
@@ -820,10 +820,6 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  setManualPathSnapToLane(enabled: boolean) {
-    this.manualPathState.snapToLane = enabled
-  }
-
   setParkingPathMode(active: boolean) {
     this.parkingPathState.active = active
     this.parkingPathState.dragging = false
@@ -842,26 +838,30 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
+  setParkingPathSnapToLane(enabled: boolean) {
+    this.parkingPathState.snapToLane = enabled
+  }
+
   handleManualPathPointerDown(e) {
     if (!this.manualPathState.active) return
     if (e.button !== 0) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
-    const snapped = this.manualPathState.snapToLane ? this.snapManualPathTarget(x, y, 0) : null
-    const startX = snapped?.x ?? x
-    const startY = snapped?.y ?? y
     this.manualPathState.dragging = true
-    this.manualPathState.startPoint = { x: startX, y: startY, theta: 0 }
-    this.updateManualPathArrow(startX, startY, 0)
+    this.manualPathState.startPoint = { x, y, theta: 0 }
+    this.updateManualPathArrow(x, y, 0)
   }
 
   handleParkingPathPointerDown(e) {
     if (!this.parkingPathState.active) return
     if (e.button !== 0) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
+    const snapped = this.parkingPathState.snapToLane ? this.snapParkingPathTarget(x, y, 0) : null
+    const startX = snapped?.x ?? x
+    const startY = snapped?.y ?? y
     this.clearParkingPathPreview()
     this.parkingPathState.dragging = true
-    this.parkingPathState.startPoint = { x, y, theta: 0 }
-    this.updateParkingPathArrow(x, y, 0)
+    this.parkingPathState.startPoint = { x: startX, y: startY, theta: 0 }
+    this.updateParkingPathArrow(startX, startY, 0)
   }
 
   handleManualPathPointerMove(e) {
@@ -888,10 +888,7 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    const snapped = this.manualPathState.snapToLane
-      ? this.snapManualPathTarget(start.x, start.y, heading)
-      : null
-    const target = snapped ?? { x: start.x, y: start.y, heading }
+    const target = { x: start.x, y: start.y, heading }
     this.manualPathState.dragging = false
     this.manualPathState.startPoint = null
     this.clearManualPathArrow()
@@ -908,7 +905,10 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    const target = { x: start.x, y: start.y, heading }
+    const snapped = this.parkingPathState.snapToLane
+      ? this.snapParkingPathTarget(start.x, start.y, heading)
+      : null
+    const target = snapped ?? { x: start.x, y: start.y, heading }
     this.parkingPathState.dragging = false
     this.parkingPathState.startPoint = null
     this.clearParkingPathArrow()
@@ -1100,23 +1100,7 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
-  projectPointToSegment(point: [number, number], start: [number, number], end: [number, number]) {
-    const [px, py] = point
-    const [x1, y1] = start
-    const [x2, y2] = end
-    const dx = x2 - x1
-    const dy = y2 - y1
-    if (dx === 0 && dy === 0) {
-      return { x: x1, y: y1, distance: Math.hypot(px - x1, py - y1) }
-    }
-    let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
-    t = Math.max(0, Math.min(1, t))
-    const projX = x1 + t * dx
-    const projY = y1 + t * dy
-    return { x: projX, y: projY, distance: Math.hypot(px - projX, py - projY) }
-  }
-
-  snapManualPathTarget(x: number, y: number, heading: number) {
+  snapParkingPathTarget(x: number, y: number, heading: number) {
     const mapInfo = this.map_path_info || {}
     let bestDistance = Number.POSITIVE_INFINITY
     let bestPoint: { x: number; y: number; heading: number } | null = null

@@ -23,14 +23,9 @@ export const useManualPathStore = defineStore('manualPath', () => {
     }
   }
 
-  const storedState = readStoredState() as {
-    active?: boolean
-    vehicleId?: string
-    snapToLane?: boolean
-  }
+  const storedState = readStoredState() as { active?: boolean; vehicleId?: string }
   const active = ref(Boolean(storedState.active))
   const vehicleId = ref(storedState.vehicleId || '')
-  const snapToLane = ref(storedState.snapToLane ?? true)
   const target = ref<ManualPathTarget | null>(null)
   const preview = ref<ManualPathTarget | null>(null)
   const planning = ref(false)
@@ -64,8 +59,8 @@ export const useManualPathStore = defineStore('manualPath', () => {
   }
 
   watch(
-    () => ({ active: active.value, vehicleId: vehicleId.value, snapToLane: snapToLane.value }),
-    (state: { active: boolean; vehicleId: string; snapToLane: boolean }) => {
+    () => ({ active: active.value, vehicleId: vehicleId.value }),
+    (state: { active: boolean; vehicleId: string }) => {
       try {
         if (typeof window === 'undefined' || !window.localStorage) {
           return
@@ -85,7 +80,6 @@ export const useManualPathStore = defineStore('manualPath', () => {
     preview,
     planning,
     planValid,
-    snapToLane,
     startMode,
     setTarget,
     setPreview,
