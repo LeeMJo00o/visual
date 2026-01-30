@@ -52,6 +52,7 @@ const {
   planValid: parkingPlanValid,
   vehicleId: parkingVehicleId,
   previewPath: parkingPreviewPath,
+  snapEnabled: parkingSnapEnabled,
 } = storeToRefs(parkingPathStore)
 
 // 监听地图显示状态
@@ -581,6 +582,17 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => [appReady.value, parkingSnapEnabled.value],
+  ([ready, snapEnabled]) => {
+    if (!ready) return
+    const manager = getManagerSafe()
+    if (!manager) return
+    manager.setParkingPathSnapEnabled(snapEnabled)
+  },
+  { immediate: true },
+)
+
 const getManagerSafe = () => {
   try {
     if (!appReady.value) {
@@ -902,6 +914,8 @@ const openInfosDialog = () => {
               </div>
               <div v-if="parkingModeActive" class="manual-mode-banner parking-mode-banner">
                 <span class="manual-mode-text">寄车模式 ({{ parkingVehicleId }})</span>
+                <span class="cell-label">吸附道路</span>
+                <el-switch v-model="parkingSnapEnabled" size="small" />
                 <el-button
                   type="primary"
                   size="small"
