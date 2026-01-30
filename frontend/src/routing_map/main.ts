@@ -136,6 +136,8 @@ export default class ApplicationManager extends GraphicTools {
     active: false,
     dragging: false,
     startPoint: null as Position | null,
+    startSnapped: false,
+    snappedLaneId: null as string | null,
   }
   public parkingPathContainer: Container | null = null
   public parkingPathPreviewGraphics: Graphics | null = null
@@ -807,6 +809,8 @@ export default class ApplicationManager extends GraphicTools {
     this.manualPathState.active = active
     this.manualPathState.dragging = false
     this.manualPathState.startPoint = null
+    this.manualPathState.startSnapped = false
+    this.manualPathState.snappedLaneId = null
     if (active) {
       this.mouse_func = 'manual_path'
     } else if (this.parkingPathState.active) {
@@ -848,6 +852,13 @@ export default class ApplicationManager extends GraphicTools {
     const startY = snapped?.y ?? y
     this.manualPathState.dragging = true
     this.manualPathState.startPoint = { x: startX, y: startY, theta: 0 }
+    this.manualPathState.startSnapped = Boolean(snapped)
+    this.manualPathState.snappedLaneId = snapped?.laneId ?? null
+    if (snapped?.laneId) {
+      console.info(
+        `[manual-path] snap target to lane=${snapped.laneId}, dist=${snapped.distance.toFixed(3)}`,
+      )
+    }
     this.updateManualPathArrow(startX, startY, 0)
   }
 
@@ -863,6 +874,11 @@ export default class ApplicationManager extends GraphicTools {
     const targetHeading = snapped?.heading ?? 0
     this.parkingPathState.startPoint = { x: targetX, y: targetY, theta: 0 }
     this.parkingPathState.startSnapped = Boolean(snapped)
+    if (snapped?.laneId) {
+      console.info(
+        `[parking-path] snap target to lane=${snapped.laneId}, dist=${snapped.distance.toFixed(3)}`,
+      )
+    }
     this.updateParkingPathArrow(targetX, targetY, targetHeading)
   }
 
@@ -872,7 +888,11 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    this.updateManualPathArrow(start.x, start.y, heading)
+    const snapped = this.manualPathState.startSnapped
+      ? this.snapManualPathTarget(start.x, start.y, heading)
+      : null
+    const targetHeading = snapped?.heading ?? heading
+    this.updateManualPathArrow(start.x, start.y, targetHeading)
   }
 
   handleParkingPathPointerMove(e) {
@@ -899,10 +919,14 @@ export default class ApplicationManager extends GraphicTools {
     if (!start) return
     const [x, y] = this.raw_xy(e.global.x, e.global.y)
     const heading = Math.atan2(y - start.y, x - start.x)
-    const snapped = this.snapManualPathTarget(start.x, start.y, heading)
+    const snapped = this.manualPathState.startSnapped
+      ? this.snapManualPathTarget(start.x, start.y, heading)
+      : null
     const target = snapped ?? { x: start.x, y: start.y, heading }
     this.manualPathState.dragging = false
     this.manualPathState.startPoint = null
+    this.manualPathState.startSnapped = false
+    this.manualPathState.snappedLaneId = null
     this.clearManualPathArrow()
     window.dispatchEvent(
       new CustomEvent('manual-path-target-selected', {
@@ -1096,54 +1120,7 @@ export default class ApplicationManager extends GraphicTools {
   snapManualPathTarget(x: number, y: number, heading: number) {
     const mapInfo = this.map_path_info || {}
     let bestDistance = Number.POSITIVE_INFINITY
-    let bestAngleDiff = Number.POSITIVE_INFINITY
-    let bestPoint: { x: number; y: number; heading: number } | null = null
-
-    Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
-      if (laneId.startsWith('junction_')) return
-      const points = laneInfo?.points || []
-      if (points.length < 2) return
-
-      for (let i = 0; i < points.length - 1; i += 1) {
-        const [x1, y1] = points[i]
-        const [x2, y2] = points[i + 1]
-        const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
-        const laneHeading = Math.atan2(y2 - y1, x2 - x1)
-        const angleDiff = Math.abs(this.normalizeAngle(heading - laneHeading))
-        const distanceDelta = Math.abs(projection.distance - bestDistance)
-        if (
-          projection.distance < bestDistance ||
-          (distanceDelta <= 0.5 && angleDiff < bestAngleDiff)
-        ) {
-          bestDistance = projection.distance
-          bestAngleDiff = angleDiff
-          bestPoint = {
-            x: projection.x,
-            y: projection.y,
-            heading: laneHeading,
-          }
-        }
-      }
-    })
-
-    if (!bestPoint || bestDistance > 10) return null
-
-    const oppositeHeading = this.normalizeAngle(bestPoint.heading + Math.PI)
-    const directDiff = Math.abs(this.normalizeAngle(heading - bestPoint.heading))
-    const oppositeDiff = Math.abs(this.normalizeAngle(heading - oppositeHeading))
-    const snappedHeading = oppositeDiff < directDiff ? oppositeHeading : bestPoint.heading
-
-    return {
-      x: bestPoint.x,
-      y: bestPoint.y,
-      heading: snappedHeading,
-    }
-  }
-
-  snapParkingPathTarget(x: number, y: number, heading: number, useHeading = true) {
-    const mapInfo = this.map_path_info || {}
-    let bestDistance = Number.POSITIVE_INFINITY
-    let bestPoint: { x: number; y: number; heading: number } | null = null
+    let bestPoint: { x: number; y: number; heading: number; laneId: string } | null = null
 
     Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
       if (laneId.startsWith('junction_')) return
@@ -1161,6 +1138,7 @@ export default class ApplicationManager extends GraphicTools {
             x: projection.x,
             y: projection.y,
             heading: laneHeading,
+            laneId,
           }
         }
       }
@@ -1168,12 +1146,63 @@ export default class ApplicationManager extends GraphicTools {
 
     if (!bestPoint || bestDistance > 0.3) return null
 
-    const snappedHeading = bestPoint.heading
+    const oppositeHeading = this.normalizeAngle(bestPoint.heading + Math.PI)
+    const directDiff = Math.abs(this.normalizeAngle(heading - bestPoint.heading))
+    const oppositeDiff = Math.abs(this.normalizeAngle(heading - oppositeHeading))
+    const snappedHeading = oppositeDiff < directDiff ? oppositeHeading : bestPoint.heading
 
     return {
       x: bestPoint.x,
       y: bestPoint.y,
       heading: snappedHeading,
+      laneId: bestPoint.laneId,
+      distance: bestDistance,
+    }
+  }
+
+  snapParkingPathTarget(x: number, y: number, heading: number, useHeading = true) {
+    const mapInfo = this.map_path_info || {}
+    let bestDistance = Number.POSITIVE_INFINITY
+    let bestPoint: { x: number; y: number; heading: number; laneId: string } | null = null
+
+    Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
+      if (laneId.startsWith('junction_')) return
+      const points = laneInfo?.points || []
+      if (points.length < 2) return
+
+      for (let i = 0; i < points.length - 1; i += 1) {
+        const [x1, y1] = points[i]
+        const [x2, y2] = points[i + 1]
+        const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
+        const laneHeading = Math.atan2(y2 - y1, x2 - x1)
+        if (projection.distance < bestDistance) {
+          bestDistance = projection.distance
+          bestPoint = {
+            x: projection.x,
+            y: projection.y,
+            heading: laneHeading,
+            laneId,
+          }
+        }
+      }
+    })
+
+    if (!bestPoint || bestDistance > 0.3) return null
+
+    let snappedHeading = bestPoint.heading
+    if (useHeading) {
+      const oppositeHeading = this.normalizeAngle(bestPoint.heading + Math.PI)
+      const directDiff = Math.abs(this.normalizeAngle(heading - bestPoint.heading))
+      const oppositeDiff = Math.abs(this.normalizeAngle(heading - oppositeHeading))
+      snappedHeading = oppositeDiff < directDiff ? oppositeHeading : bestPoint.heading
+    }
+
+    return {
+      x: bestPoint.x,
+      y: bestPoint.y,
+      heading: snappedHeading,
+      laneId: bestPoint.laneId,
+      distance: bestDistance,
     }
   }
   calculateAngle(x1, y1, x2, y2) {
