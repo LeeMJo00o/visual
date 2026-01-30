@@ -273,7 +273,7 @@ const buildParkingBridgePayload = (
   const startHeading = firstPoint.heading
   const endHeading = lastPoint.heading
   const guidanceDefaults = {
-    direction: 2,
+    direction: reverseStart ? 2 : 1,
     deviation: null,
     speeds: {
       vmax: 200.0,
