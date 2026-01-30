@@ -1061,43 +1061,20 @@ export default class ApplicationManager extends GraphicTools {
     return ((angle + Math.PI) % twoPi + twoPi) % twoPi - Math.PI
   }
 
-  getLaneMidpoint(points: number[][]) {
-    if (points.length < 2) return null
-    let totalLength = 0
-    for (let i = 0; i < points.length - 1; i += 1) {
-      const [x1, y1] = points[i]
-      const [x2, y2] = points[i + 1]
-      totalLength += Math.hypot(x2 - x1, y2 - y1)
+  projectPointToSegment(point: [number, number], start: [number, number], end: [number, number]) {
+    const [px, py] = point
+    const [x1, y1] = start
+    const [x2, y2] = end
+    const dx = x2 - x1
+    const dy = y2 - y1
+    if (dx === 0 && dy === 0) {
+      return { x: x1, y: y1, distance: Math.hypot(px - x1, py - y1) }
     }
-    if (totalLength === 0) return null
-    const halfLength = totalLength / 2
-    let accumulated = 0
-    for (let i = 0; i < points.length - 1; i += 1) {
-      const [x1, y1] = points[i]
-      const [x2, y2] = points[i + 1]
-      const segmentLength = Math.hypot(x2 - x1, y2 - y1)
-      if (segmentLength === 0) {
-        continue
-      }
-      if (accumulated + segmentLength >= halfLength) {
-        const ratio = (halfLength - accumulated) / segmentLength
-        const x = x1 + ratio * (x2 - x1)
-        const y = y1 + ratio * (y2 - y1)
-        return {
-          x,
-          y,
-          heading: Math.atan2(y2 - y1, x2 - x1),
-        }
-      }
-      accumulated += segmentLength
-    }
-    const [x1, y1] = points[points.length - 2]
-    const [x2, y2] = points[points.length - 1]
-    return {
-      x: x2,
-      y: y2,
-      heading: Math.atan2(y2 - y1, x2 - x1),
-    }
+    let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+    t = Math.max(0, Math.min(1, t))
+    const projX = x1 + t * dx
+    const projY = y1 + t * dy
+    return { x: projX, y: projY, distance: Math.hypot(px - projX, py - projY) }
   }
 
   snapParkingPathTarget(x: number, y: number, heading: number) {
@@ -1108,12 +1085,20 @@ export default class ApplicationManager extends GraphicTools {
     Object.entries(mapInfo).forEach(([laneId, laneInfo]) => {
       if (laneId.startsWith('junction_')) return
       const points = laneInfo?.points || []
-      const midpoint = this.getLaneMidpoint(points)
-      if (!midpoint) return
-      const distance = Math.hypot(x - midpoint.x, y - midpoint.y)
-      if (distance < bestDistance) {
-        bestDistance = distance
-        bestPoint = midpoint
+      if (points.length < 2) return
+
+      for (let i = 0; i < points.length - 1; i += 1) {
+        const [x1, y1] = points[i]
+        const [x2, y2] = points[i + 1]
+        const projection = this.projectPointToSegment([x, y], [x1, y1], [x2, y2])
+        if (projection.distance < bestDistance) {
+          bestDistance = projection.distance
+          bestPoint = {
+            x: projection.x,
+            y: projection.y,
+            heading: Math.atan2(y2 - y1, x2 - x1),
+          }
+        }
       }
     })
 
