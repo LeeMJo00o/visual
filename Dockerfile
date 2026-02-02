@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=uhub.service.ucloud.cn/westwell_devops/chain_boot/pp-visual-base:2026-01-09-14-29-13
+ARG BASE_IMAGE=uhub.service.ucloud.cn/westwell_devops/pp4.1/pp-visual:46e7e931.2026-01-30-15-16-07
 
 # step 1: 构建前端
 FROM ${BASE_IMAGE} AS frontend-build

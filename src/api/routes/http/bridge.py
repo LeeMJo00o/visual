@@ -40,7 +40,8 @@ async def bridge_message(req: dict = Body()) -> StdRes:
         if isinstance(path_guidance, dict):
             points = path_guidance.get("points")
             if isinstance(points, list):
-                desired_direction = 2 if backward_motion else 1
+                # desired_direction = 2 if backward_motion else 1
+                desired_direction = 2
                 for point in points:
                     if isinstance(point, dict):
                         point["direction"] = desired_direction
@@ -55,6 +56,7 @@ async def bridge_message(req: dict = Body()) -> StdRes:
             f"bridge message path summary: commandLines={len(command_lines) if isinstance(command_lines, list) else None}, "
             f"commandPoints={command_points}"
         )
+        body_info["backward_motion"] = True
         forward_payload = {
             "header": header_info or {},
             "body": json.dumps(body_info, ensure_ascii=False),
