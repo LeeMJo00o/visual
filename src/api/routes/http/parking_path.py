@@ -1,4 +1,5 @@
 import asyncio
+import ast
 import heapq
 import json
 import math
@@ -482,16 +483,19 @@ def _normalize_run_areas(value: Any) -> list[list[tuple[float, float]]]:
             value = value.decode("utf-8")
         except Exception:
             return []
-    if isinstance(value, str):
+    for _ in range(2):
+        if not isinstance(value, str):
+            break
         try:
             value = json.loads(value)
+            continue
         except Exception:
-            return []
-    if isinstance(value, str):
-        try:
-            value = json.loads(value)
-        except Exception:
-            return []
+            try:
+                value = ast.literal_eval(value)
+            except Exception:
+                return []
+        if not isinstance(value, str):
+            break
     if not isinstance(value, list):
         return []
     normalized: list[list[tuple[float, float]]] = []
