@@ -483,6 +483,17 @@ def _normalize_run_areas(value: Any) -> list[list[tuple[float, float]]]:
             value = value.decode("utf-8")
         except Exception:
             return []
+    if isinstance(value, str):
+        stripped = value.strip()
+        if (stripped.startswith("b'") and stripped.endswith("'")) or (
+            stripped.startswith('b"') and stripped.endswith('"')
+        ):
+            try:
+                value = ast.literal_eval(stripped)
+                if isinstance(value, bytes):
+                    value = value.decode("utf-8")
+            except Exception:
+                return []
     for _ in range(2):
         if not isinstance(value, str):
             break
@@ -530,6 +541,7 @@ async def _load_run_areas() -> list[list[tuple[float, float]]]:
         logger.warning(f"parking_path: read run_areas failed: {exc}")
         logger.info(f"parking_path: run_areas={DEFAULT_RUN_AREAS}")
         return DEFAULT_RUN_AREAS
+    logger.info(f"parking_path: raw run_areas value={raw} type={type(raw)}")
     parsed = _normalize_run_areas(raw)
     if not parsed:
         logger.info(f"parking_path: run_areas={DEFAULT_RUN_AREAS}")
