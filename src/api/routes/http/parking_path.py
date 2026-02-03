@@ -463,7 +463,8 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool, start_speed
     return path
 
 
-RUN_AREAS = [
+RUN_AREAS_KEY = "pp_visual:parking_path:run_areas"
+DEFAULT_RUN_AREAS = [
     [(84.726, -572.809), (-37.087, -1268.711), (-21.702, -1270.487), (105.851, -575.139)],
     [(352.309, -620.029), (229.085, -1318.748), (245.866, -1319.991), (370.430, -622.527)],
     [(618.297, -666.568), (497.099, -1361.706), (510.565, -1365.208), (638.766, -667.107)],
@@ -471,6 +472,57 @@ RUN_AREAS = [
     [(-257.877, -1232.300), (-268.381, -1274.584), (643.298, -1435.105), (647.876, -1394.167)],
 ]
 RUN_AREA_SEGMENT_STEP = 0.2
+
+
+def _normalize_run_areas(value: Any) -> list[list[tuple[float, float]]]:
+    if value is None:
+        return []
+    if isinstance(value, bytes):
+        try:
+            value = value.decode("utf-8")
+        except Exception:
+            return []
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except Exception:
+            return []
+    if not isinstance(value, list):
+        return []
+    normalized: list[list[tuple[float, float]]] = []
+    for polygon in value:
+        if not isinstance(polygon, list):
+            continue
+        points: list[tuple[float, float]] = []
+        for point in polygon:
+            if isinstance(point, dict):
+                px = point.get("x")
+                py = point.get("y")
+            elif isinstance(point, (list, tuple)) and len(point) >= 2:
+                px, py = point[0], point[1]
+            else:
+                continue
+            try:
+                points.append((float(px), float(py)))
+            except (TypeError, ValueError):
+                continue
+        if len(points) >= 3:
+            normalized.append(points)
+    return normalized
+
+
+async def _load_run_areas() -> list[list[tuple[float, float]]]:
+    if not redis_cli:
+        return DEFAULT_RUN_AREAS
+    try:
+        raw = await redis_cli.get(RUN_AREAS_KEY)
+    except Exception as exc:
+        logger.warning("parking_path: read run_areas failed: %s", exc)
+        return DEFAULT_RUN_AREAS
+    parsed = _normalize_run_areas(raw)
+    if not parsed:
+        return DEFAULT_RUN_AREAS
+    return parsed
 
 
 def _point_in_polygon(x: float, y: float, polygon: list[tuple[float, float]]) -> bool:
@@ -485,14 +537,14 @@ def _point_in_polygon(x: float, y: float, polygon: list[tuple[float, float]]) ->
     return inside
 
 
-def _point_in_any_run_area(x: float, y: float) -> bool:
-    for polygon in RUN_AREAS:
+def _point_in_any_run_area(x: float, y: float, run_areas: list[list[tuple[float, float]]]) -> bool:
+    for polygon in run_areas:
         if _point_in_polygon(x, y, polygon):
             return True
     return False
 
 
-def _is_path_within_run_area(path: list[dict]) -> bool:
+def _is_path_within_run_area(path: list[dict], run_areas: list[list[tuple[float, float]]]) -> bool:
     if not path:
         return False
     for index, point in enumerate(path):
@@ -500,7 +552,7 @@ def _is_path_within_run_area(path: list[dict]) -> bool:
         y = point.get("y")
         if x is None or y is None:
             return False
-        if not _point_in_any_run_area(float(x), float(y)):
+        if not _point_in_any_run_area(float(x), float(y), run_areas):
             return False
         if index == 0:
             continue
@@ -517,7 +569,7 @@ def _is_path_within_run_area(path: list[dict]) -> bool:
             ratio = step_index / steps
             sample_x = float(prev_x) + dx * ratio
             sample_y = float(prev_y) + dy * ratio
-            if not _point_in_any_run_area(sample_x, sample_y):
+            if not _point_in_any_run_area(sample_x, sample_y, run_areas):
                 return False
     return True
 
@@ -619,6 +671,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     logger.info(f"parking_path plan: obstacles={len(obstacles)}")
     if obstacles:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
+    run_areas = await _load_run_areas()
     start_speed = start_pose.get("speed")
     if start_speed is None:
         start_speed = STOP_SPEED_THRESHOLD
@@ -627,7 +680,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         if not obstacles:
             fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse, start_speed)
             logger.info(f"parking_path plan: fallback path_size={len(fallback_path)}")
-            fallback_valid = _is_path_within_run_area(fallback_path)
+            fallback_valid = _is_path_within_run_area(fallback_path, run_areas)
             logger.info(
                 "parking_path plan: fallback run_area_valid=%s",
                 fallback_valid,
@@ -650,7 +703,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
             len(obstacles),
         )
         return StdRes(data={"ok": False, "message": "hybrid plan failed"})
-    path_valid = _is_path_within_run_area(path)
+    path_valid = _is_path_within_run_area(path, run_areas)
     logger.info(
         "parking_path plan: success, path_size=%s, run_area_valid=%s",
         len(path),
