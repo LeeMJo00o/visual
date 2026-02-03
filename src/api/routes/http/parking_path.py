@@ -487,6 +487,11 @@ def _normalize_run_areas(value: Any) -> list[list[tuple[float, float]]]:
             value = json.loads(value)
         except Exception:
             return []
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except Exception:
+            return []
     if not isinstance(value, list):
         return []
     normalized: list[list[tuple[float, float]]] = []
@@ -513,15 +518,19 @@ def _normalize_run_areas(value: Any) -> list[list[tuple[float, float]]]:
 
 async def _load_run_areas() -> list[list[tuple[float, float]]]:
     if not redis_cli:
+        logger.info(f"parking_path: run_areas={DEFAULT_RUN_AREAS}")
         return DEFAULT_RUN_AREAS
     try:
         raw = await redis_cli.get(RUN_AREAS_KEY)
     except Exception as exc:
         logger.warning(f"parking_path: read run_areas failed: {exc}")
+        logger.info(f"parking_path: run_areas={DEFAULT_RUN_AREAS}")
         return DEFAULT_RUN_AREAS
     parsed = _normalize_run_areas(raw)
     if not parsed:
+        logger.info(f"parking_path: run_areas={DEFAULT_RUN_AREAS}")
         return DEFAULT_RUN_AREAS
+    logger.info(f"parking_path: run_areas={parsed}")
     return parsed
 
 
