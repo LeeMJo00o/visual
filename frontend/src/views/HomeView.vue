@@ -410,6 +410,10 @@ const handleParkingModeConfirm = async () => {
       ElMessage({ message: '寄车路径已下发', type: 'success' })
       const manager = getManagerSafe()
       manager?.setParkingPathDriving(true)
+      const endPoint = parkingPathStore.previewPath?.at(-1)
+      if (endPoint) {
+        manager?.setParkingPathEndPoint({ x: endPoint.x, y: endPoint.y })
+      }
     } else {
       ElMessage({ message: response.data?.data?.message || '寄车路径下发失败', type: 'error' })
     }

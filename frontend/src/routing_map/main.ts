@@ -853,6 +853,10 @@ export default class ApplicationManager extends GraphicTools {
     this.parkingPathState.driving = active
   }
 
+  setParkingPathEndPoint(point: { x: number; y: number } | null) {
+    this.parkingPathState.endPoint = point
+  }
+
   setParkingPathSnapToLane(enabled: boolean) {
     this.parkingPathState.snapToLane = enabled
   }

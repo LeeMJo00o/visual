@@ -832,7 +832,8 @@ export class DataRenderer {
     this.manager.agents[vehicleId].v_info.priority = priority
     this.manager.agents[vehicleId].v_info.stop_du = stop_du
     this.manager.agents[vehicleId].v_info.stop_du_re = stop_du_re
-    this.manager.updateParkingPathArrival(vehicleId, x, -y)
+    const agent = this.manager.agents[vehicleId]
+    this.manager.updateParkingPathArrival(vehicleId, agent.position.x, agent.position.y)
 
     // 更新车辆文本，包含优先级
     let displayText = vehicleId
