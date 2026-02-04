@@ -281,7 +281,8 @@ export default class Agent {
   _updatePlanningSectors() {
     if (
       !this.manager?.parkingPathState?.active ||
-      this.manager?.parkingPathState?.vehicleId !== this.vehicle_id
+      this.manager?.parkingPathState?.vehicleId !== this.vehicle_id ||
+      this.manager?.parkingPathState?.driving
     ) {
       this.graphics_head_sector.clear()
       this.graphics_trailer_sector.clear()

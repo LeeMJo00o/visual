@@ -408,6 +408,8 @@ const handleParkingModeConfirm = async () => {
     const response = await axios.post('/api/bridge/message', payload)
     if (response.data?.data?.ok) {
       ElMessage({ message: '寄车路径已下发', type: 'success' })
+      const manager = getManagerSafe()
+      manager?.setParkingPathDriving(true)
     } else {
       ElMessage({ message: response.data?.data?.message || '寄车路径下发失败', type: 'error' })
     }

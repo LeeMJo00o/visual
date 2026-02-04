@@ -148,6 +148,8 @@ export default class ApplicationManager extends GraphicTools {
     startPoint: null as Position | null,
     snapToLane: true,
     vehicleId: '',
+    driving: false,
+    endPoint: null as { x: number; y: number } | null,
   }
 
   constructor() {
@@ -825,6 +827,10 @@ export default class ApplicationManager extends GraphicTools {
     this.parkingPathState.active = active
     this.parkingPathState.dragging = false
     this.parkingPathState.startPoint = null
+    if (!active) {
+      this.parkingPathState.driving = false
+      this.parkingPathState.endPoint = null
+    }
     if (active) {
       this.mouse_func = 'parking_path'
     } else if (this.manualPathState.active) {
@@ -841,6 +847,10 @@ export default class ApplicationManager extends GraphicTools {
 
   setParkingPathVehicleId(vehicleId: string) {
     this.parkingPathState.vehicleId = vehicleId
+  }
+
+  setParkingPathDriving(active: boolean) {
+    this.parkingPathState.driving = active
   }
 
   setParkingPathSnapToLane(enabled: boolean) {
@@ -1000,21 +1010,9 @@ export default class ApplicationManager extends GraphicTools {
       1,
       0.8,
     )
-    if (vehicleId && this.agents[vehicleId]) {
-      const agent = this.agents[vehicleId]
+    if (vehicleId) {
       const endPoint = points[points.length - 1]
-      this.drawLine(
-        lineGraphics,
-        'parking-path-direct',
-        [
-          [agent.position.x, agent.position.y],
-          [endPoint.x, endPoint.y],
-        ],
-        false,
-        0x00c2ff,
-        1,
-        0.6,
-      )
+      this.parkingPathState.endPoint = { x: endPoint.x, y: endPoint.y }
     }
     const width = 16
     const height = 3.1
@@ -1060,6 +1058,23 @@ export default class ApplicationManager extends GraphicTools {
     }
     if (this.parkingPathArrowGraphics) {
       this.parkingPathArrowGraphics.clear()
+    }
+    this.parkingPathState.endPoint = null
+    this.parkingPathState.driving = false
+  }
+
+  updateParkingPathArrival(vehicleId: string, x: number, y: number) {
+    if (
+      !this.parkingPathState.driving ||
+      this.parkingPathState.vehicleId !== vehicleId ||
+      !this.parkingPathState.endPoint
+    ) {
+      return
+    }
+    const { x: endX, y: endY } = this.parkingPathState.endPoint
+    const distance = Math.hypot(x - endX, y - endY)
+    if (distance <= 0.5) {
+      this.clearParkingPathPreview()
     }
   }
 
