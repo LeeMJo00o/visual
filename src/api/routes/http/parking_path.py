@@ -235,7 +235,7 @@ def _plan_hybrid_a_star(
     start_speed: float = 0.0,
 ) -> list[dict]:
     heading_bins = 24
-    max_iter = 20000
+    max_iter = 200000
     goal_tolerance = 0.8
     heading_tolerance = 0.5
     vehicle_radius = VEHICLE_WIDTH / 2.0
@@ -730,7 +730,11 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     start_speed = start_pose.get("speed")
     if start_speed is None:
         start_speed = STOP_SPEED_THRESHOLD
-    path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse, start_speed)
+    allow_reverse_for_plan = allow_reverse and reverse_start
+    path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse_for_plan, start_speed)
+    if not path and allow_reverse and not reverse_start:
+        logger.info("parking_path plan: retry hybrid_a_star with reverse enabled")
+        path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, True, start_speed)
     if not path:
         if not obstacles:
             fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse, start_speed)
