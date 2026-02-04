@@ -144,6 +144,7 @@ export default class ApplicationManager extends GraphicTools {
   public parkingObstacleGraphics: Graphics | null = null
   public parkingRunAreaOverlay: Graphics | null = null
   public parkingRunAreaHatch: Graphics | null = null
+  public parkingRunAreaMask: Graphics | null = null
   public parkingRunAreas: { x: number; y: number }[][] = []
   public parkingPathState = {
     active: false,
@@ -223,6 +224,7 @@ export default class ApplicationManager extends GraphicTools {
     this.parkingObstacleGraphics = null
     this.parkingRunAreaOverlay = null
     this.parkingRunAreaHatch = null
+    this.parkingRunAreaMask = null
     this.parkingRunAreas = []
   }
 
@@ -465,10 +467,13 @@ export default class ApplicationManager extends GraphicTools {
       this.add_graphics(this.graphics_path_apply_area)
       this.parkingRunAreaOverlay = new Graphics()
       this.parkingRunAreaHatch = new Graphics()
+      this.parkingRunAreaMask = new Graphics()
       this.parkingRunAreaOverlay.visible = false
       this.parkingRunAreaHatch.visible = false
+      this.parkingRunAreaMask.visible = false
       this.mainContainer.addChild(this.parkingRunAreaOverlay)
       this.mainContainer.addChild(this.parkingRunAreaHatch)
+      this.mainContainer.addChild(this.parkingRunAreaMask)
       this.mainContainer.addChild(this.agentContainer)
 
       this.measureContainer = new Container()
@@ -873,13 +878,17 @@ export default class ApplicationManager extends GraphicTools {
     if (this.parkingRunAreaHatch) {
       this.parkingRunAreaHatch.visible = visible
     }
+    if (this.parkingRunAreaMask) {
+      this.parkingRunAreaMask.visible = visible
+    }
   }
 
   updateParkingRunAreas(runAreas: { x: number; y: number }[][]) {
     this.parkingRunAreas = runAreas
-    if (!this.parkingRunAreaOverlay || !this.parkingRunAreaHatch) return
+    if (!this.parkingRunAreaOverlay || !this.parkingRunAreaHatch || !this.parkingRunAreaMask) return
     this.parkingRunAreaOverlay.clear()
     this.parkingRunAreaHatch.clear()
+    this.parkingRunAreaMask.clear()
     if (!runAreas || runAreas.length === 0) {
       return
     }
@@ -913,14 +922,10 @@ export default class ApplicationManager extends GraphicTools {
     maxY += padding
 
     const overlay = this.parkingRunAreaOverlay
-    overlay.rect(minX, minY, maxX - minX, maxY - minY)
-      .fill({ color: 0xff4d4f, alpha: 0.18 })
-    overlay.beginHole()
     transformedAreas.forEach((polygon) => {
       const points = polygon.flatMap((point) => [point.x, point.y])
-      overlay.poly(points)
+      overlay.poly(points).fill({ color: 0xff4d4f, alpha: 0.18 })
     })
-    overlay.endHole()
 
     const hatch = this.parkingRunAreaHatch
     const spacing = 8
@@ -930,12 +935,13 @@ export default class ApplicationManager extends GraphicTools {
       hatch.lineTo(x + slope, maxY)
     }
     hatch.stroke({ color: 0xff4d4f, width: 0.8, alpha: 0.45 })
-    hatch.beginHole()
+
+    const mask = this.parkingRunAreaMask
     transformedAreas.forEach((polygon) => {
       const points = polygon.flatMap((point) => [point.x, point.y])
-      hatch.poly(points)
+      mask.poly(points).fill({ color: 0xffffff, alpha: 1 })
     })
-    hatch.endHole()
+    hatch.mask = mask
   }
 
   setParkingPathEndPoint(point: { x: number; y: number } | null) {

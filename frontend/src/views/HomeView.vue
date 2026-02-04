@@ -556,7 +556,7 @@ const fetchParkingObstacles = async () => {
 
 const fetchParkingRunAreas = async () => {
   try {
-    const response = await axios.get('/api/parking_path/run_areas')
+    const response = await axios.get('/api/parking_path/no_run_areas')
     if (!response.data?.data?.ok) return
     const areas = response.data?.data?.areas || []
     const manager = getManagerSafe()
