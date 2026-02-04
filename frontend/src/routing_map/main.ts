@@ -1073,7 +1073,7 @@ export default class ApplicationManager extends GraphicTools {
     }
     const { x: endX, y: endY } = this.parkingPathState.endPoint
     const distance = Math.hypot(x - endX, y - endY)
-    if (distance <= 0.5) {
+    if (distance <= 0.1) {
       this.clearParkingPathPreview()
     }
   }
