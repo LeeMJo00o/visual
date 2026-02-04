@@ -142,11 +142,18 @@ export default class ApplicationManager extends GraphicTools {
   public parkingPathPoseContainer: Container | null = null
   public parkingPathArrowGraphics: Graphics | null = null
   public parkingObstacleGraphics: Graphics | null = null
+  public parkingRunAreaOverlay: Graphics | null = null
+  public parkingRunAreaHatch: Graphics | null = null
+  public parkingRunAreaMask: Graphics | null = null
+  public parkingRunAreas: { x: number; y: number }[][] = []
   public parkingPathState = {
     active: false,
     dragging: false,
     startPoint: null as Position | null,
     snapToLane: true,
+    vehicleId: '',
+    driving: false,
+    endPoint: null as { x: number; y: number } | null,
   }
 
   constructor() {
@@ -215,6 +222,10 @@ export default class ApplicationManager extends GraphicTools {
     this.parkingPathPoseContainer = null
     this.parkingPathArrowGraphics = null
     this.parkingObstacleGraphics = null
+    this.parkingRunAreaOverlay = null
+    this.parkingRunAreaHatch = null
+    this.parkingRunAreaMask = null
+    this.parkingRunAreas = []
   }
 
   /**
@@ -454,6 +465,15 @@ export default class ApplicationManager extends GraphicTools {
       this.mainContainer.addChild(this.longPathContainer)
       this.mainContainer.addChild(this.shortPathContainer)
       this.add_graphics(this.graphics_path_apply_area)
+      this.parkingRunAreaOverlay = new Graphics()
+      this.parkingRunAreaHatch = new Graphics()
+      this.parkingRunAreaMask = new Graphics()
+      this.parkingRunAreaOverlay.visible = false
+      this.parkingRunAreaHatch.visible = false
+      this.parkingRunAreaMask.visible = false
+      this.mainContainer.addChild(this.parkingRunAreaOverlay)
+      this.mainContainer.addChild(this.parkingRunAreaHatch)
+      this.mainContainer.addChild(this.parkingRunAreaMask)
       this.mainContainer.addChild(this.agentContainer)
 
       this.measureContainer = new Container()
@@ -824,6 +844,10 @@ export default class ApplicationManager extends GraphicTools {
     this.parkingPathState.active = active
     this.parkingPathState.dragging = false
     this.parkingPathState.startPoint = null
+    if (!active) {
+      this.parkingPathState.driving = false
+      this.parkingPathState.endPoint = null
+    }
     if (active) {
       this.mouse_func = 'parking_path'
     } else if (this.manualPathState.active) {
@@ -835,7 +859,93 @@ export default class ApplicationManager extends GraphicTools {
       this.clearParkingPathPreview()
       this.clearParkingPathArrow()
       this.clearParkingObstacles()
+      this.setParkingRunAreaVisible(false)
     }
+  }
+
+  setParkingPathVehicleId(vehicleId: string) {
+    this.parkingPathState.vehicleId = vehicleId
+  }
+
+  setParkingPathDriving(active: boolean) {
+    this.parkingPathState.driving = active
+  }
+
+  setParkingRunAreaVisible(visible: boolean) {
+    if (this.parkingRunAreaOverlay) {
+      this.parkingRunAreaOverlay.visible = visible
+    }
+    if (this.parkingRunAreaHatch) {
+      this.parkingRunAreaHatch.visible = visible
+    }
+    if (this.parkingRunAreaMask) {
+      this.parkingRunAreaMask.visible = visible
+    }
+  }
+
+  updateParkingRunAreas(runAreas: { x: number; y: number }[][]) {
+    this.parkingRunAreas = runAreas
+    if (!this.parkingRunAreaOverlay || !this.parkingRunAreaHatch || !this.parkingRunAreaMask) return
+    this.parkingRunAreaOverlay.clear()
+    this.parkingRunAreaHatch.clear()
+    this.parkingRunAreaMask.clear()
+    if (!runAreas || runAreas.length === 0) {
+      return
+    }
+
+    const transformedAreas = runAreas.map((polygon) =>
+      polygon.map((point) => {
+        const [appX, appY] = this.map_xy_to_app([point.x, point.y])
+        return { x: appX, y: appY }
+      }),
+    )
+
+    let minX = Number.POSITIVE_INFINITY
+    let minY = Number.POSITIVE_INFINITY
+    let maxX = Number.NEGATIVE_INFINITY
+    let maxY = Number.NEGATIVE_INFINITY
+    transformedAreas.forEach((polygon) => {
+      polygon.forEach((point) => {
+        minX = Math.min(minX, point.x)
+        minY = Math.min(minY, point.y)
+        maxX = Math.max(maxX, point.x)
+        maxY = Math.max(maxY, point.y)
+      })
+    })
+    if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+      return
+    }
+    const padding = 10
+    minX -= padding
+    minY -= padding
+    maxX += padding
+    maxY += padding
+
+    const overlay = this.parkingRunAreaOverlay
+    transformedAreas.forEach((polygon) => {
+      const points = polygon.flatMap((point) => [point.x, point.y])
+      overlay.poly(points).fill({ color: 0xff4d4f, alpha: 0.18 })
+    })
+
+    const hatch = this.parkingRunAreaHatch
+    const spacing = 8
+    const slope = maxY - minY
+    for (let x = minX - slope; x <= maxX + slope; x += spacing) {
+      hatch.moveTo(x, minY)
+      hatch.lineTo(x + slope, maxY)
+    }
+    hatch.stroke({ color: 0xff4d4f, width: 0.8, alpha: 0.45 })
+
+    const mask = this.parkingRunAreaMask
+    transformedAreas.forEach((polygon) => {
+      const points = polygon.flatMap((point) => [point.x, point.y])
+      mask.poly(points).fill({ color: 0xffffff, alpha: 1 })
+    })
+    hatch.mask = mask
+  }
+
+  setParkingPathEndPoint(point: { x: number; y: number } | null) {
+    this.parkingPathState.endPoint = point
   }
 
   setParkingPathSnapToLane(enabled: boolean) {
@@ -966,7 +1076,11 @@ export default class ApplicationManager extends GraphicTools {
     this.drawArrow(g, 0, 0, 0, 3, fillColor, 0.5)
   }
 
-  updateParkingPathPreviewPath(points: { x: number; y: number; heading: number }[], valid = true) {
+  updateParkingPathPreviewPath(
+    points: { x: number; y: number; heading: number }[],
+    valid = true,
+    vehicleId = '',
+  ) {
     if (
       !this.parkingPathPreviewGraphics ||
       !this.parkingPathArrowGraphics ||
@@ -991,6 +1105,10 @@ export default class ApplicationManager extends GraphicTools {
       1,
       0.8,
     )
+    if (vehicleId) {
+      const endPoint = points[points.length - 1]
+      this.parkingPathState.endPoint = { x: endPoint.x, y: endPoint.y }
+    }
     const width = 16
     const height = 3.1
     const maxPoseMarkers = 10
@@ -1035,6 +1153,23 @@ export default class ApplicationManager extends GraphicTools {
     }
     if (this.parkingPathArrowGraphics) {
       this.parkingPathArrowGraphics.clear()
+    }
+    this.parkingPathState.endPoint = null
+    this.parkingPathState.driving = false
+  }
+
+  updateParkingPathArrival(vehicleId: string, x: number, y: number) {
+    if (
+      !this.parkingPathState.driving ||
+      this.parkingPathState.vehicleId !== vehicleId ||
+      !this.parkingPathState.endPoint
+    ) {
+      return
+    }
+    const { x: endX, y: endY } = this.parkingPathState.endPoint
+    const distance = Math.hypot(x - endX, y - endY)
+    if (distance <= 0.1) {
+      this.clearParkingPathPreview()
     }
   }
 

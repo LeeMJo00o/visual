@@ -465,6 +465,7 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool, start_speed
 
 
 RUN_AREAS_KEY = "pp_visual:parking_path:run_areas"
+NO_RUN_AREAS_KEY = "pp_visual:parking_path:no_run_areas"
 DEFAULT_RUN_AREAS = [
     [(84.726, -572.809), (-37.087, -1268.711), (-21.702, -1270.487), (105.851, -575.139)],
     [(352.309, -620.029), (229.085, -1318.748), (245.866, -1319.991), (370.430, -622.527)],
@@ -547,6 +548,21 @@ async def _load_run_areas() -> list[list[tuple[float, float]]]:
         logger.info(f"parking_path: run_areas={DEFAULT_RUN_AREAS}")
         return DEFAULT_RUN_AREAS
     logger.info(f"parking_path: run_areas={parsed}")
+    return parsed
+
+
+async def _load_no_run_areas() -> list[list[tuple[float, float]]]:
+    if not redis_cli:
+        logger.info("parking_path: no_run_areas=[]")
+        return []
+    try:
+        raw = await redis_cli.get(NO_RUN_AREAS_KEY)
+    except Exception as exc:
+        logger.warning(f"parking_path: read no_run_areas failed: {exc}")
+        return []
+    logger.info(f"parking_path: raw no_run_areas value={raw} type={type(raw)}")
+    parsed = _normalize_run_areas(raw)
+    logger.info(f"parking_path: no_run_areas={parsed}")
     return parsed
 
 
@@ -742,6 +758,32 @@ async def get_parking_obstacles(vehicle_id: str | None = Query(default=None)) ->
         return StdRes(data={"ok": False, "message": "vehicle_id is required"})
     points = await _load_perception_obstacles(vehicle_id)
     return StdRes(data={"ok": True, "points": [{"x": x, "y": y} for x, y in points]})
+
+
+@router.get("/run_areas")
+async def get_parking_run_areas() -> StdRes:
+    run_areas = await _load_run_areas()
+    return StdRes(
+        data={
+            "ok": True,
+            "areas": [
+                [{"x": float(x), "y": float(y)} for x, y in polygon] for polygon in run_areas
+            ],
+        }
+    )
+
+
+@router.get("/no_run_areas")
+async def get_parking_no_run_areas() -> StdRes:
+    run_areas = await _load_no_run_areas()
+    return StdRes(
+        data={
+            "ok": True,
+            "areas": [
+                [{"x": float(x), "y": float(y)} for x, y in polygon] for polygon in run_areas
+            ],
+        }
+    )
 
 
 @router.post("/exit")
