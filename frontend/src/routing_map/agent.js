@@ -263,10 +263,12 @@ export default class Agent {
     g.pivot.set(0, 0)
   }
 
-  _updatePlanningSector(g, { x, y, rotation, centerX, centerY, startAngle, endAngle }) {
-    g.clear()
-    g.pivot.set(x, y)
-    g.position.set(x, y)
+  _updatePlanningSector(g, { x, y, rotation, centerX, centerY, startAngle, endAngle }, clear = true) {
+    if (clear) {
+      g.clear()
+      g.pivot.set(x, y)
+      g.position.set(x, y)
+    }
 
     g.moveTo(centerX, centerY)
     g.arc(centerX, centerY, this.sector_radius, startAngle, endAngle)
@@ -274,8 +276,10 @@ export default class Agent {
     g.fill({ color: this.sector_color, alpha: 0.18 })
     g.stroke({ color: this.sector_color, width: 0.4, alpha: 0.45 })
 
-    g.rotation = rotation
-    g.pivot.set(0, 0)
+    if (clear) {
+      g.rotation = rotation
+      g.pivot.set(0, 0)
+    }
   }
 
   _updatePlanningSectors() {
@@ -289,25 +293,61 @@ export default class Agent {
       return
     }
 
-    this._updatePlanningSector(this.graphics_head_sector, {
-      x: this.position.x,
-      y: this.position.y,
-      rotation: -this.position.theta,
-      centerX: 0,
-      centerY: 0,
-      startAngle: -this.sector_angle,
-      endAngle: this.sector_angle,
-    })
+    const headHeading = -this.position.theta
+    this._updatePlanningSector(
+      this.graphics_head_sector,
+      {
+        x: this.position.x,
+        y: this.position.y,
+        rotation: headHeading,
+        centerX: 0,
+        centerY: 0,
+        startAngle: 0,
+        endAngle: this.sector_angle,
+      },
+      true,
+    )
+    this._updatePlanningSector(
+      this.graphics_head_sector,
+      {
+        x: this.position.x,
+        y: this.position.y,
+        rotation: headHeading,
+        centerX: 0,
+        centerY: 0,
+        startAngle: -this.sector_angle,
+        endAngle: 0,
+      },
+      false,
+    )
 
-    this._updatePlanningSector(this.graphics_trailer_sector, {
-      x: this.position.tx,
-      y: this.position.ty,
-      rotation: -(this.position.t_theta + Math.PI),
-      centerX: 0,
-      centerY: 0,
-      startAngle: -this.sector_angle,
-      endAngle: this.sector_angle,
-    })
+    const trailerHeading = headHeading + Math.PI
+    this._updatePlanningSector(
+      this.graphics_trailer_sector,
+      {
+        x: this.position.tx,
+        y: this.position.ty,
+        rotation: trailerHeading,
+        centerX: 0,
+        centerY: 0,
+        startAngle: 0,
+        endAngle: this.sector_angle,
+      },
+      true,
+    )
+    this._updatePlanningSector(
+      this.graphics_trailer_sector,
+      {
+        x: this.position.tx,
+        y: this.position.ty,
+        rotation: trailerHeading,
+        centerX: 0,
+        centerY: 0,
+        startAngle: -this.sector_angle,
+        endAngle: 0,
+      },
+      false,
+    )
   }
 
   // 新方法：更新图形显示
