@@ -278,10 +278,13 @@ def _plan_hybrid_a_star(
     while open_queue and len(seen) < max_iter:
         current = heapq.heappop(open_queue).node
         distance_to_goal = _heuristic_distance(current.x, current.y, goal)
-        if (
-            distance_to_goal <= goal_tolerance
-            and abs(normalize_angle(current.heading - goal["heading"])) <= heading_tolerance
-        ):
+        heading_error = abs(normalize_angle(current.heading - goal["heading"]))
+        if allow_reverse:
+            reverse_heading_error = abs(normalize_angle(current.heading - (goal["heading"] + math.pi)))
+            heading_reached = min(heading_error, reverse_heading_error) <= heading_tolerance
+        else:
+            heading_reached = heading_error <= heading_tolerance
+        if distance_to_goal <= goal_tolerance and heading_reached:
             path: list[dict] = []
             node = current
             while node:
