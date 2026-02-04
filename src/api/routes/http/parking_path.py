@@ -321,18 +321,11 @@ def _plan_hybrid_a_star(
                 heapq.heappush(open_queue, _HybridQueueNode(priority, counter, next_node))
     reason = "queue_exhausted" if not open_queue else "max_iter_reached"
     logger.warning(
-        "parking_path plan: hybrid_a_star failed: reason=%s, seen=%d, max_iter=%d, "
-        "collision_skips=%d, boundary_skips=%d, seen_skips=%d, goal=%s, allow_reverse=%s, "
-        "start_speed=%.3f",
-        reason,
-        len(seen),
-        max_iter,
-        collision_skips,
-        boundary_skips,
-        seen_skips,
-        goal,
-        allow_reverse,
-        start_speed,
+        "parking_path plan: hybrid_a_star failed: "
+        f"reason={reason}, seen={len(seen)}, max_iter={max_iter}, "
+        f"collision_skips={collision_skips}, boundary_skips={boundary_skips}, "
+        f"seen_skips={seen_skips}, goal={goal}, allow_reverse={allow_reverse}, "
+        f"start_speed={start_speed:.3f}"
     )
     return []
 
