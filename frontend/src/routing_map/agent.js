@@ -302,11 +302,11 @@ export default class Agent {
     this._updatePlanningSector(this.graphics_trailer_sector, {
       x: this.position.tx,
       y: this.position.ty,
-      rotation: -this.position.t_theta,
+      rotation: -(this.position.t_theta + Math.PI),
       centerX: 0,
       centerY: 0,
-      startAngle: Math.PI - this.sector_angle,
-      endAngle: Math.PI + this.sector_angle,
+      startAngle: -this.sector_angle,
+      endAngle: this.sector_angle,
     })
   }
 
