@@ -9,6 +9,10 @@ export default class Agent {
     this.graphics = new Container()
     this.graphics_head = new Graphics()
     this.graphics_trailer = new Graphics()
+    this.graphics_head_sector = new Graphics()
+    this.graphics_trailer_sector = new Graphics()
+    this.graphics.addChild(this.graphics_head_sector)
+    this.graphics.addChild(this.graphics_trailer_sector)
     this.graphics.addChild(this.graphics_head)
     this.graphics.addChild(this.graphics_trailer)
     this.manager = manager
@@ -22,6 +26,8 @@ export default class Agent {
     this.trailer_front = 11
     this.trailer_back = 3.85
     this.width = 2.85
+    this.sector_angle = (35 * Math.PI) / 180
+    this.sector_radius = 8
 
     this.vehicle_id = vehicle_id
 
@@ -256,6 +262,43 @@ export default class Agent {
     g.pivot.set(0, 0)
   }
 
+  _updatePlanningSector(g, { x, y, rotation, centerX, centerY, startAngle, endAngle }) {
+    g.clear()
+    g.pivot.set(x, y)
+    g.position.set(x, y)
+
+    g.moveTo(centerX, centerY)
+    g.arc(centerX, centerY, this.sector_radius, startAngle, endAngle)
+    g.closePath()
+    g.fill({ color: this.color, alpha: 0.12 })
+    g.stroke({ color: this.color, width: 0.4, alpha: 0.4 })
+
+    g.rotation = rotation
+    g.pivot.set(0, 0)
+  }
+
+  _updatePlanningSectors() {
+    this._updatePlanningSector(this.graphics_head_sector, {
+      x: this.position.x,
+      y: this.position.y,
+      rotation: -this.position.theta,
+      centerX: this.head_front,
+      centerY: 0,
+      startAngle: -this.sector_angle,
+      endAngle: this.sector_angle,
+    })
+
+    this._updatePlanningSector(this.graphics_trailer_sector, {
+      x: this.position.tx,
+      y: this.position.ty,
+      rotation: -this.position.t_theta,
+      centerX: -this.trailer_back,
+      centerY: 0,
+      startAngle: Math.PI - this.sector_angle,
+      endAngle: Math.PI + this.sector_angle,
+    })
+  }
+
   // 新方法：更新图形显示
   _updateGraphicsTrailer(g) {
     g.clear()
@@ -286,6 +329,8 @@ export default class Agent {
       this._updateGraphicsHead(this.graphics_head)
       this._updateGraphicsTrailer(this.graphics_trailer)
     }
+
+    this._updatePlanningSectors()
 
     this.sync_text_pos(this.position.x, this.position.y)
   }
