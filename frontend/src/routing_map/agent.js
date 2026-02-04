@@ -27,7 +27,8 @@ export default class Agent {
     this.trailer_back = 3.85
     this.width = 2.85
     this.sector_angle = (35 * Math.PI) / 180
-    this.sector_radius = 8
+    this.sector_radius = 8.1
+    this.sector_color = '#8fd3ff'
 
     this.vehicle_id = vehicle_id
 
@@ -270,19 +271,25 @@ export default class Agent {
     g.moveTo(centerX, centerY)
     g.arc(centerX, centerY, this.sector_radius, startAngle, endAngle)
     g.closePath()
-    g.fill({ color: this.color, alpha: 0.12 })
-    g.stroke({ color: this.color, width: 0.4, alpha: 0.4 })
+    g.fill({ color: this.sector_color, alpha: 0.18 })
+    g.stroke({ color: this.sector_color, width: 0.4, alpha: 0.45 })
 
     g.rotation = rotation
     g.pivot.set(0, 0)
   }
 
   _updatePlanningSectors() {
+    if (!this.manager?.parkingPathState?.active) {
+      this.graphics_head_sector.clear()
+      this.graphics_trailer_sector.clear()
+      return
+    }
+
     this._updatePlanningSector(this.graphics_head_sector, {
       x: this.position.x,
       y: this.position.y,
       rotation: -this.position.theta,
-      centerX: this.head_front,
+      centerX: 0,
       centerY: 0,
       startAngle: -this.sector_angle,
       endAngle: this.sector_angle,
@@ -292,7 +299,7 @@ export default class Agent {
       x: this.position.tx,
       y: this.position.ty,
       rotation: -this.position.t_theta,
-      centerX: -this.trailer_back,
+      centerX: 0,
       centerY: 0,
       startAngle: Math.PI - this.sector_angle,
       endAngle: Math.PI + this.sector_angle,
