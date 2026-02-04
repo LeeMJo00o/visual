@@ -884,11 +884,18 @@ export default class ApplicationManager extends GraphicTools {
       return
     }
 
+    const transformedAreas = runAreas.map((polygon) =>
+      polygon.map((point) => {
+        const [appX, appY] = this.map_xy_to_app([point.x, point.y])
+        return { x: appX, y: appY }
+      }),
+    )
+
     let minX = Number.POSITIVE_INFINITY
     let minY = Number.POSITIVE_INFINITY
     let maxX = Number.NEGATIVE_INFINITY
     let maxY = Number.NEGATIVE_INFINITY
-    runAreas.forEach((polygon) => {
+    transformedAreas.forEach((polygon) => {
       polygon.forEach((point) => {
         minX = Math.min(minX, point.x)
         minY = Math.min(minY, point.y)
@@ -909,7 +916,7 @@ export default class ApplicationManager extends GraphicTools {
     overlay.rect(minX, minY, maxX - minX, maxY - minY)
       .fill({ color: 0xff4d4f, alpha: 0.18 })
     overlay.beginHole()
-    runAreas.forEach((polygon) => {
+    transformedAreas.forEach((polygon) => {
       const points = polygon.flatMap((point) => [point.x, point.y])
       overlay.poly(points)
     })
@@ -924,7 +931,7 @@ export default class ApplicationManager extends GraphicTools {
     }
     hatch.stroke({ color: 0xff4d4f, width: 0.8, alpha: 0.45 })
     hatch.beginHole()
-    runAreas.forEach((polygon) => {
+    transformedAreas.forEach((polygon) => {
       const points = polygon.flatMap((point) => [point.x, point.y])
       hatch.poly(points)
     })
