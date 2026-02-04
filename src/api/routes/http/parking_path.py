@@ -744,6 +744,19 @@ async def get_parking_obstacles(vehicle_id: str | None = Query(default=None)) ->
     return StdRes(data={"ok": True, "points": [{"x": x, "y": y} for x, y in points]})
 
 
+@router.get("/run_areas")
+async def get_parking_run_areas() -> StdRes:
+    run_areas = await _load_run_areas()
+    return StdRes(
+        data={
+            "ok": True,
+            "areas": [
+                [{"x": float(x), "y": float(y)} for x, y in polygon] for polygon in run_areas
+            ],
+        }
+    )
+
+
 @router.post("/exit")
 async def exit_parking_path(req: dict = Body()) -> StdRes:
     vehicle_id = req.get("vehicle_id")

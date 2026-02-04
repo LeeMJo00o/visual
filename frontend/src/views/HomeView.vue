@@ -536,6 +536,7 @@ watch(
 )
 
 const parkingObstacleTimer = ref<number | null>(null)
+const parkingRunAreaLoaded = ref(false)
 
 const fetchParkingObstacles = async () => {
   try {
@@ -553,6 +554,22 @@ const fetchParkingObstacles = async () => {
   }
 }
 
+const fetchParkingRunAreas = async () => {
+  try {
+    const response = await axios.get('/api/parking_path/run_areas')
+    if (!response.data?.data?.ok) return
+    const areas = response.data?.data?.areas || []
+    const manager = getManagerSafe()
+    if (manager && Array.isArray(areas)) {
+      manager.updateParkingRunAreas(areas)
+      manager.setParkingRunAreaVisible(true)
+      parkingRunAreaLoaded.value = true
+    }
+  } catch (error) {
+    // ignore fetch errors
+  }
+}
+
 watch(
   () => parkingModeActive.value,
   (active) => {
@@ -563,9 +580,14 @@ watch(
       }
       const manager = getManagerSafe()
       manager?.clearParkingObstacles()
+      manager?.setParkingRunAreaVisible(false)
+      parkingRunAreaLoaded.value = false
       return
     }
     fetchParkingObstacles()
+    if (!parkingRunAreaLoaded.value) {
+      fetchParkingRunAreas()
+    }
     parkingObstacleTimer.value = window.setInterval(fetchParkingObstacles, 1000)
   },
   { immediate: true },
