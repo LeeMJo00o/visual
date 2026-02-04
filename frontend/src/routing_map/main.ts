@@ -147,6 +147,7 @@ export default class ApplicationManager extends GraphicTools {
     dragging: false,
     startPoint: null as Position | null,
     snapToLane: true,
+    vehicleId: '',
   }
 
   constructor() {
@@ -838,6 +839,10 @@ export default class ApplicationManager extends GraphicTools {
     }
   }
 
+  setParkingPathVehicleId(vehicleId: string) {
+    this.parkingPathState.vehicleId = vehicleId
+  }
+
   setParkingPathSnapToLane(enabled: boolean) {
     this.parkingPathState.snapToLane = enabled
   }
@@ -966,7 +971,11 @@ export default class ApplicationManager extends GraphicTools {
     this.drawArrow(g, 0, 0, 0, 3, fillColor, 0.5)
   }
 
-  updateParkingPathPreviewPath(points: { x: number; y: number; heading: number }[], valid = true) {
+  updateParkingPathPreviewPath(
+    points: { x: number; y: number; heading: number }[],
+    valid = true,
+    vehicleId = '',
+  ) {
     if (
       !this.parkingPathPreviewGraphics ||
       !this.parkingPathArrowGraphics ||
@@ -991,6 +1000,22 @@ export default class ApplicationManager extends GraphicTools {
       1,
       0.8,
     )
+    if (vehicleId && this.agents[vehicleId]) {
+      const agent = this.agents[vehicleId]
+      const endPoint = points[points.length - 1]
+      this.drawLine(
+        lineGraphics,
+        'parking-path-direct',
+        [
+          [agent.position.x, agent.position.y],
+          [endPoint.x, endPoint.y],
+        ],
+        false,
+        0x00c2ff,
+        1,
+        0.6,
+      )
+    }
     const width = 16
     const height = 3.1
     const maxPoseMarkers = 10

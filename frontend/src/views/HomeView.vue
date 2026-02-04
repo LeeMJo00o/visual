@@ -363,6 +363,7 @@ const handleParkingModeEnter = async (vehicle: string) => {
       parkingPathStore.startMode(vehicle)
       const manager = getManagerSafe()
       manager?.setParkingPathMode(true)
+      manager?.setParkingPathVehicleId(vehicle)
       ElMessage({ message: `已进入寄车模式 (${vehicle})`, type: 'success' })
     } else {
       ElMessage({ message: response.data?.data?.message || '进入寄车模式失败', type: 'error' })
@@ -390,6 +391,7 @@ const handleParkingModeExit = async () => {
     parkingPathStore.reset()
     const manager = getManagerSafe()
     manager?.setParkingPathMode(false)
+    manager?.setParkingPathVehicleId('')
     manager?.clearParkingPathPreview()
     manager?.clearParkingObstacles()
   }
@@ -406,9 +408,6 @@ const handleParkingModeConfirm = async () => {
     const response = await axios.post('/api/bridge/message', payload)
     if (response.data?.data?.ok) {
       ElMessage({ message: '寄车路径已下发', type: 'success' })
-      parkingPathStore.setPreviewPath(null, false)
-      const manager = getManagerSafe()
-      manager?.clearParkingPathPreview()
     } else {
       ElMessage({ message: response.data?.data?.message || '寄车路径下发失败', type: 'error' })
     }
@@ -433,7 +432,7 @@ const handleParkingPathSelected = async (detail: { x: number; y: number; heading
       if (Array.isArray(path) && path.length > 1) {
         parkingPathStore.setPreviewPath(path, true, reverseStart)
         const manager = getManagerSafe()
-        manager?.updateParkingPathPreviewPath(path, true)
+        manager?.updateParkingPathPreviewPath(path, true, parkingPathStore.vehicleId)
         ElMessageBox.alert('混合A*路径生成成功，请确认下发', '路径规划完成', {
           confirmButtonText: '确定',
           type: 'success',
@@ -573,7 +572,7 @@ watch(
     const manager = getManagerSafe()
     if (!manager) return
     if (Array.isArray(previewPath) && previewPath.length > 1) {
-      manager.updateParkingPathPreviewPath(previewPath, true)
+      manager.updateParkingPathPreviewPath(previewPath, true, parkingPathStore.vehicleId)
     } else {
       manager.clearParkingPathPreview()
     }

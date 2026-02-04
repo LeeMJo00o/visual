@@ -27,7 +27,7 @@ export default class Agent {
     this.trailer_back = 3.85
     this.width = 2.85
     this.sector_angle = (35 * Math.PI) / 180
-    this.sector_radius = 8.1
+    this.sector_radius = this.head_front + this.head_back + this.trailer_front + this.trailer_back
     this.sector_color = '#8fd3ff'
 
     this.vehicle_id = vehicle_id
@@ -279,7 +279,10 @@ export default class Agent {
   }
 
   _updatePlanningSectors() {
-    if (!this.manager?.parkingPathState?.active) {
+    if (
+      !this.manager?.parkingPathState?.active ||
+      this.manager?.parkingPathState?.vehicleId !== this.vehicle_id
+    ) {
       this.graphics_head_sector.clear()
       this.graphics_trailer_sector.clear()
       return
