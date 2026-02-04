@@ -235,7 +235,7 @@ def _plan_hybrid_a_star(
     start_speed: float = 0.0,
 ) -> list[dict]:
     heading_bins = 24
-    max_iter = 20000
+    max_iter = 200000
     goal_tolerance = 0.8
     heading_tolerance = 0.5
     vehicle_radius = VEHICLE_WIDTH / 2.0
@@ -260,6 +260,9 @@ def _plan_hybrid_a_star(
     open_queue: list[_HybridQueueNode] = []
     seen: dict[tuple[int, int, int], float] = {}
     counter = 0
+    collision_skips = 0
+    boundary_skips = 0
+    seen_skips = 0
     start_node = _HybridNode(
         start["x"],
         start["y"],
@@ -275,10 +278,13 @@ def _plan_hybrid_a_star(
     while open_queue and len(seen) < max_iter:
         current = heapq.heappop(open_queue).node
         distance_to_goal = _heuristic_distance(current.x, current.y, goal)
-        if (
-            distance_to_goal <= goal_tolerance
-            and abs(normalize_angle(current.heading - goal["heading"])) <= heading_tolerance
-        ):
+        heading_error = abs(normalize_angle(current.heading - goal["heading"]))
+        if allow_reverse:
+            reverse_heading_error = abs(normalize_angle(current.heading - (goal["heading"] + math.pi)))
+            heading_reached = min(heading_error, reverse_heading_error) <= heading_tolerance
+        else:
+            heading_reached = heading_error <= heading_tolerance
+        if distance_to_goal <= goal_tolerance and heading_reached:
             path: list[dict] = []
             node = current
             while node:
@@ -295,8 +301,10 @@ def _plan_hybrid_a_star(
                 next_x = current.x + direction * PLANNER_STEP_SIZE * math.cos(current.heading)
                 next_y = current.y + direction * PLANNER_STEP_SIZE * math.sin(current.heading)
                 if abs(next_x) > position_limit or abs(next_y) > position_limit:
+                    boundary_skips += 1
                     continue
                 if _is_collision(next_x, next_y, obstacles, obstacle_radius):
+                    collision_skips += 1
                     continue
                 next_cost = current.cost + PLANNER_STEP_SIZE
                 next_node = _HybridNode(
@@ -308,11 +316,20 @@ def _plan_hybrid_a_star(
                 )
                 key = _node_key(next_node)
                 if key in seen and seen[key] <= next_node.cost:
+                    seen_skips += 1
                     continue
                 seen[key] = next_node.cost
                 counter += 1
                 priority = next_node.cost + _heuristic_distance(next_x, next_y, goal)
                 heapq.heappush(open_queue, _HybridQueueNode(priority, counter, next_node))
+    reason = "queue_exhausted" if not open_queue else "max_iter_reached"
+    logger.warning(
+        "parking_path plan: hybrid_a_star failed: "
+        f"reason={reason}, seen={len(seen)}, max_iter={max_iter}, "
+        f"collision_skips={collision_skips}, boundary_skips={boundary_skips}, "
+        f"seen_skips={seen_skips}, goal={goal}, allow_reverse={allow_reverse}, "
+        f"start_speed={start_speed:.3f}"
+    )
     return []
 
 
@@ -689,6 +706,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     rear_mid_dist = math.hypot(end_pose["x"] - rear_mid_x, end_pose["y"] - rear_mid_y)
     dist_diff = rear_mid_dist - front_mid_dist
     reverse_start = allow_reverse and dist_diff < 0
+    allow_reverse_for_plan = allow_reverse and reverse_start
     start_for_plan = start_pose.copy()
     if reverse_start:
         start_for_plan["heading"] = normalize_angle(start_for_plan["heading"] + math.pi)
@@ -700,6 +718,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         f"wheel_base={WHEEL_BASE:.2f}, "
         f"vehicle_size={VEHICLE_LENGTH:.2f}x{VEHICLE_WIDTH:.2f}, "
         f"allow_reverse={allow_reverse}, "
+        f"allow_reverse_for_plan={allow_reverse_for_plan}, "
         f"front_mid_dist={front_mid_dist:.2f}, "
         f"rear_mid_dist={rear_mid_dist:.2f}, "
         f"dist_diff={dist_diff:.2f}, "
@@ -713,7 +732,44 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     start_speed = start_pose.get("speed")
     if start_speed is None:
         start_speed = STOP_SPEED_THRESHOLD
-    path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse, start_speed)
+    dx = end_pose["x"] - start_for_plan["x"]
+    dy = end_pose["y"] - start_for_plan["y"]
+    line_heading = math.atan2(dy, dx)
+    straight_heading_tolerance = 0.6
+    if abs(start_speed) < STOP_SPEED_THRESHOLD:
+        straight_heading_tolerance = min(straight_heading_tolerance, math.radians(STOP_STEER_DEG))
+    start_heading_error = abs(normalize_angle(start_for_plan["heading"] - line_heading))
+    goal_heading_error = abs(normalize_angle(end_pose["heading"] - line_heading))
+    straight_path: list[dict] = []
+    if start_heading_error <= straight_heading_tolerance and goal_heading_error <= straight_heading_tolerance:
+        straight_path = _build_straight_path(start_for_plan, end_pose, line_heading, False)
+    elif allow_reverse:
+        reverse_heading = normalize_angle(line_heading + math.pi)
+        start_reverse_error = abs(normalize_angle(start_for_plan["heading"] - reverse_heading))
+        goal_reverse_error = abs(normalize_angle(end_pose["heading"] - reverse_heading))
+        if start_reverse_error <= straight_heading_tolerance and goal_reverse_error <= straight_heading_tolerance:
+            straight_path = _build_straight_path(start_for_plan, end_pose, reverse_heading, True)
+    if straight_path:
+        straight_collision = any(
+            _is_collision(point["x"], point["y"], obstacles, VEHICLE_WIDTH / 2.0 + OBSTACLE_INFLATION)
+            for point in straight_path
+        )
+        straight_valid = not straight_collision and _is_path_within_run_area(straight_path, run_areas)
+        logger.info(
+            "parking_path plan: straight_path "
+            f"path_size={len(straight_path)}, collision={straight_collision}, run_area_valid={straight_valid}"
+        )
+        if straight_valid:
+            return StdRes(
+                data={
+                    "ok": True,
+                    "target": end_pose,
+                    "path": straight_path,
+                    "reverse_start": reverse_start,
+                    "fallback": True,
+                }
+            )
+    path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse_for_plan, start_speed)
     if not path:
         if not obstacles:
             fallback_path = _build_simple_path(start_for_plan, end_pose, allow_reverse, start_speed)
