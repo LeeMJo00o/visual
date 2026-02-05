@@ -407,10 +407,35 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool, start_speed
         best = min(valid, key=lambda item: sum(item[1]))
         return best
 
+    def _heading_almost_equal(theta_a: float, theta_b: float, tolerance: float = 0.1) -> bool:
+        return abs(normalize_angle(theta_a - theta_b)) < tolerance
+
+    def _heading_almost_equal_or_pi(theta_a: float, theta_b: float, tolerance: float = 0.1) -> bool:
+        return _heading_almost_equal(theta_a, theta_b, tolerance) or _heading_almost_equal(
+            theta_a,
+            normalize_angle(theta_b + math.pi),
+            tolerance,
+        )
+
     dx = goal["x"] - start["x"]
     dy = goal["y"] - start["y"]
     line_heading = math.atan2(dy, dx)
     distance = math.hypot(dx, dy)
+
+    if _heading_almost_equal_or_pi(start["heading"], goal["heading"]):
+        straight_heading = line_heading
+        straight_reverse = False
+        if allow_reverse:
+            reverse_heading = normalize_angle(line_heading + math.pi)
+            if abs(normalize_angle(start["heading"] - reverse_heading)) < abs(
+                normalize_angle(start["heading"] - line_heading)
+            ):
+                straight_heading = reverse_heading
+                straight_reverse = True
+        straight_path = _build_straight_path(start, goal, straight_heading, straight_reverse)
+        if straight_path and _heading_almost_equal_or_pi(straight_path[-1]["heading"], start["heading"]):
+            return straight_path
+
     straight_heading_tolerance = 0.6
     if abs(start_speed) < STOP_SPEED_THRESHOLD:
         straight_heading_tolerance = min(straight_heading_tolerance, math.radians(STOP_STEER_DEG))
