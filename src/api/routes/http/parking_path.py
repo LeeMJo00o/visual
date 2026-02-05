@@ -36,6 +36,8 @@ ALLOW_REVERSE_DEFAULT = True
 REVERSE_HEADING_DIFF_THRESHOLD = math.radians(120)
 STOP_SPEED_THRESHOLD = 0.02
 STOP_STEER_DEG = 0.5
+STRAIGHT_HEADING_TOLERANCE = 0.6
+HYBRID_GOAL_HEADING_TOLERANCE = 0.15
 
 
 @dataclass(order=True)
@@ -237,7 +239,7 @@ def _plan_hybrid_a_star(
     heading_bins = 24
     max_iter = 20000
     goal_tolerance = 0.8
-    heading_tolerance = 0.5
+    heading_tolerance = HYBRID_GOAL_HEADING_TOLERANCE
     vehicle_radius = VEHICLE_WIDTH / 2.0
     obstacle_radius = vehicle_radius + OBSTACLE_INFLATION
     position_limit = 10000.0
@@ -259,6 +261,12 @@ def _plan_hybrid_a_star(
 
     open_queue: list[_HybridQueueNode] = []
     seen: dict[tuple[int, int, int], float] = {}
+    expanded_nodes = 0
+    skipped_out_of_bound = 0
+    skipped_collision = 0
+    skipped_seen_better = 0
+    best_distance_to_goal = float("inf")
+    best_heading_error = float("inf")
     counter = 0
     start_node = _HybridNode(
         start["x"],
@@ -274,10 +282,17 @@ def _plan_hybrid_a_star(
 
     while open_queue and len(seen) < max_iter:
         current = heapq.heappop(open_queue).node
+        expanded_nodes += 1
         distance_to_goal = _heuristic_distance(current.x, current.y, goal)
+        heading_error = abs(normalize_angle(current.heading - goal["heading"]))
+        if distance_to_goal < best_distance_to_goal:
+            best_distance_to_goal = distance_to_goal
+            best_heading_error = heading_error
+        elif distance_to_goal <= best_distance_to_goal + 1e-6 and heading_error < best_heading_error:
+            best_heading_error = heading_error
         if (
             distance_to_goal <= goal_tolerance
-            and abs(normalize_angle(current.heading - goal["heading"])) <= heading_tolerance
+            and heading_error <= heading_tolerance
         ):
             path: list[dict] = []
             node = current
@@ -295,8 +310,10 @@ def _plan_hybrid_a_star(
                 next_x = current.x + direction * PLANNER_STEP_SIZE * math.cos(current.heading)
                 next_y = current.y + direction * PLANNER_STEP_SIZE * math.sin(current.heading)
                 if abs(next_x) > position_limit or abs(next_y) > position_limit:
+                    skipped_out_of_bound += 1
                     continue
                 if _is_collision(next_x, next_y, obstacles, obstacle_radius):
+                    skipped_collision += 1
                     continue
                 next_cost = current.cost + PLANNER_STEP_SIZE
                 next_node = _HybridNode(
@@ -308,11 +325,37 @@ def _plan_hybrid_a_star(
                 )
                 key = _node_key(next_node)
                 if key in seen and seen[key] <= next_node.cost:
+                    skipped_seen_better += 1
                     continue
                 seen[key] = next_node.cost
                 counter += 1
                 priority = next_node.cost + _heuristic_distance(next_x, next_y, goal)
                 heapq.heappush(open_queue, _HybridQueueNode(priority, counter, next_node))
+
+    if not open_queue:
+        fail_reason = "open_queue_exhausted"
+    elif len(seen) >= max_iter:
+        fail_reason = "max_iter_reached"
+    else:
+        fail_reason = "unknown"
+    logger.warning(
+        "parking_path hybrid_a_star failed: "
+        f"reason={fail_reason}, "
+        f"expanded_nodes={expanded_nodes}, "
+        f"seen_nodes={len(seen)}, "
+        f"max_iter={max_iter}, "
+        f"best_distance_to_goal={best_distance_to_goal:.4f}, "
+        f"best_heading_error={best_heading_error:.4f}, "
+        f"goal_tolerance={goal_tolerance:.4f}, "
+        f"heading_tolerance={heading_tolerance:.4f}, "
+        f"skipped_out_of_bound={skipped_out_of_bound}, "
+        f"skipped_collision={skipped_collision}, "
+        f"skipped_seen_better={skipped_seen_better}, "
+        f"obstacles={len(obstacles)}, "
+        f"allow_reverse={allow_reverse}, "
+        f"start=({start['x']:.4f},{start['y']:.4f},{start['heading']:.4f}), "
+        f"goal=({goal['x']:.4f},{goal['y']:.4f},{goal['heading']:.4f})"
+    )
     return []
 
 
@@ -411,7 +454,7 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool, start_speed
     dy = goal["y"] - start["y"]
     line_heading = math.atan2(dy, dx)
     distance = math.hypot(dx, dy)
-    straight_heading_tolerance = 0.6
+    straight_heading_tolerance = STRAIGHT_HEADING_TOLERANCE
     if abs(start_speed) < STOP_SPEED_THRESHOLD:
         straight_heading_tolerance = min(straight_heading_tolerance, math.radians(STOP_STEER_DEG))
     start_heading_error = abs(normalize_angle(start["heading"] - line_heading))
@@ -462,6 +505,31 @@ def _build_simple_path(start: dict, goal: dict, allow_reverse: bool, start_speed
     _segment(seg_types[1], p)
     _segment(seg_types[2], q)
     return path
+
+
+def _calc_straight_mode(
+    start_pose: dict,
+    end_pose: dict,
+    allow_reverse: bool,
+    start_speed: float,
+) -> tuple[bool, float, bool, float, float, float]:
+    dx = end_pose["x"] - start_pose["x"]
+    dy = end_pose["y"] - start_pose["y"]
+    line_heading = math.atan2(dy, dx)
+    reverse_line_heading = normalize_angle(line_heading + math.pi)
+    heading_diff = abs(normalize_angle(start_pose["heading"] - line_heading))
+    reverse_heading_diff = abs(normalize_angle(start_pose["heading"] - reverse_line_heading))
+    reverse_start = bool(allow_reverse and reverse_heading_diff < heading_diff)
+
+    straight_heading_tolerance = STRAIGHT_HEADING_TOLERANCE
+    if abs(start_speed) < STOP_SPEED_THRESHOLD:
+        straight_heading_tolerance = min(straight_heading_tolerance, math.radians(STOP_STEER_DEG))
+
+    travel_heading = reverse_line_heading if reverse_start else line_heading
+    start_error = abs(normalize_angle(start_pose["heading"] - travel_heading))
+    goal_error = abs(normalize_angle(end_pose["heading"] - travel_heading))
+    can_straight = start_error <= straight_heading_tolerance and goal_error <= straight_heading_tolerance
+    return (can_straight, travel_heading, reverse_start, straight_heading_tolerance, start_error, goal_error)
 
 
 RUN_AREAS_KEY = "pp_visual:parking_path:run_areas"
@@ -680,25 +748,35 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     }
     logger.info(f"parking_path plan: start_pose={start_pose}, end_pose={end_pose}")
     allow_reverse = bool(req.get("allow_reverse", ALLOW_REVERSE_DEFAULT))
-    line_heading = math.atan2(end_pose["y"] - start_pose["y"], end_pose["x"] - start_pose["x"])
-    reverse_line_heading = normalize_angle(line_heading + math.pi)
-    heading_diff = abs(normalize_angle(start_pose["heading"] - line_heading))
-    reverse_heading_diff = abs(normalize_angle(start_pose["heading"] - reverse_line_heading))
-    straight_mode_reverse_start = bool(reverse_heading_diff < heading_diff)
-    straight_mode_heading_diff = float(min(heading_diff, reverse_heading_diff))
-    straight_mode_threshold = 0.01
+    start_speed = start_pose.get("speed")
+    if start_speed is None:
+        start_speed = STOP_SPEED_THRESHOLD
+    (
+        straight_mode_can_straight,
+        straight_mode_heading,
+        straight_mode_reverse_start,
+        straight_mode_tolerance,
+        straight_mode_start_error,
+        straight_mode_goal_error,
+    ) = _calc_straight_mode(start_pose, end_pose, allow_reverse, start_speed)
 
-    if straight_mode_heading_diff < straight_mode_threshold:
+    if straight_mode_can_straight:
         # Keep path-point heading semantics consistent with existing reverse-start planning:
         # heading follows travel direction; reverse_start indicates whether vehicle head is opposite.
-        straight_path = _build_straight_path(start_pose, end_pose, line_heading, False)
+        straight_path = _build_straight_path(
+            start_pose,
+            end_pose,
+            straight_mode_heading,
+            straight_mode_reverse_start,
+        )
         run_areas = await _load_run_areas()
         path_valid = _is_path_within_run_area(straight_path, run_areas)
         logger.info(
             "parking_path plan: use straight path, "
             f"path_size={len(straight_path)}, "
-            f"heading_diff={straight_mode_heading_diff:.4f}, "
-            f"threshold={straight_mode_threshold:.4f}, "
+            f"start_error={straight_mode_start_error:.4f}, "
+            f"goal_error={straight_mode_goal_error:.4f}, "
+            f"threshold={straight_mode_tolerance:.4f}, "
             f"reverse_start={straight_mode_reverse_start}, "
             f"run_area_valid={path_valid}"
         )
@@ -743,9 +821,6 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     if obstacles:
         logger.info(f"parking_path plan: obstacle_sample={obstacles[:5]}")
     run_areas = await _load_run_areas()
-    start_speed = start_pose.get("speed")
-    if start_speed is None:
-        start_speed = STOP_SPEED_THRESHOLD
     path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse, start_speed)
     if not path:
         if not obstacles:
