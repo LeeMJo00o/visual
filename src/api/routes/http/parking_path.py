@@ -261,6 +261,10 @@ def _plan_hybrid_a_star(
 
     open_queue: list[_HybridQueueNode] = []
     seen: dict[tuple[int, int, int], float] = {}
+    expanded_nodes = 0
+    skipped_out_of_bounds = 0
+    skipped_collision = 0
+    skipped_seen = 0
     counter = 0
     start_node = _HybridNode(
         start["x"],
@@ -275,6 +279,7 @@ def _plan_hybrid_a_star(
     heapq.heappush(open_queue, _HybridQueueNode(start_priority, counter, start_node))
 
     while open_queue and len(seen) < max_iter:
+        expanded_nodes += 1
         current = heapq.heappop(open_queue).node
         distance_to_goal = _heuristic_distance(current.x, current.y, goal)
         if (
@@ -297,8 +302,10 @@ def _plan_hybrid_a_star(
                 next_x = current.x + direction * PLANNER_STEP_SIZE * math.cos(current.heading)
                 next_y = current.y + direction * PLANNER_STEP_SIZE * math.sin(current.heading)
                 if abs(next_x) > position_limit or abs(next_y) > position_limit:
+                    skipped_out_of_bounds += 1
                     continue
                 if _is_collision(next_x, next_y, obstacles, obstacle_radius):
+                    skipped_collision += 1
                     continue
                 next_cost = current.cost + PLANNER_STEP_SIZE
                 next_node = _HybridNode(
@@ -310,11 +317,24 @@ def _plan_hybrid_a_star(
                 )
                 key = _node_key(next_node)
                 if key in seen and seen[key] <= next_node.cost:
+                    skipped_seen += 1
                     continue
                 seen[key] = next_node.cost
                 counter += 1
                 priority = next_node.cost + _heuristic_distance(next_x, next_y, goal)
                 heapq.heappush(open_queue, _HybridQueueNode(priority, counter, next_node))
+
+    fail_reason = "open_queue_exhausted"
+    if len(seen) >= max_iter:
+        fail_reason = "max_iter_reached"
+    logger.warning(
+        "parking_path plan: hybrid_a_star failed, "
+        f"reason={fail_reason}, expanded_nodes={expanded_nodes}, "
+        f"seen_nodes={len(seen)}, queued_nodes={len(open_queue)}, "
+        f"skipped_collision={skipped_collision}, skipped_out_of_bounds={skipped_out_of_bounds}, "
+        f"skipped_seen={skipped_seen}, allow_reverse={allow_reverse}, "
+        f"start={start}, goal={goal}, obstacles={len(obstacles)}"
+    )
     return []
 
 
