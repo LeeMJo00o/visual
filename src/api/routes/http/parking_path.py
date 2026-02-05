@@ -36,6 +36,7 @@ ALLOW_REVERSE_DEFAULT = True
 REVERSE_HEADING_DIFF_THRESHOLD = math.radians(120)
 STOP_SPEED_THRESHOLD = 0.02
 STOP_STEER_DEG = 0.5
+HEADING_MATCH_THRESHOLD = 0.1
 
 
 @dataclass(order=True)
@@ -331,6 +332,40 @@ def _build_straight_path(start: dict, goal: dict, heading: float, reverse: bool)
         x += direction * step * math.cos(heading)
         y += direction * step * math.sin(heading)
         path.append({"x": x, "y": y, "heading": heading})
+    return path
+
+
+def _is_heading_aligned(base_heading: float, target_heading: float, threshold: float = HEADING_MATCH_THRESHOLD) -> bool:
+    return abs(normalize_angle(base_heading - target_heading)) < threshold
+
+
+def _is_heading_or_opposite_aligned(
+    base_heading: float,
+    target_heading: float,
+    threshold: float = HEADING_MATCH_THRESHOLD,
+) -> bool:
+    return _is_heading_aligned(base_heading, target_heading, threshold) or _is_heading_aligned(
+        base_heading, target_heading + math.pi, threshold
+    )
+
+
+def _build_direct_line_path(start: dict, goal: dict, heading: float) -> list[dict]:
+    path: list[dict] = [{"x": start["x"], "y": start["y"], "heading": heading}]
+    dx = goal["x"] - start["x"]
+    dy = goal["y"] - start["y"]
+    distance = math.hypot(dx, dy)
+    if distance < 1e-6:
+        return path
+    steps = max(1, int(math.ceil(distance / PLANNER_STEP_SIZE)))
+    for step_index in range(1, steps + 1):
+        ratio = step_index / steps
+        path.append(
+            {
+                "x": start["x"] + dx * ratio,
+                "y": start["y"] + dy * ratio,
+                "heading": heading,
+            }
+        )
     return path
 
 
@@ -713,6 +748,30 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     start_speed = start_pose.get("speed")
     if start_speed is None:
         start_speed = STOP_SPEED_THRESHOLD
+
+    if _is_heading_or_opposite_aligned(start_pose["heading"], end_pose["heading"]):
+        direct_path = _build_direct_line_path(start_pose, end_pose, start_pose["heading"])
+        direct_end_heading = direct_path[-1]["heading"] if direct_path else start_pose["heading"]
+        direct_end_heading_ok = _is_heading_or_opposite_aligned(direct_end_heading, start_pose["heading"])
+        logger.info(
+            "parking_path plan: direct straight trial "
+            f"path_size={len(direct_path)}, end_heading={direct_end_heading:.4f}, "
+            f"end_heading_ok={direct_end_heading_ok}"
+        )
+        if direct_end_heading_ok:
+            direct_path_valid = _is_path_within_run_area(direct_path, run_areas)
+            logger.info(f"parking_path plan: direct straight run_area_valid={direct_path_valid}")
+            if direct_path_valid:
+                return StdRes(
+                    data={
+                        "ok": True,
+                        "target": end_pose,
+                        "path": direct_path,
+                        "reverse_start": reverse_start,
+                        "direct_straight": True,
+                    }
+                )
+
     path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse, start_speed)
     if not path:
         if not obstacles:
