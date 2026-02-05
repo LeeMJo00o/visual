@@ -349,10 +349,11 @@ def _is_heading_or_opposite_aligned(
     )
 
 
-def _build_direct_line_path(start: dict, goal: dict, heading: float) -> list[dict]:
-    path: list[dict] = [{"x": start["x"], "y": start["y"], "heading": heading}]
+def _build_direct_line_path(start: dict, goal: dict) -> list[dict]:
     dx = goal["x"] - start["x"]
     dy = goal["y"] - start["y"]
+    line_heading = math.atan2(dy, dx)
+    path: list[dict] = [{"x": start["x"], "y": start["y"], "heading": line_heading}]
     distance = math.hypot(dx, dy)
     if distance < 1e-6:
         return path
@@ -363,7 +364,7 @@ def _build_direct_line_path(start: dict, goal: dict, heading: float) -> list[dic
             {
                 "x": start["x"] + dx * ratio,
                 "y": start["y"] + dy * ratio,
-                "heading": heading,
+                "heading": line_heading,
             }
         )
     return path
@@ -750,7 +751,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         start_speed = STOP_SPEED_THRESHOLD
 
     if _is_heading_or_opposite_aligned(start_pose["heading"], end_pose["heading"]):
-        direct_path = _build_direct_line_path(start_pose, end_pose, start_pose["heading"])
+        direct_path = _build_direct_line_path(start_pose, end_pose)
         direct_end_heading = direct_path[-1]["heading"] if direct_path else start_pose["heading"]
         direct_end_heading_ok = _is_heading_or_opposite_aligned(direct_end_heading, start_pose["heading"])
         logger.info(
