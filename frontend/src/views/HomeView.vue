@@ -53,6 +53,7 @@ const {
   vehicleId: parkingVehicleId,
   previewPath: parkingPreviewPath,
   snapToLane: parkingSnapToLane,
+  driving: parkingDriving,
 } = storeToRefs(parkingPathStore)
 
 // 监听地图显示状态
@@ -408,6 +409,7 @@ const handleParkingModeConfirm = async () => {
     const response = await axios.post('/api/bridge/message', payload)
     if (response.data?.data?.ok) {
       ElMessage({ message: '寄车路径已下发', type: 'success' })
+      parkingPathStore.setDriving(true)
       const manager = getManagerSafe()
       manager?.setParkingPathDriving(true)
       const endPoint = parkingPathStore.previewPath?.at(-1)
@@ -521,13 +523,14 @@ watch(
 )
 
 watch(
-  () => [appReady.value, parkingModeActive.value],
-  async ([ready, active]) => {
+  () => [appReady.value, parkingModeActive.value, parkingVehicleId.value],
+  async ([ready, active, vehicleId]) => {
     if (!ready) return
     await nextTick()
     try {
       const manager = getManagerSafe()
       manager?.setParkingPathMode(active)
+      manager?.setParkingPathVehicleId(active ? vehicleId : '')
     } catch (error) {
       console.error('寄车模式同步失败:', error)
     }
@@ -603,6 +606,23 @@ watch(
       manager.updateParkingPathPreviewPath(previewPath, true, parkingPathStore.vehicleId)
     } else {
       manager.clearParkingPathPreview()
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => [appReady.value, parkingModeActive.value, parkingDriving.value, parkingPreviewPath.value],
+  ([ready, active, driving, previewPath]) => {
+    if (!ready || !active) return
+    const manager = getManagerSafe()
+    if (!manager) return
+    manager.setParkingPathDriving(driving)
+    if (driving && Array.isArray(previewPath) && previewPath.length > 0) {
+      const endPoint = previewPath[previewPath.length - 1]
+      if (endPoint) {
+        manager.setParkingPathEndPoint({ x: endPoint.x, y: endPoint.y })
+      }
     }
   },
   { immediate: true },
