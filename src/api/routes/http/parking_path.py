@@ -738,12 +738,11 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         start_speed = STOP_SPEED_THRESHOLD
     dx = end_pose["x"] - start_for_plan["x"]
     dy = end_pose["y"] - start_for_plan["y"]
-    distance_to_goal = math.hypot(dx, dy)
     heading_delta = abs(normalize_angle(start_for_plan["heading"] - end_pose["heading"]))
-    short_distance_limit = 8.0
+    reverse_heading_delta = abs(normalize_angle(start_for_plan["heading"] - (end_pose["heading"] + math.pi)))
     short_heading_tolerance = 0.5
-    if not obstacles and distance_to_goal <= short_distance_limit and heading_delta <= short_heading_tolerance:
-        line_heading = math.atan2(dy, dx) if distance_to_goal > 1e-6 else start_for_plan["heading"]
+    if not obstacles and min(heading_delta, reverse_heading_delta) <= short_heading_tolerance:
+        line_heading = math.atan2(dy, dx) if math.hypot(dx, dy) > 1e-6 else start_for_plan["heading"]
         path = _build_straight_path(start_for_plan, end_pose, line_heading, False)
     else:
         path = _plan_hybrid_a_star(start_for_plan, end_pose, obstacles, allow_reverse, start_speed)
