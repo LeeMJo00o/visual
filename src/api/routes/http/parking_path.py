@@ -684,8 +684,8 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     reverse_line_heading = normalize_angle(line_heading + math.pi)
     heading_diff = abs(normalize_angle(start_pose["heading"] - line_heading))
     reverse_heading_diff = abs(normalize_angle(start_pose["heading"] - reverse_line_heading))
-    straight_mode_reverse_start = reverse_heading_diff < heading_diff
-    straight_mode_heading_diff = min(heading_diff, reverse_heading_diff)
+    straight_mode_reverse_start = bool(reverse_heading_diff < heading_diff)
+    straight_mode_heading_diff = float(min(heading_diff, reverse_heading_diff))
     straight_mode_threshold = 0.1
 
     if straight_mode_heading_diff < straight_mode_threshold:
