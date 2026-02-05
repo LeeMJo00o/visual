@@ -272,12 +272,21 @@ def _plan_hybrid_a_star(
     start_priority = _heuristic_distance(start_node.x, start_node.y, goal)
     heapq.heappush(open_queue, _HybridQueueNode(start_priority, counter, start_node))
 
+    last_distance = None
+    last_heading_error = None
+    last_reverse_heading_error = None
     while open_queue and len(seen) < max_iter:
         current = heapq.heappop(open_queue).node
         distance_to_goal = _heuristic_distance(current.x, current.y, goal)
+        last_distance = distance_to_goal
+        heading_error = abs(normalize_angle(current.heading - goal["heading"]))
+        reverse_heading = normalize_angle(goal["heading"] + math.pi)
+        reverse_heading_error = abs(normalize_angle(current.heading - reverse_heading))
+        last_heading_error = heading_error
+        last_reverse_heading_error = reverse_heading_error
         if (
             distance_to_goal <= goal_tolerance
-            and abs(normalize_angle(current.heading - goal["heading"])) <= heading_tolerance
+            and min(heading_error, reverse_heading_error) <= heading_tolerance
         ):
             path: list[dict] = []
             node = current
@@ -313,6 +322,20 @@ def _plan_hybrid_a_star(
                 counter += 1
                 priority = next_node.cost + _heuristic_distance(next_x, next_y, goal)
                 heapq.heappush(open_queue, _HybridQueueNode(priority, counter, next_node))
+    if not open_queue:
+        logger.warning(
+            f"parking_path plan: hybrid a* failed: open_queue exhausted, "
+            f"seen={len(seen)}, last_distance={last_distance}, "
+            f"last_heading_error={last_heading_error}, "
+            f"last_reverse_heading_error={last_reverse_heading_error}"
+        )
+    elif len(seen) >= max_iter:
+        logger.warning(
+            f"parking_path plan: hybrid a* failed: max_iter reached, "
+            f"max_iter={max_iter}, last_distance={last_distance}, "
+            f"last_heading_error={last_heading_error}, "
+            f"last_reverse_heading_error={last_reverse_heading_error}"
+        )
     return []
 
 
