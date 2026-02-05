@@ -689,8 +689,9 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     straight_mode_threshold = 0.1
 
     if straight_mode_heading_diff < straight_mode_threshold:
-        straight_heading = reverse_line_heading if straight_mode_reverse_start else line_heading
-        straight_path = _build_straight_path(start_pose, end_pose, straight_heading, straight_mode_reverse_start)
+        # Keep path-point heading semantics consistent with existing reverse-start planning:
+        # heading follows travel direction; reverse_start indicates whether vehicle head is opposite.
+        straight_path = _build_straight_path(start_pose, end_pose, line_heading, False)
         run_areas = await _load_run_areas()
         path_valid = _is_path_within_run_area(straight_path, run_areas)
         logger.info(
