@@ -51,6 +51,8 @@ class _HybridNode:
     y: float
     heading: float
     cost: float
+    direction: float = 1.0
+    curvature: float = 0.0
     parent: "_HybridNode | None" = None
 
 
@@ -226,6 +228,12 @@ def _is_collision(x: float, y: float, obstacles: list[tuple[float, float]], radi
             return True
     return False
 
+def _log_path_points(tag: str, path: list[dict]) -> None:
+    try:
+        logger.info(f"parking_path plan: {tag} path_points={json.dumps(path, ensure_ascii=False)}")
+    except Exception as exc:
+        logger.warning(f"parking_path plan: failed to log {tag} path points: {exc}")
+
 
 def _plan_hybrid_a_star(
     start: dict,
@@ -236,7 +244,7 @@ def _plan_hybrid_a_star(
 ) -> list[dict]:
     heading_bins = 24
     max_iter = 20000
-    goal_tolerance = 0.8
+    goal_tolerance = 0.6
     heading_tolerance = 0.5
     vehicle_radius = VEHICLE_WIDTH / 2.0
     obstacle_radius = vehicle_radius + OBSTACLE_INFLATION
@@ -246,15 +254,20 @@ def _plan_hybrid_a_star(
     stop_curvature = abs(math.tan(math.radians(STOP_STEER_DEG)) / WHEEL_BASE)
     is_stopped = abs(start_speed) < STOP_SPEED_THRESHOLD
     start_curvature_limit = min(max_curvature, stop_curvature) if is_stopped else max_curvature
+    reverse_penalty = 1.15
+    switch_direction_penalty = 4.0
+    steer_change_penalty = 0.2
+    steer_penalty_scale = 0.15
 
     def _heading_index(theta: float) -> int:
         return int(round((normalize_angle(theta) + math.pi) / (2 * math.pi) * heading_bins)) % heading_bins
 
-    def _node_key(node: _HybridNode) -> tuple[int, int, int]:
+    def _node_key(node: _HybridNode) -> tuple[int, int, int, int]:
         return (
             int(round(node.x / PLANNER_STEP_SIZE)),
             int(round(node.y / PLANNER_STEP_SIZE)),
             _heading_index(node.heading),
+            1 if node.direction >= 0.0 else -1,
         )
 
     open_queue: list[_HybridQueueNode] = []
@@ -264,6 +277,8 @@ def _plan_hybrid_a_star(
         start["x"],
         start["y"],
         start["heading"],
+        0.0,
+        1.0,
         0.0,
         None,
     )
@@ -299,11 +314,20 @@ def _plan_hybrid_a_star(
                 if _is_collision(next_x, next_y, obstacles, obstacle_radius):
                     continue
                 next_cost = current.cost + PLANNER_STEP_SIZE
+                if direction < 0:
+                    next_cost += PLANNER_STEP_SIZE * reverse_penalty
+                if current.parent is not None and direction != current.direction:
+                    next_cost += switch_direction_penalty
+                next_cost += abs(curvature) * PLANNER_STEP_SIZE * steer_penalty_scale
+                if current.parent is not None:
+                    next_cost += abs(curvature - current.curvature) * steer_change_penalty
                 next_node = _HybridNode(
                     next_x,
                     next_y,
                     next_heading,
                     next_cost,
+                    direction,
+                    curvature,
                     current,
                 )
                 key = _node_key(next_node)
@@ -704,6 +728,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
         )
         if not path_valid:
             return StdRes(data={"ok": False, "message": "path out of run area"})
+        _log_path_points("straight", straight_path)
         return StdRes(
             data={
                 "ok": True,
@@ -755,6 +780,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
             logger.info(f"parking_path plan: fallback run_area_valid={fallback_valid}")
             if not fallback_valid:
                 return StdRes(data={"ok": False, "message": "path out of run area"})
+            _log_path_points("fallback", fallback_path)
             return StdRes(
                 data={
                     "ok": True,
@@ -775,6 +801,7 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     )
     if not path_valid:
         return StdRes(data={"ok": False, "message": "path out of run area"})
+    _log_path_points("hybrid", path)
     return StdRes(
         data={
             "ok": True,
