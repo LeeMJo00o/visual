@@ -680,6 +680,38 @@ async def plan_parking_path(req: dict = Body()) -> StdRes:
     }
     logger.info(f"parking_path plan: start_pose={start_pose}, end_pose={end_pose}")
     allow_reverse = bool(req.get("allow_reverse", ALLOW_REVERSE_DEFAULT))
+    line_heading = math.atan2(end_pose["y"] - start_pose["y"], end_pose["x"] - start_pose["x"])
+    reverse_line_heading = normalize_angle(line_heading + math.pi)
+    heading_diff = abs(normalize_angle(start_pose["heading"] - line_heading))
+    reverse_heading_diff = abs(normalize_angle(start_pose["heading"] - reverse_line_heading))
+    straight_mode_reverse_start = reverse_heading_diff < heading_diff
+    straight_mode_heading_diff = min(heading_diff, reverse_heading_diff)
+    straight_mode_threshold = 0.1
+
+    if straight_mode_heading_diff < straight_mode_threshold:
+        straight_heading = reverse_line_heading if straight_mode_reverse_start else line_heading
+        straight_path = _build_straight_path(start_pose, end_pose, straight_heading, straight_mode_reverse_start)
+        run_areas = await _load_run_areas()
+        path_valid = _is_path_within_run_area(straight_path, run_areas)
+        logger.info(
+            "parking_path plan: use straight path, "
+            f"path_size={len(straight_path)}, "
+            f"heading_diff={straight_mode_heading_diff:.4f}, "
+            f"threshold={straight_mode_threshold:.4f}, "
+            f"reverse_start={straight_mode_reverse_start}, "
+            f"run_area_valid={path_valid}"
+        )
+        if not path_valid:
+            return StdRes(data={"ok": False, "message": "path out of run area"})
+        return StdRes(
+            data={
+                "ok": True,
+                "target": end_pose,
+                "path": straight_path,
+                "reverse_start": straight_mode_reverse_start,
+            }
+        )
+
     half_length = VEHICLE_LENGTH / 2.0
     front_mid_x = start_pose["x"] + math.cos(start_pose["heading"]) * half_length
     front_mid_y = start_pose["y"] + math.sin(start_pose["heading"]) * half_length
